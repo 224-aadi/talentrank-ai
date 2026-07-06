@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TalentRank ATS Scanner</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.8.0/mammoth.browser.min.js"></script>
+    <script defer src="app.js"></script>
+  </head>
+  <body>
+    <main class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 40 40" role="img">
+              <path d="M20 4 35 12.5v15L20 36 5 27.5v-15L20 4Z" />
+              <path d="M13 20.8 18.2 26 28 14.7" />
+            </svg>
+          </div>
+          <div>
+            <p class="eyebrow">Internal HR Suite</p>
+            <h1>TalentRank</h1>
+          </div>
+        </div>
+
+        <nav class="steps" aria-label="Workflow">
+          <a href="#job" class="step is-active"><span>1</span> Job description</a>
+          <a href="#rules" class="step"><span>2</span> Hard rules</a>
+          <a href="#resumes" class="step"><span>3</span> Resumes</a>
+          <a href="#results" class="step"><span>4</span> Ranking</a>
+        </nav>
+
+        <section class="metric-stack" aria-label="Pipeline summary">
+          <div>
+            <span id="metricTotal">0</span>
+            <p>Uploaded</p>
+          </div>
+          <div>
+            <span id="metricPassed">0</span>
+            <p>Passed rules</p>
+          </div>
+          <div>
+            <span id="metricRejected">0</span>
+            <p>Rejected</p>
+          </div>
+        </section>
+      </aside>
+
+      <section class="workspace">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Resume screening</p>
+            <h2>Rank candidates against one role</h2>
+          </div>
+          <div class="actions">
+            <button id="loadSampleBtn" class="ghost-btn" type="button" title="Load sample data">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 21h16" /></svg>
+              Sample
+            </button>
+            <button id="scanBtn" class="primary-btn" type="button" title="Score uploaded resumes">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 12 2 2 4-5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>
+              Score
+            </button>
+          </div>
+        </header>
+
+        <section class="grid-layout">
+          <div class="left-column">
+            <section id="job" class="panel">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">Input</p>
+                  <h3>Job description</h3>
+                </div>
+                <label class="icon-file-btn" title="Upload job description">
+                  <input id="jdFile" type="file" accept=".txt,.md,.pdf,.docx" />
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14" /></svg>
+                </label>
+              </div>
+              <textarea id="jdText" spellcheck="true" placeholder="Paste or upload the role description, responsibilities, skills, and qualifications."></textarea>
+              <div id="jdWarning" class="input-warning" hidden></div>
+            </section>
+
+            <section id="rules" class="panel">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">Gate</p>
+                  <h3>Required keywords</h3>
+                </div>
+                <div class="segmented" role="group" aria-label="Keyword match mode">
+                  <button id="allRulesBtn" class="is-selected" type="button">All</button>
+                  <button id="anyRulesBtn" type="button">Any</button>
+                </div>
+              </div>
+              <div class="keyword-entry">
+                <input id="keywordInput" type="text" placeholder="Example: HIPAA, CPA, React, Series 7" />
+                <button id="addKeywordBtn" type="button" title="Add keyword">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+                </button>
+              </div>
+              <div id="keywordChips" class="chips" aria-live="polite"></div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">Search</p>
+                  <h3>Ranking strategy</h3>
+                </div>
+                <span class="status-pill">Hybrid</span>
+              </div>
+              <div class="strategy-grid">
+                <label>
+                  <span>Role template</span>
+                  <select id="roleTemplate">
+                    <option value="auto">Auto-detect</option>
+                    <option value="data">Data / Analytics</option>
+                    <option value="software">Software Engineering</option>
+                    <option value="sales">Sales / GTM</option>
+                    <option value="finance">Finance / Accounting</option>
+                    <option value="operations">Operations</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Boolean query</span>
+                  <input id="searchQuery" type="text" placeholder='python AND sql "sensor data" -sales' />
+                </label>
+                <label>
+                  <span>Minimum score</span>
+                  <input id="minScore" type="range" min="0" max="100" value="0" />
+                  <b id="minScoreLabel">0</b>
+                </label>
+              </div>
+              <div class="weight-grid">
+                <label><span>JD</span><input id="weightMatch" type="range" min="10" max="55" value="42" /></label>
+                <label><span>Skills</span><input id="weightSkills" type="range" min="10" max="55" value="30" /></label>
+                <label><span>Exp</span><input id="weightExperience" type="range" min="0" max="35" value="18" /></label>
+                <label><span>Edu</span><input id="weightEducation" type="range" min="0" max="25" value="10" /></label>
+              </div>
+              <div class="strategy-tags">
+                <span>BM25-style lexical</span>
+                <span>Skill graph</span>
+                <span>Semantic signals</span>
+                <span>Explainable rerank</span>
+              </div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">Governance</p>
+                  <h3>Responsible screening</h3>
+                </div>
+                <span class="status-pill">Audit ready</span>
+              </div>
+              <div class="toggle-row">
+                <label><input id="blindReview" type="checkbox" /> Blind review</label>
+                <label><input id="strictMode" type="checkbox" checked /> Require evidence</label>
+              </div>
+              <div class="strategy-tags">
+                <span>No protected-class scoring</span>
+                <span>Evidence required</span>
+                <span>Decision log</span>
+                <span>Human override</span>
+              </div>
+            </section>
+
+            <section id="resumes" class="panel upload-panel">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">Batch</p>
+                  <h3>Resume files</h3>
+                </div>
+                <span id="fileCount" class="status-pill">0 files</span>
+              </div>
+              <label id="dropZone" class="drop-zone">
+                <input id="resumeFiles" type="file" multiple accept=".txt,.md,.pdf,.docx" />
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m0 0 4 4m-4-4-4 4M4 20h16" /></svg>
+                <strong>Drop resumes here</strong>
+                <span>PDF, DOCX, TXT, or MD</span>
+              </label>
+              <ul id="fileList" class="file-list"></ul>
+            </section>
+          </div>
+
+          <section id="results" class="results-panel">
+            <div class="results-toolbar">
+              <div>
+                <p class="eyebrow">Output</p>
+                <h3>Candidate ranking</h3>
+              </div>
+              <div class="toolbar-controls">
+                <label>
+                  <span>View</span>
+                  <select id="statusFilter">
+                    <option value="all">All</option>
+                    <option value="passed">Passed</option>
+                    <option value="rejected">Rejected</option>
+                  </select>
+                </label>
+                <button id="exportBtn" class="ghost-btn" type="button" title="Export CSV">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 21h16" /></svg>
+                  CSV
+                </button>
+              </div>
+            </div>
+
+            <div class="score-legend">
+              <span><i class="dot green"></i>80-100 strong</span>
+              <span><i class="dot amber"></i>60-79 review</span>
+              <span><i class="dot red"></i>Rejected</span>
+            </div>
+
+            <div id="insightsGrid" class="insights-grid" aria-live="polite"></div>
+
+            <div id="emptyState" class="empty-state">
+              <div class="scan-visual" aria-hidden="true">
+                <span></span><span></span><span></span><span></span>
+              </div>
+              <h3>No ranking yet</h3>
+              <p>Add a job description, hard rules, and resumes, then run the score.</p>
+            </div>
+
+            <div id="resultsList" class="results-list" aria-live="polite"></div>
+          </section>
+        </section>
+      </section>
+    </main>
+  </body>
+</html>
