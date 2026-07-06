@@ -1,7 +1,15 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
-import type { AuditEvent, EvaluationSnapshot, Job, TalentRankDb } from "./types";
+import type {
+  AuditEvent,
+  Candidate,
+  EvaluationSnapshot,
+  Job,
+  MatchRun,
+  ResumeDocument,
+  TalentRankDb,
+} from "./types";
 
 const dataDir = path.join(process.cwd(), ".data");
 const dbPath = path.join(dataDir, "talentrank.json");
@@ -55,6 +63,11 @@ export async function writeDb(db: TalentRankDb) {
 export async function listJobs() {
   const db = await readDb();
   return db.jobs;
+}
+
+export async function getJob(jobId: string) {
+  const db = await readDb();
+  return db.jobs.find((job) => job.id === jobId) || null;
 }
 
 export async function createJob(input: Pick<Job, "title" | "description" | "roleTemplate" | "hardRules"> & Partial<Job>) {
@@ -114,4 +127,88 @@ export async function createEvaluation(input: Omit<EvaluationSnapshot, "id" | "a
   db.evaluations.unshift(evaluation);
   await writeDb(db);
   return evaluation;
+}
+
+export async function createCandidateWithResume(input: {
+  organizationId?: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  fileName: string;
+  mimeType: string;
+  rawText: string;
+  parseConfidence: number;
+}) {
+  const db = await readDb();
+  const timestamp = now();
+  const candidate: Candidate = {
+    id: createId("cand"),
+    organizationId: input.organizationId || "org_demo",
+    name: input.name,
+    email: input.email,
+    phone: input.phone,
+    status: "screened",
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+  const resume: ResumeDocument = {
+    id: createId("resume"),
+    candidateId: candidate.id,
+    fileName: input.fileName,
+    mimeType: input.mimeType,
+    storageKey: `local/${candidate.id}/${input.fileName}`,
+    rawText: input.rawText,
+    parseStatus: "parsed",
+    parseConfidence: input.parseConfidence,
+    createdAt: timestamp,
+  };
+  db.candidates.unshift(candidate);
+  db.resumes.unshift(resume);
+  db.auditEvents.unshift({
+    id: createId("audit"),
+    type: "candidate.created",
+    at: timestamp,
+    organizationId: candidate.organizationId,
+    candidateId: candidate.id,
+    candidateName: candidate.name,
+    metadata: {
+      fileName: resume.fileName,
+      parseConfidence: resume.parseConfidence,
+    },
+  });
+  await writeDb(db);
+  return { candidate, resume };
+}
+
+export async function createMatchRun(input: Omit<MatchRun, "id" | "createdAt">) {
+  const db = await readDb();
+  const matchRun: MatchRun = {
+    id: createId("match"),
+    createdAt: now(),
+    ...input,
+  };
+  db.matchRuns.unshift(matchRun);
+  db.auditEvents.unshift({
+    id: createId("audit"),
+    type: "match.created",
+    at: matchRun.createdAt,
+    jobId: matchRun.jobId,
+    candidateId: matchRun.candidateId,
+    score: matchRun.score,
+    verdict: matchRun.verdict,
+    model: matchRun.modelVersion,
+    roleFamily: matchRun.roleFamily,
+  });
+  await writeDb(db);
+  return matchRun;
+}
+
+export async function listMatchRuns(jobId?: string) {
+  const db = await readDb();
+  const runs = jobId ? db.matchRuns.filter((run) => run.jobId === jobId) : db.matchRuns;
+  return runs.map((run) => ({
+    ...run,
+    job: db.jobs.find((job) => job.id === run.jobId) || null,
+    candidate: db.candidates.find((candidate) => candidate.id === run.candidateId) || null,
+  }));
 }

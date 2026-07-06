@@ -25,6 +25,7 @@ export default function HomePage() {
             recruiter decisions, audit events, and a production database model ready for the next build phase.
           </p>
           <div className="actions">
+            <a href="/screen">Open match workbench</a>
             <a href="/scanner/index.html">Open scanner MVP</a>
             <a href="/api/health">Check API</a>
           </div>

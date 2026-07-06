@@ -94,6 +94,11 @@ h1 {
   background: rgba(255, 255, 255, 0.16);
 }
 
+.actions a:nth-child(2) {
+  color: var(--forest);
+  background: #fff;
+}
+
 .metrics,
 .panel-grid {
   display: grid;
@@ -156,5 +161,241 @@ h1 {
 
   .hero {
     padding: 28px;
+  }
+}
+
+.workbench-shell {
+  width: min(1320px, calc(100% - 36px));
+  margin: 0 auto;
+  padding: 28px 0;
+}
+
+.workbench-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 24px;
+  border-radius: 10px;
+  color: #eef8f3;
+  background: #18372f;
+}
+
+.workbench-header h1 {
+  font-size: clamp(2rem, 5vw, 4rem);
+}
+
+.workbench-header p {
+  max-width: 760px;
+  color: rgba(255, 255, 255, 0.78);
+  line-height: 1.5;
+}
+
+.workbench-header a {
+  color: var(--forest);
+  font-weight: 850;
+  text-decoration: none;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: var(--mint);
+}
+
+.workbench-grid {
+  display: grid;
+  grid-template-columns: minmax(340px, 440px) minmax(0, 1fr);
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.screen-form,
+.results-column,
+.match-card {
+  border: 1px solid rgba(127, 144, 138, 0.26);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 18px 48px rgba(27, 40, 38, 0.12);
+}
+
+.screen-form {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+}
+
+.screen-form label {
+  display: grid;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 850;
+}
+
+.screen-form input,
+.screen-form select,
+.screen-form textarea {
+  width: 100%;
+  min-height: 42px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  background: #f7f9f8;
+  font: inherit;
+}
+
+.screen-form textarea {
+  min-height: 220px;
+  resize: vertical;
+}
+
+.file-drop {
+  min-height: 94px;
+  padding: 14px;
+  border: 1px dashed rgba(15, 118, 110, 0.55);
+  border-radius: 8px;
+  background: var(--mint);
+}
+
+.file-drop input {
+  min-height: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.screen-form button {
+  min-height: 46px;
+  border: 0;
+  border-radius: 8px;
+  color: #fff;
+  background: var(--teal);
+  font: inherit;
+  font-weight: 900;
+}
+
+.screen-form button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.form-error {
+  color: #b42318;
+  font-weight: 850;
+}
+
+.results-column {
+  padding: 16px;
+}
+
+.metric-row {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.metric-row article {
+  padding: 12px;
+  border-radius: 8px;
+  background: #f7f9f8;
+}
+
+.metric-row span {
+  display: block;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.metric-row b {
+  display: block;
+  margin-top: 2px;
+  font-size: 1.35rem;
+}
+
+.match-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.match-card {
+  display: grid;
+  grid-template-columns: 70px 1fr;
+  gap: 14px;
+  padding: 14px;
+  box-shadow: none;
+}
+
+.score {
+  display: grid;
+  place-items: center;
+  width: 62px;
+  height: 62px;
+  border-radius: 50%;
+  color: #fff;
+  background: var(--teal);
+  font-size: 1.35rem;
+  font-weight: 950;
+}
+
+.match-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.match-head h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.match-head span {
+  align-self: start;
+  padding: 4px 8px;
+  border-radius: 999px;
+  color: var(--forest);
+  font-size: 0.78rem;
+  font-weight: 850;
+  background: var(--mint);
+}
+
+.match-card p {
+  margin: 8px 0 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.breakdown,
+.risk-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.breakdown span,
+.risk-row span {
+  padding: 4px 7px;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 850;
+  background: #e5efff;
+}
+
+.risk-row span {
+  color: #6d4308;
+  background: #fff1cc;
+}
+
+@media (max-width: 920px) {
+  .workbench-grid,
+  .metric-row {
+    grid-template-columns: 1fr;
+  }
+
+  .workbench-header {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }

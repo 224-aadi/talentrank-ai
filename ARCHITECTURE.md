@@ -38,6 +38,8 @@ POST /api/jobs
 GET  /api/audit
 POST /api/audit
 POST /api/evaluations
+POST /api/screen
+GET  /api/matches
 ```
 
 The API is intentionally small. It gives the product the shape needed for persistence, auditability, and evaluation tracking without introducing database or framework dependencies yet.

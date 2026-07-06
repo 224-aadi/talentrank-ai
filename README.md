@@ -29,6 +29,12 @@ Then open:
 http://127.0.0.1:3000/
 ```
 
+Server-side screening workbench:
+
+```text
+http://127.0.0.1:3000/screen
+```
+
 The original scanner MVP is available at:
 
 ```text
@@ -59,6 +65,7 @@ This repo now includes:
 - Typed API routes
 - JSON-backed repository layer
 - Prisma/Postgres schema
+- Server-side screening endpoint and persisted match workbench
 - Launch architecture docs
 - Compliance checklist
 - Original browser MVP

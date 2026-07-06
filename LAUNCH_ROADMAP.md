@@ -17,6 +17,8 @@ TalentRank should compete as an explainable candidate intelligence layer, not as
 - Next.js app shell with API route boundaries.
 - Prisma schema for the launch-grade database model.
 - JSON repository layer that can be replaced with Postgres.
+- Server-side screening API that persists jobs, candidates, resumes, match runs, audits, and evaluation snapshots.
+- Next match workbench for persisted ranked results.
 - Batch resume upload with PDF, DOCX, TXT, and MD support.
 - JD upload or paste.
 - Hard-rule keywords with all/any gate behavior.
