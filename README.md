@@ -66,6 +66,7 @@ This repo now includes:
 - JSON-backed repository layer
 - Prisma/Postgres schema
 - Server-side screening endpoint and persisted match workbench
+- Server-side resume ingestion for PDF, DOCX, TXT, MD, and CSV files
 - Launch architecture docs
 - Compliance checklist
 - Original browser MVP

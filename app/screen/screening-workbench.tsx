@@ -18,6 +18,12 @@ type MatchRow = {
   matchedSignals: string[];
   missingSignals: string[];
   riskFlags: string[];
+  resume?: {
+    fileName: string;
+    parser?: string;
+    warnings?: string[];
+    parseConfidence?: number;
+  };
   candidate: {
     id: string;
     name: string;
@@ -37,7 +43,7 @@ export default function ScreeningWorkbench({
   const [description, setDescription] = useState("");
   const [hardRules, setHardRules] = useState("");
   const [roleTemplate, setRoleTemplate] = useState("auto");
-  const [resumes, setResumes] = useState<Array<{ fileName: string; mimeType: string; text: string }>>([]);
+  const [resumeFiles, setResumeFiles] = useState<File[]>([]);
   const [matches, setMatches] = useState<MatchRow[]>(initialMatches);
   const [jobs, setJobs] = useState(initialJobs);
   const [isRunning, setIsRunning] = useState(false);
@@ -52,44 +58,40 @@ export default function ScreeningWorkbench({
     return { strong, avg, confidence };
   }, [matches]);
 
-  async function handleFiles(files: FileList | null) {
+  function handleFiles(files: FileList | null) {
     if (!files) return;
-    const parsed = await Promise.all(
-      [...files].map(async (file) => ({
-        fileName: file.name,
-        mimeType: file.type || "text/plain",
-        text: await file.text(),
-      })),
-    );
-    setResumes(parsed);
+    setResumeFiles([...files]);
   }
 
   async function runScreen() {
     setIsRunning(true);
     setError("");
     try {
+      const formData = new FormData();
+      formData.append(
+        "job",
+        JSON.stringify({
+          title,
+          description,
+          roleTemplate,
+          hardRules: hardRules
+            .split(",")
+            .map((rule) => rule.trim())
+            .filter(Boolean),
+        }),
+      );
+      for (const file of resumeFiles) formData.append("resumes", file);
       const response = await fetch("/api/screen", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          job: {
-            title,
-            description,
-            roleTemplate,
-            hardRules: hardRules
-              .split(",")
-              .map((rule) => rule.trim())
-              .filter(Boolean),
-          },
-          resumes,
-        }),
+        body: formData,
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error ? JSON.stringify(payload.error) : "Screening failed");
       setJobs([payload.job, ...jobs]);
-      setMatches(payload.results.map((item: { matchRun: MatchRow; candidate: MatchRow["candidate"] }) => ({
+      setMatches(payload.results.map((item: { matchRun: MatchRow; candidate: MatchRow["candidate"]; resume: MatchRow["resume"] }) => ({
         ...item.matchRun,
         candidate: item.candidate,
+        resume: item.resume,
         job: payload.job,
       })));
     } catch (screenError) {
@@ -140,10 +142,10 @@ export default function ScreeningWorkbench({
           </label>
           <label className="file-drop">
             <span>Resume batch</span>
-            <input multiple type="file" accept=".txt,.md,.csv" onChange={(event) => handleFiles(event.target.files)} />
-            <strong>{resumes.length ? `${resumes.length} files ready` : "Upload TXT/MD resumes"}</strong>
+            <input multiple type="file" accept=".pdf,.docx,.txt,.md,.csv" onChange={(event) => handleFiles(event.target.files)} />
+            <strong>{resumeFiles.length ? `${resumeFiles.length} files ready` : "Upload PDF/DOCX/TXT/MD resumes"}</strong>
           </label>
-          <button disabled={isRunning || !description || !resumes.length} onClick={runScreen}>
+          <button disabled={isRunning || !description || !resumeFiles.length} onClick={runScreen}>
             {isRunning ? "Screening..." : "Run server-side screen"}
           </button>
           {error ? <p className="form-error">{error}</p> : null}
@@ -168,6 +170,12 @@ export default function ScreeningWorkbench({
                     <span>{match.verdict}</span>
                   </div>
                   <p>{match.job?.title || title} · {match.roleFamily} · {match.confidence}% confidence</p>
+                  {match.resume ? (
+                    <p>
+                      Parsed from {match.resume.fileName}
+                      {match.resume.parser ? ` via ${match.resume.parser}` : ""} · {match.resume.parseConfidence ?? "?"}% parse
+                    </p>
+                  ) : null}
                   <div className="breakdown">
                     <span>JD {match.breakdown.match}</span>
                     <span>Skills {match.breakdown.skills}</span>
@@ -176,6 +184,7 @@ export default function ScreeningWorkbench({
                   </div>
                   <p><strong>Matched:</strong> {match.matchedSignals.slice(0, 8).join(", ") || "Limited evidence"}</p>
                   {match.missingSignals.length ? <p><strong>Gaps:</strong> {match.missingSignals.slice(0, 6).join(", ")}</p> : null}
+                  {match.resume?.warnings?.length ? <p><strong>Parser warnings:</strong> {match.resume.warnings.join(", ")}</p> : null}
                   {match.riskFlags.length ? <div className="risk-row">{match.riskFlags.map((risk) => <span key={risk}>{risk}</span>)}</div> : null}
                 </div>
               </article>

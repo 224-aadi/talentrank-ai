@@ -18,6 +18,7 @@ TalentRank should compete as an explainable candidate intelligence layer, not as
 - Prisma schema for the launch-grade database model.
 - JSON repository layer that can be replaced with Postgres.
 - Server-side screening API that persists jobs, candidates, resumes, match runs, audits, and evaluation snapshots.
+- Server-side resume ingestion for PDF, DOCX, TXT, MD, and CSV files.
 - Next match workbench for persisted ranked results.
 - Batch resume upload with PDF, DOCX, TXT, and MD support.
 - JD upload or paste.
