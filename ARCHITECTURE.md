@@ -27,7 +27,7 @@ Open:
 http://127.0.0.1:3000/
 ```
 
-The original scanner remains available at `/index.html`.
+The original scanner remains available at `/scanner/index.html`.
 
 ## API Surface
 

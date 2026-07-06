@@ -32,7 +32,7 @@ http://127.0.0.1:3000/
 The original scanner MVP is available at:
 
 ```text
-http://127.0.0.1:3000/index.html
+http://127.0.0.1:3000/scanner/index.html
 ```
 
 ## Legacy Static Server
