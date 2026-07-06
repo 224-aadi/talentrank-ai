@@ -1,0 +1,173 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Organization {
+  id          String       @id @default(cuid())
+  name        String
+  createdAt   DateTime     @default(now())
+  users       User[]
+  jobs        Job[]
+  candidates  Candidate[]
+  auditEvents AuditEvent[]
+}
+
+model User {
+  id             String       @id @default(cuid())
+  organizationId String
+  email          String       @unique
+  name           String
+  role           UserRole     @default(RECRUITER)
+  createdAt      DateTime     @default(now())
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  decisions      RecruiterDecision[]
+}
+
+model Job {
+  id             String       @id @default(cuid())
+  organizationId String
+  title          String
+  description    String
+  location       String?
+  roleTemplate   RoleTemplate @default(AUTO)
+  hardRules      String[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  matchRuns      MatchRun[]
+  decisions      RecruiterDecision[]
+  auditEvents    AuditEvent[]
+}
+
+model Candidate {
+  id             String       @id @default(cuid())
+  organizationId String
+  name           String
+  email          String?
+  phone          String?
+  status         CandidateStatus @default(NEW)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  resumes        ResumeDocument[]
+  matchRuns      MatchRun[]
+  decisions      RecruiterDecision[]
+  auditEvents    AuditEvent[]
+}
+
+model ResumeDocument {
+  id              String      @id @default(cuid())
+  candidateId     String
+  fileName        String
+  mimeType        String
+  storageKey      String
+  rawText         String?
+  parsedJson      Json?
+  parseStatus     ParseStatus @default(PENDING)
+  parseConfidence Int         @default(0)
+  createdAt       DateTime    @default(now())
+  candidate       Candidate   @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+}
+
+model MatchRun {
+  id             String    @id @default(cuid())
+  jobId          String
+  candidateId    String
+  modelVersion   String
+  score          Int
+  confidence     Int
+  verdict        String
+  roleFamily     String
+  breakdown      Json
+  matchedSignals String[]
+  missingSignals String[]
+  evidence       Json
+  riskFlags      String[]
+  createdAt      DateTime  @default(now())
+  job            Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  candidate      Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+}
+
+model RecruiterDecision {
+  id          String    @id @default(cuid())
+  jobId       String
+  candidateId String
+  userId      String
+  decision    Decision
+  notes       String?
+  createdAt   DateTime  @default(now())
+  job         Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AuditEvent {
+  id             String        @id @default(cuid())
+  organizationId String
+  jobId          String?
+  candidateId    String?
+  actorId        String?
+  type           String
+  payload        Json
+  createdAt      DateTime      @default(now())
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  job            Job?          @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  candidate      Candidate?    @relation(fields: [candidateId], references: [id], onDelete: SetNull)
+}
+
+model EvaluationSnapshot {
+  id                        String   @id @default(cuid())
+  jobId                     String?
+  model                     String
+  candidateCount            Int
+  shortlistCount            Int
+  strongMatchCount          Int
+  avgScore                  Int
+  avgConfidence             Int
+  parseHealth               Int
+  falseKnockoutReviewCount  Int      @default(0)
+  notes                     String?
+  createdAt                 DateTime @default(now())
+}
+
+enum UserRole {
+  ADMIN
+  RECRUITER
+  REVIEWER
+}
+
+enum RoleTemplate {
+  AUTO
+  DATA
+  SOFTWARE
+  SALES
+  FINANCE
+  OPERATIONS
+}
+
+enum CandidateStatus {
+  NEW
+  SCREENED
+  SHORTLISTED
+  HELD
+  REJECTED
+  INTERVIEW
+}
+
+enum ParseStatus {
+  PENDING
+  PARSED
+  FAILED
+}
+
+enum Decision {
+  SHORTLIST
+  HOLD
+  REJECT
+  INTERVIEW
+}

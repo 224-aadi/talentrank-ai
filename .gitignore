@@ -1,4 +1,7 @@
 data/*.json
+.data/
+.next/
+uploads/
 node_modules/
 .DS_Store
 *.log

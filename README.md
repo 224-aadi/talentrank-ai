@@ -1,6 +1,6 @@
-# TalentRank ATS Scanner
+# TalentRank AI
 
-TalentRank is an explainable ATS screening prototype built toward a launch-grade recruiting intelligence product.
+TalentRank AI is an explainable ATS screening and candidate-ranking platform built toward a launch-grade recruiting intelligence product.
 
 ## What It Does
 
@@ -19,7 +19,28 @@ TalentRank is an explainable ATS screening prototype built toward a launch-grade
 ## Run Locally
 
 ```bash
-npm start
+npm install
+npm run dev
+```
+
+Then open:
+
+```text
+http://127.0.0.1:3000/
+```
+
+The original scanner MVP is available at:
+
+```text
+http://127.0.0.1:3000/index.html
+```
+
+## Legacy Static Server
+
+The dependency-free prototype server is still available:
+
+```bash
+npm run start:legacy
 ```
 
 Then open:
@@ -28,7 +49,19 @@ Then open:
 http://127.0.0.1:4173/
 ```
 
-The app also opens directly as `index.html`, but persistence only works through the server.
+The app also opens directly as `index.html`, but persistence only works through an HTTP server.
+
+## Full-Stack Foundation
+
+This repo now includes:
+
+- Next.js app shell
+- Typed API routes
+- JSON-backed repository layer
+- Prisma/Postgres schema
+- Launch architecture docs
+- Compliance checklist
+- Original browser MVP
 
 ## Matching Approach
 

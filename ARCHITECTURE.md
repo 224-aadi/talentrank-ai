@@ -4,6 +4,9 @@
 
 This folder contains a launch-path MVP:
 
+- `app/`: Next.js application shell and API routes.
+- `lib/`: typed domain model and persistence boundary.
+- `prisma/schema.prisma`: production database model.
 - `index.html`, `styles.css`, `app.js`: recruiter-facing screening UI.
 - `server.js`: dependency-free Node.js server for static hosting and JSON APIs.
 - `data/talentrank.json`: local JSON persistence created at runtime.
@@ -14,14 +17,17 @@ This folder contains a launch-path MVP:
 
 ```bash
 cd outputs/ats-tracker
-npm start
+npm install
+npm run dev
 ```
 
 Open:
 
 ```text
-http://127.0.0.1:4173/
+http://127.0.0.1:3000/
 ```
+
+The original scanner remains available at `/index.html`.
 
 ## API Surface
 
