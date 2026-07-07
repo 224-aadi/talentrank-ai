@@ -39,6 +39,7 @@ TalentRank should compete as an explainable candidate intelligence layer, not as
 - Confidence score, parse health, risk flags, evidence snippets, and gap analysis.
 - Hard-rule pass/fail outcomes with supporting resume evidence.
 - Recruiter-facing evidence panels with exact, alias, and transferable proof labels.
+- Next workbench recruiter decisions with notes, candidate status updates, and audit events.
 - CSV export with recruiter-facing explanations.
 - JD quality warning when the input is not a real job description.
 - Role-family templates for data, software, sales, finance, and operations.
@@ -67,9 +68,9 @@ TalentRank should compete as an explainable candidate intelligence layer, not as
 
 4. Recruiter Workflow
    - Saved jobs and saved candidate pools.
-   - Shortlist, reject, hold, and request-review states.
+   - Shortlist, reject, hold, and interview states are implemented in the Next workbench.
    - Side-by-side candidate comparison.
-   - Reviewer notes and audit trail.
+   - Reviewer notes and audit trail are implemented for decisions.
    - CSV/ATS export and later ATS integrations.
 
 5. Calibration And Feedback
@@ -102,6 +103,6 @@ TalentRank should compete as an explainable candidate intelligence layer, not as
 3. Move vector storage from JSON to Postgres/vector database infrastructure.
 4. Harden BM25/Boolean retrieval with saved searches, filters, and benchmark coverage.
 5. Add a skill taxonomy service and role-family templates.
-6. Add recruiter feedback labels and score calibration dashboards.
+6. Add richer feedback labels and score calibration dashboards.
 7. Add organization accounts, roles, audit logs, and secure file storage.
 8. Run benchmark tests on a labeled resume/JD dataset before selling.

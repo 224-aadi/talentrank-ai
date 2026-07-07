@@ -3,6 +3,8 @@
 import { useMemo, useState } from "react";
 import type { Job } from "@/lib/types";
 
+type DecisionValue = "shortlist" | "hold" | "reject" | "interview";
+
 type MatchRow = {
   id: string;
   score: number;
@@ -54,6 +56,13 @@ type MatchRow = {
     id: string;
     name: string;
     email?: string;
+    status?: string;
+  } | null;
+  latestDecision?: {
+    id: string;
+    decision: DecisionValue;
+    notes?: string;
+    createdAt: string;
   } | null;
   job: Job | null;
 };
@@ -108,6 +117,8 @@ export default function ScreeningWorkbench({
   const [jobs, setJobs] = useState(initialJobs);
   const [isRunning, setIsRunning] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
+  const [decisionNotes, setDecisionNotes] = useState<Record<string, string>>({});
+  const [savingDecisionId, setSavingDecisionId] = useState("");
   const [error, setError] = useState("");
 
   const metrics = useMemo(() => {
@@ -183,6 +194,41 @@ export default function ScreeningWorkbench({
       setError(screenError instanceof Error ? screenError.message : "Screening failed");
     } finally {
       setIsRunning(false);
+    }
+  }
+
+  async function decide(match: MatchRow, decision: DecisionValue) {
+    if (!match.candidate || !match.job) return;
+    setSavingDecisionId(`${match.id}:${decision}`);
+    setError("");
+    try {
+      const response = await fetch("/api/decisions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jobId: match.job.id,
+          candidateId: match.candidate.id,
+          decision,
+          notes: decisionNotes[match.id]?.trim() || undefined,
+        }),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error ? JSON.stringify(payload.error) : "Decision failed");
+      setMatches((current) =>
+        current.map((item) =>
+          item.id === match.id
+            ? {
+                ...item,
+                candidate: payload.candidate || item.candidate,
+                latestDecision: payload.decision,
+              }
+            : item,
+        ),
+      );
+    } catch (decisionError) {
+      setError(decisionError instanceof Error ? decisionError.message : "Decision failed");
+    } finally {
+      setSavingDecisionId("");
     }
   }
 
@@ -299,6 +345,12 @@ export default function ScreeningWorkbench({
                     <h2>{match.candidate?.name || `Candidate ${index + 1}`}</h2>
                     <span>{match.verdict}</span>
                   </div>
+                  {match.latestDecision ? (
+                    <div className="decision-status">
+                      <span>{match.latestDecision.decision}</span>
+                      {match.latestDecision.notes ? <small>{match.latestDecision.notes}</small> : null}
+                    </div>
+                  ) : null}
                   <p>{match.job?.title || title} · {match.roleFamily} · {match.confidence}% confidence</p>
                   {match.resume ? (
                     <p>
@@ -349,6 +401,25 @@ export default function ScreeningWorkbench({
                   ) : null}
                   {match.resume?.warnings?.length ? <p><strong>Parser warnings:</strong> {match.resume.warnings.join(", ")}</p> : null}
                   {match.riskFlags.length ? <div className="risk-row">{match.riskFlags.map((risk) => <span key={risk}>{risk}</span>)}</div> : null}
+                  <div className="decision-panel">
+                    <input
+                      value={decisionNotes[match.id] || ""}
+                      onChange={(event) => setDecisionNotes((current) => ({ ...current, [match.id]: event.target.value }))}
+                      placeholder="Reviewer note"
+                    />
+                    <div>
+                      {(["shortlist", "hold", "reject", "interview"] as const).map((decision) => (
+                        <button
+                          key={decision}
+                          type="button"
+                          disabled={!match.candidate || !match.job || savingDecisionId === `${match.id}:${decision}`}
+                          onClick={() => decide(match, decision)}
+                        >
+                          {savingDecisionId === `${match.id}:${decision}` ? "Saving..." : decision}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </article>
             ))}

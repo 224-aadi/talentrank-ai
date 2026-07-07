@@ -133,6 +133,16 @@ export interface EvaluationSnapshot {
   notes?: string;
 }
 
+export interface RecruiterDecisionRecord {
+  id: string;
+  jobId: string;
+  candidateId: string;
+  userId: string;
+  decision: RecruiterDecision;
+  notes?: string;
+  createdAt: string;
+}
+
 export interface TalentRankDb {
   schemaVersion: number;
   createdAt: string;
@@ -141,6 +151,7 @@ export interface TalentRankDb {
   candidates: Candidate[];
   resumes: ResumeDocument[];
   matchRuns: MatchRun[];
+  decisions?: RecruiterDecisionRecord[];
   auditEvents: AuditEvent[];
   evaluations: EvaluationSnapshot[];
   vectorRecords?: VectorRecord[];

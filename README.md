@@ -14,7 +14,7 @@ TalentRank AI is an explainable ATS screening and candidate-ranking platform bui
 - Run blind review.
 - Record recruiter decisions.
 - Export ranked results.
-- Persist audit and evaluation events when served through the Node backend.
+- Persist audit, evaluation, and decision events through the Next backend.
 
 ## Run Locally
 
@@ -70,6 +70,7 @@ This repo now includes:
 - Structured resume profiles and recruiter-facing evidence explanations
 - Saved candidate pool retrieval with Boolean search and BM25-style ranking
 - Semantic retrieval over resume sections with local or OpenAI-managed embeddings
+- Recruiter decisions with notes, candidate status updates, and audit events
 - Launch architecture docs
 - Compliance checklist
 - Original browser MVP

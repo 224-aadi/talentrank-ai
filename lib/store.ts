@@ -7,6 +7,8 @@ import type {
   EvaluationSnapshot,
   Job,
   MatchRun,
+  RecruiterDecision,
+  RecruiterDecisionRecord,
   ResumeDocument,
   TalentRankDb,
   VectorRecord,
@@ -21,6 +23,13 @@ export function createId(prefix: string) {
 
 function now() {
   return new Date().toISOString();
+}
+
+function statusForDecision(decision: RecruiterDecision): Candidate["status"] {
+  if (decision === "shortlist") return "shortlisted";
+  if (decision === "hold") return "held";
+  if (decision === "reject") return "rejected";
+  return "interview";
 }
 
 function emptyDb(): TalentRankDb {
@@ -38,6 +47,7 @@ function emptyDb(): TalentRankDb {
     candidates: [],
     resumes: [],
     matchRuns: [],
+    decisions: [],
     auditEvents: [],
     evaluations: [],
     vectorRecords: [],
@@ -65,6 +75,11 @@ export async function writeDb(db: TalentRankDb) {
 function vectors(db: TalentRankDb) {
   db.vectorRecords ||= [];
   return db.vectorRecords;
+}
+
+function decisions(db: TalentRankDb) {
+  db.decisions ||= [];
+  return db.decisions;
 }
 
 export async function listJobs() {
@@ -212,6 +227,58 @@ export async function createMatchRun(input: Omit<MatchRun, "id" | "createdAt">) 
   return matchRun;
 }
 
+export async function createRecruiterDecision(input: {
+  jobId: string;
+  candidateId: string;
+  decision: RecruiterDecision;
+  notes?: string;
+  userId?: string;
+}) {
+  const db = await readDb();
+  const timestamp = now();
+  const decision: RecruiterDecisionRecord = {
+    id: createId("decision"),
+    jobId: input.jobId,
+    candidateId: input.candidateId,
+    userId: input.userId || "user_demo",
+    decision: input.decision,
+    notes: input.notes,
+    createdAt: timestamp,
+  };
+  decisions(db).unshift(decision);
+
+  const candidate = db.candidates.find((item) => item.id === input.candidateId);
+  if (candidate) {
+    candidate.status = statusForDecision(input.decision);
+    candidate.updatedAt = timestamp;
+  }
+
+  db.auditEvents.unshift({
+    id: createId("audit"),
+    type: "decision.created",
+    at: timestamp,
+    organizationId: candidate?.organizationId || "org_demo",
+    jobId: input.jobId,
+    candidateId: input.candidateId,
+    candidateName: candidate?.name,
+    decision: input.decision,
+    metadata: {
+      notes: input.notes,
+    },
+  });
+  await writeDb(db);
+  return {
+    decision,
+    candidate: candidate || null,
+  };
+}
+
+export async function listRecruiterDecisions(jobId?: string) {
+  const db = await readDb();
+  const all = decisions(db);
+  return jobId ? all.filter((item) => item.jobId === jobId) : all;
+}
+
 export async function listCandidatePool() {
   const db = await readDb();
   return db.resumes
@@ -249,10 +316,12 @@ export async function upsertVectorRecords(records: VectorRecord[]) {
 export async function listMatchRuns(jobId?: string) {
   const db = await readDb();
   const runs = jobId ? db.matchRuns.filter((run) => run.jobId === jobId) : db.matchRuns;
+  const allDecisions = decisions(db);
   return runs.map((run) => ({
     ...run,
     hardRuleOutcomes: run.hardRuleOutcomes || [],
     job: db.jobs.find((job) => job.id === run.jobId) || null,
     candidate: db.candidates.find((candidate) => candidate.id === run.candidateId) || null,
+    latestDecision: allDecisions.find((decision) => decision.jobId === run.jobId && decision.candidateId === run.candidateId) || null,
   }));
 }

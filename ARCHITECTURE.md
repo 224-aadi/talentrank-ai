@@ -42,6 +42,8 @@ POST /api/jobs
 GET  /api/audit
 POST /api/audit
 GET  /api/candidates/search
+GET  /api/decisions
+POST /api/decisions
 POST /api/evaluations
 POST /api/screen
 GET  /api/matches
