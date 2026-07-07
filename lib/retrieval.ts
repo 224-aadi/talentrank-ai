@@ -1,4 +1,5 @@
 import type { CandidatePoolItem, EvidenceSnippet, RetrievalResult } from "./types";
+import { bestSemanticMatch } from "./semantic";
 
 const stopWords = new Set([
   "a",
@@ -132,7 +133,7 @@ function bm25(text: string, terms: string[], avgDocLength: number, df: Map<strin
   }, 0);
 }
 
-export function retrieveCandidates(pool: CandidatePoolItem[], query: string, limit = 20): RetrievalResult[] {
+export function retrieveCandidates(pool: CandidatePoolItem[], query: string, limit = 20, mode: "lexical" | "semantic" | "hybrid" = "hybrid"): RetrievalResult[] {
   const parsed = parseRetrievalQuery(query);
   const fallbackTerms = pool.length ? [] : tokenize(query).slice(0, 8);
   const terms = parsed.positiveTerms.length ? parsed.positiveTerms : fallbackTerms;
@@ -148,22 +149,44 @@ export function retrieveCandidates(pool: CandidatePoolItem[], query: string, lim
       const matchedTerms = terms.filter((term) => containsTerm(text, term));
       const rejectedTerms = parsed.excluded.filter((term) => containsTerm(text, term));
       const bm25Score = bm25(text, terms, avgDocLength, df, pool.length);
+      const semanticMatch = bestSemanticMatch(query, item.resume);
+      const semanticScore = Math.max(0, Math.round(semanticMatch.similarity * 100));
       const structuredBoost = terms.filter((term) => item.resume.parsedJson?.skills.some((skill) => containsTerm(skill, term))).length * 0.8;
-      const retrievalScore = Math.round((bm25Score + structuredBoost + (passedBoolean ? 2 : 0)) * 10) / 10;
+      const lexicalScore = bm25Score + structuredBoost + (passedBoolean ? 2 : 0);
+      const retrievalScore = Math.round(
+        (mode === "semantic"
+          ? semanticScore / 8
+          : mode === "lexical"
+            ? lexicalScore
+            : lexicalScore * 0.62 + semanticScore / 8 * 0.38) * 10,
+      ) / 10;
       return {
         ...item,
         retrievalScore,
         bm25Score: Math.round(bm25Score * 10) / 10,
+        semanticScore,
+        topSemanticSection: semanticMatch.label,
         booleanMatched: passedBoolean,
         matchedTerms,
         rejectedTerms,
-        snippets: matchedTerms.flatMap((term) => {
-          const snippet = snippetFor(text, term);
-          return snippet ? [snippet] : [];
-        }).slice(0, 3),
+        snippets: [
+          ...matchedTerms.flatMap((term) => {
+            const snippet = snippetFor(text, term);
+            return snippet ? [snippet] : [];
+          }),
+          ...(semanticMatch.text
+            ? [{
+                label: semanticMatch.label,
+                requirement: "Semantic section",
+                source: "candidate pool",
+                strength: "transferable" as const,
+                text: semanticMatch.text.slice(0, 260),
+              }]
+            : []),
+        ].slice(0, 4),
       };
     })
-    .filter((item) => item.booleanMatched)
+    .filter((item) => mode === "semantic" || item.booleanMatched)
     .sort((a, b) => b.retrievalScore - a.retrievalScore)
     .slice(0, limit);
 }

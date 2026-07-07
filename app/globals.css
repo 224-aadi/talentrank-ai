@@ -292,6 +292,26 @@ h1 {
   background: var(--mint);
 }
 
+.mode-toggle {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.mode-toggle button {
+  min-height: 34px;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  background: #fff;
+  text-transform: capitalize;
+}
+
+.mode-toggle button.active {
+  border-color: rgba(15, 118, 110, 0.55);
+  color: #fff;
+  background: var(--teal);
+}
+
 .pool-search p {
   margin: 0;
   color: var(--muted);

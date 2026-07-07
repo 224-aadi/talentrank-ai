@@ -61,6 +61,8 @@ type MatchRow = {
 type RetrievalRow = {
   retrievalScore: number;
   bm25Score: number;
+  semanticScore: number;
+  topSemanticSection?: string;
   booleanMatched: boolean;
   matchedTerms: string[];
   snippets: Array<{
@@ -96,6 +98,7 @@ export default function ScreeningWorkbench({
   const [roleTemplate, setRoleTemplate] = useState("auto");
   const [resumeFiles, setResumeFiles] = useState<File[]>([]);
   const [poolQuery, setPoolQuery] = useState("python AND sql");
+  const [retrievalMode, setRetrievalMode] = useState<"hybrid" | "lexical" | "semantic">("hybrid");
   const [poolResults, setPoolResults] = useState<RetrievalRow[]>([]);
   const [selectedResumeIds, setSelectedResumeIds] = useState<string[]>([]);
   const [poolSize, setPoolSize] = useState(0);
@@ -129,7 +132,8 @@ export default function ScreeningWorkbench({
     setIsSearching(true);
     setError("");
     try {
-      const response = await fetch(`/api/candidates/search?q=${encodeURIComponent(poolQuery)}&limit=12`);
+      const queryText = retrievalMode === "semantic" && description ? description : poolQuery;
+      const response = await fetch(`/api/candidates/search?q=${encodeURIComponent(queryText)}&mode=${retrievalMode}&limit=12`);
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || "Candidate search failed");
       setPoolResults(payload.results);
@@ -229,10 +233,25 @@ export default function ScreeningWorkbench({
               <span>Saved candidate retrieval</span>
               <input value={poolQuery} onChange={(event) => setPoolQuery(event.target.value)} placeholder={'python AND sql -"sales"'} />
             </label>
+            <div className="mode-toggle">
+              {(["hybrid", "lexical", "semantic"] as const).map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  className={retrievalMode === mode ? "active" : ""}
+                  onClick={() => setRetrievalMode(mode)}
+                >
+                  {mode}
+                </button>
+              ))}
+            </div>
             <button type="button" disabled={isSearching} onClick={searchPool}>
               {isSearching ? "Searching..." : "Search pool"}
             </button>
-            <p>{poolSize ? `${poolSize} saved resumes indexed` : "Search saved resumes already parsed by TalentRank."}</p>
+            <p>
+              {poolSize ? `${poolSize} saved resumes indexed` : "Search saved resumes already parsed by TalentRank."}
+              {retrievalMode === "semantic" ? " Semantic mode uses the JD text when present." : ""}
+            </p>
           </div>
           {poolResults.length ? (
             <div className="pool-results">
@@ -246,7 +265,8 @@ export default function ScreeningWorkbench({
                   <span>
                     <strong>{item.candidate.name}</strong>
                     <small>
-                      Retrieval {item.retrievalScore} · BM25 {item.bm25Score} · {item.matchedTerms.slice(0, 5).join(", ") || "broad match"}
+                      Retrieval {item.retrievalScore} · BM25 {item.bm25Score} · Semantic {item.semanticScore}
+                      {item.topSemanticSection ? ` · ${item.topSemanticSection}` : ""} · {item.matchedTerms.slice(0, 5).join(", ") || "broad match"}
                     </small>
                   </span>
                 </label>

@@ -5,11 +5,14 @@ import { listCandidatePool } from "@/lib/store";
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const query = url.searchParams.get("q") || "";
+  const modeParam = url.searchParams.get("mode");
+  const mode = modeParam === "lexical" || modeParam === "semantic" || modeParam === "hybrid" ? modeParam : "hybrid";
   const limit = Number(url.searchParams.get("limit") || 20);
   const pool = await listCandidatePool();
-  const results = retrieveCandidates(pool, query, Math.min(50, Math.max(1, limit)));
+  const results = retrieveCandidates(pool, query, Math.min(50, Math.max(1, limit)), mode);
   return NextResponse.json({
     query,
+    mode,
     poolSize: pool.length,
     results,
   });

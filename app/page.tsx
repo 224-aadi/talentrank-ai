@@ -1,5 +1,5 @@
 const metrics = [
-  ["Hybrid search", "BM25 + Boolean + semantic-ready"],
+  ["Hybrid search", "BM25 + Boolean + semantic"],
   ["Workflow", "Jobs, candidates, decisions, audit"],
   ["Governance", "Blind review + evidence + compliance"],
   ["Backend", "Next API + Prisma schema"],
@@ -8,7 +8,7 @@ const metrics = [
 const milestones = [
   "Connect Postgres and Prisma migrations",
   "Move PDF/DOCX parsing server-side with OCR fallback",
-  "Add vector embeddings and skill taxonomy search",
+  "Upgrade local vectors to managed embeddings and vector DB",
   "Harden saved-pool retrieval with filters and benchmark tests",
   "Add auth, orgs, RBAC, secure file storage",
   "Run labeled benchmark set and calibration dashboard",

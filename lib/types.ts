@@ -153,6 +153,8 @@ export interface CandidatePoolItem {
 export interface RetrievalResult extends CandidatePoolItem {
   retrievalScore: number;
   bm25Score: number;
+  semanticScore: number;
+  topSemanticSection?: string;
   booleanMatched: boolean;
   matchedTerms: string[];
   rejectedTerms: string[];
