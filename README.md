@@ -76,6 +76,7 @@ This repo now includes:
 - Calibration dashboard with precision@10, nDCG@10, false knockout rate, override rate, and score-to-interview correlation
 - Prisma/Postgres schema and database setup guide
 - Header-based auth context with organization and role enforcement for write APIs
+- Docker, CI, deploy checks, and production health reporting
 - Launch architecture docs
 - Compliance checklist
 - Original browser MVP
@@ -117,6 +118,10 @@ Local development uses a demo recruiter from request headers. In production, pla
 
 Set `TALENTRANK_USE_PRISMA=true` with `DATABASE_URL` to route the repository layer through Prisma instead of JSON.
 
+## Deployment
+
+See [DEPLOYMENT.md](./DEPLOYMENT.md) for Docker, CI, Postgres migration, health check, and platform setup.
+
 ## Current Limitations
 
 This is still an MVP:
@@ -134,4 +139,5 @@ See:
 - `ARCHITECTURE.md`
 - `COMPLIANCE.md`
 - `DATABASE.md`
+- `DEPLOYMENT.md`
 - `LAUNCH_ROADMAP.md`

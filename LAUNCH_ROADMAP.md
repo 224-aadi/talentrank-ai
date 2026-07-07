@@ -33,6 +33,7 @@ TalentRank should compete as an explainable candidate intelligence layer, not as
 - Prisma/Postgres schema, env template, and database setup guide.
 - Prisma repository adapter behind `TALENTRANK_USE_PRISMA=true`.
 - Header-based auth context with organization and role enforcement on write APIs.
+- Dockerfile, Docker Compose, CI workflow, deployment guide, and health readiness endpoint.
 - Recruiter Boolean search syntax:
   - `python AND sql`
   - `"sensor data"`
@@ -106,9 +107,10 @@ TalentRank should compete as an explainable candidate intelligence layer, not as
 
 1. Convert this static prototype into a full-stack app with persistent jobs and candidates.
 2. Add a backend parser pipeline with OCR and structured JSON extraction.
-3. Connect a live Postgres database, run migrations, and enable `TALENTRANK_USE_PRISMA=true`.
+3. Connect a live Postgres database, run migrations, and enable `TALENTRANK_USE_PRISMA=true` in production.
 4. Harden BM25/Boolean retrieval with saved searches, filters, and benchmark coverage.
 5. Expand the skill taxonomy into a larger licensed/imported skill graph.
 6. Add recall@50, segment calibration, and benchmark dataset import/export.
 7. Replace header auth with SSO/login, account management, and secure file storage.
-8. Run benchmark tests on a labeled resume/JD dataset before selling.
+8. Add observability, rate limiting, virus scanning, backups, and retention automation.
+9. Run benchmark tests on a larger labeled resume/JD dataset before selling.

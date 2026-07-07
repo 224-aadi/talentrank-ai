@@ -15,6 +15,8 @@ This folder contains a launch-path MVP:
 - `lib/prisma-store.ts`: Prisma-backed repository adapter enabled by `TALENTRANK_USE_PRISMA=true`.
 - `prisma/schema.prisma`: production database model.
 - `DATABASE.md`: Postgres setup and Prisma validation guide.
+- `DEPLOYMENT.md`: deployment, Docker, CI, migration, and health-check guide.
+- `.github/workflows/ci.yml`: build, Prisma, deploy-check, and audit workflow.
 - `index.html`, `styles.css`, `app.js`: recruiter-facing screening UI.
 - `server.js`: dependency-free Node.js server for static hosting and JSON APIs.
 - `data/talentrank.json`: local JSON persistence created at runtime.
@@ -111,6 +113,7 @@ Browser UI
 ## Security Target
 
 - Current milestone: header-based auth context and role checks on write APIs.
+- Current milestone: deployment health reports unsafe runtime configuration.
 - SSO/SAML/OIDC for enterprise customers.
 - Role-based access control.
 - Per-tenant encryption keys.
