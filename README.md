@@ -9,6 +9,7 @@ TalentRank AI is an explainable ATS screening and candidate-ranking platform bui
 - Configure hard-rule keywords.
 - Rank candidates with hybrid matching.
 - Search candidates with Boolean-style recruiter queries.
+- Label benchmark outcomes for calibration.
 - Tune score weights by role.
 - Use role-family templates.
 - Run blind review.
@@ -71,6 +72,9 @@ This repo now includes:
 - Saved candidate pool retrieval with Boolean search and BM25-style ranking
 - Semantic retrieval over resume sections with local or OpenAI-managed embeddings
 - Recruiter decisions with notes, candidate status updates, and audit events
+- Skill graph taxonomy with aliases, adjacent skills, seniority signals, and role-family weights
+- Calibration dashboard with precision@10, nDCG@10, false knockout rate, override rate, and score-to-interview correlation
+- Prisma/Postgres schema and database setup guide
 - Launch architecture docs
 - Compliance checklist
 - Original browser MVP
@@ -82,6 +86,7 @@ TalentRank uses a hybrid score:
 - Hard-rule knockout gates.
 - Lexical JD/resume overlap.
 - Skill aliases and role-family templates.
+- Skill graph adjacency and transferable evidence.
 - Competency signal groups.
 - Experience and education parsing.
 - Evidence snippets and missing-signal analysis.
@@ -115,4 +120,5 @@ See:
 
 - `ARCHITECTURE.md`
 - `COMPLIANCE.md`
+- `DATABASE.md`
 - `LAUNCH_ROADMAP.md`

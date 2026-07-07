@@ -28,6 +28,9 @@ TalentRank should compete as an explainable candidate intelligence layer, not as
 - Saved candidate pool retrieval with Boolean gates and BM25-style ranking.
 - Semantic retrieval over resume sections and JD/query text with local fallback, OpenAI-managed embeddings, and a JSON vector index.
 - Skill aliases and competency signal groups.
+- Skill graph taxonomy with aliases, adjacent skills, seniority signals, transferable evidence, and role-family weighting.
+- Calibration dashboard with benchmark labels, precision@10, nDCG@10, false knockout rate, override rate, and score-to-interview correlation.
+- Prisma/Postgres schema, env template, and database setup guide.
 - Recruiter Boolean search syntax:
   - `python AND sql`
   - `"sensor data"`
@@ -62,7 +65,7 @@ TalentRank should compete as an explainable candidate intelligence layer, not as
    - Stage 4 explanations: cite exact resume evidence and missing requirements.
 
 3. Skill Intelligence
-   - Build or license a skill taxonomy.
+   - Baseline skill taxonomy is implemented.
    - Normalize aliases such as `PostgreSQL -> SQL`, `PyTorch -> Python/ML`, `LLM -> Generative AI`.
    - Track adjacent skills and transferable domain evidence separately from exact matches.
 
@@ -74,9 +77,9 @@ TalentRank should compete as an explainable candidate intelligence layer, not as
    - CSV/ATS export and later ATS integrations.
 
 5. Calibration And Feedback
-   - Recruiter labels: good match, bad match, interviewed, offer, hired.
-   - Score calibration by job family and seniority.
-   - Measure precision@10, recall@50, nDCG@10, false knockout rate, and recruiter override rate.
+   - Recruiter labels: good match, bad match, interviewed, offer, hired are implemented.
+   - Score calibration by job family and seniority has a baseline dashboard.
+   - Measure precision@10, nDCG@10, false knockout rate, recruiter override rate, and score-to-interview correlation.
    - Let customers tune weights per role family.
    - Track decision drift when recruiters repeatedly override the model.
 
@@ -100,9 +103,9 @@ TalentRank should compete as an explainable candidate intelligence layer, not as
 
 1. Convert this static prototype into a full-stack app with persistent jobs and candidates.
 2. Add a backend parser pipeline with OCR and structured JSON extraction.
-3. Move vector storage from JSON to Postgres/vector database infrastructure.
+3. Swap JSON repository functions to Prisma when `DATABASE_URL` is configured.
 4. Harden BM25/Boolean retrieval with saved searches, filters, and benchmark coverage.
-5. Add a skill taxonomy service and role-family templates.
-6. Add richer feedback labels and score calibration dashboards.
+5. Expand the skill taxonomy into a larger licensed/imported skill graph.
+6. Add recall@50, segment calibration, and benchmark dataset import/export.
 7. Add organization accounts, roles, audit logs, and secure file storage.
 8. Run benchmark tests on a labeled resume/JD dataset before selling.

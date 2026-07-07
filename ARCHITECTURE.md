@@ -10,7 +10,9 @@ This folder contains a launch-path MVP:
 - `lib/matching.ts`: server-side matching, hard-rule outcomes, and evidence scoring.
 - `lib/retrieval.ts`: candidate pool retrieval with Boolean query parsing and BM25-style ranking.
 - `lib/semantic.ts`: section-level embedding provider, local vector fallback, OpenAI-managed embeddings, JSON vector index, and cosine similarity retrieval.
+- `lib/skill-taxonomy.ts`: aliases, adjacent skills, seniority signals, transferable evidence, and role-family weights.
 - `prisma/schema.prisma`: production database model.
+- `DATABASE.md`: Postgres setup and Prisma validation guide.
 - `index.html`, `styles.css`, `app.js`: recruiter-facing screening UI.
 - `server.js`: dependency-free Node.js server for static hosting and JSON APIs.
 - `data/talentrank.json`: local JSON persistence created at runtime.
@@ -42,6 +44,8 @@ POST /api/jobs
 GET  /api/audit
 POST /api/audit
 GET  /api/candidates/search
+GET  /api/benchmarks
+POST /api/benchmarks
 GET  /api/decisions
 POST /api/decisions
 POST /api/evaluations
@@ -97,7 +101,7 @@ Browser UI
 4. Index structured fields such as skills, titles, companies, degrees, and locations.
 5. Retrieve broadly with Boolean/BM25 over the saved candidate pool.
 6. Generate embeddings for resume sections and JD requirements. Local vectors and OpenAI-managed embeddings are implemented; hosted vector database deployment remains a production upgrade.
-7. Expand with skill taxonomy and aliases.
+7. Expand with skill taxonomy, aliases, adjacent skills, seniority signals, and transferable evidence.
 8. Rerank using semantic similarity, hard-rule outcomes, evidence coverage, recency, and role-family weights.
 9. Return score, confidence, hard-rule outcomes, evidence, gaps, and risks.
 
@@ -111,3 +115,9 @@ Browser UI
 - Immutable audit trail.
 - Configurable retention policy.
 - PII minimization and deletion workflow.
+
+## Quality Measurement
+
+- Benchmark labels: good match, bad match, interviewed, offer, hired.
+- Metrics: precision@10, nDCG@10, false knockout rate, recruiter override rate, and score-to-interview correlation.
+- Dashboard: `/calibration`.

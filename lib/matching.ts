@@ -1,3 +1,4 @@
+import { adjacentFor, aliasesFor, roleSkills, seniorityTerms, skillIds, skillWeight, termsFor } from "./skill-taxonomy";
 import type { EvidenceSnippet, HardRuleOutcome, MatchRun, MatchVerdict, RoleTemplate } from "./types";
 
 const stopWords = new Set([
@@ -22,24 +23,6 @@ const stopWords = new Set([
   "with",
   "you",
 ]);
-
-const skillAliases: Record<string, string[]> = {
-  analytics: ["analysis", "insights", "eda", "analytical"],
-  "machine learning": ["ml", "model", "models", "regression", "classification", "prediction"],
-  python: ["pandas", "numpy", "pytorch", "tensorflow", "scikit-learn", "sklearn"],
-  sql: ["postgresql", "mysql", "query", "database"],
-  statistics: ["statistical", "probability", "calibration"],
-  "generative ai": ["llm", "prompt", "agent", "chatbot", "rag"],
-  "data visualization": ["tableau", "power bi", "plotly", "dashboard"],
-};
-
-const roleBoosts: Record<Exclude<RoleTemplate, "auto">, string[]> = {
-  data: ["python", "sql", "statistics", "machine learning", "analytics", "data visualization"],
-  software: ["javascript", "typescript", "react", "node", "aws", "docker"],
-  sales: ["crm", "salesforce", "pipeline", "quota", "customer"],
-  finance: ["accounting", "finance", "forecasting", "risk", "excel"],
-  operations: ["vendor", "process", "supply", "logistics", "operations"],
-};
 
 function normalize(text: string) {
   return text
@@ -82,12 +65,19 @@ function importantTerms(text: string, limit = 50) {
 
 function detectSignals(text: string) {
   const allSignals = new Set<string>();
-  for (const [signal, aliases] of Object.entries(skillAliases)) {
-    if (includesPhrase(text, signal) || aliases.some((alias) => includesPhrase(text, alias))) {
+  for (const signal of skillIds) {
+    if (termsFor(signal).some((term) => includesPhrase(text, term))) {
       allSignals.add(signal);
     }
   }
   return [...allSignals];
+}
+
+function transferableSignals(jdSignals: string[], resumeSignals: string[]) {
+  return jdSignals.filter((signal) =>
+    !resumeSignals.includes(signal)
+    && adjacentFor(signal).some((adjacent) => resumeSignals.includes(adjacent) || includesPhrase(resumeSignals.join(" "), adjacent)),
+  );
 }
 
 function educationScore(text: string) {
@@ -130,9 +120,9 @@ function hardRuleOutcomes(resumeText: string, hardRules: string[]): HardRuleOutc
 function signalEvidence(resumeText: string, signals: string[], jdSignals: string[]): EvidenceSnippet[] {
   return signals
     .flatMap((signal) => {
-      const terms = [signal, ...(skillAliases[signal] || [])];
+      const terms = termsFor(signal);
       const exact = evidenceLine(resumeText, [signal]);
-      const alias = exact ? undefined : evidenceLine(resumeText, skillAliases[signal] || []);
+      const alias = exact ? undefined : evidenceLine(resumeText, aliasesFor(signal));
       const text = exact || alias;
       return text
         ? [
@@ -150,7 +140,7 @@ function signalEvidence(resumeText: string, signals: string[], jdSignals: string
 }
 
 function transferableEvidence(resumeText: string, jobText: string, existingLabels: string[]): EvidenceSnippet[] {
-  const terms = importantTerms(jobText, 24);
+  const terms = [...new Set([...importantTerms(jobText, 18), ...seniorityTerms().filter((term) => includesPhrase(jobText, term))])];
   return terms
     .filter((term) => !existingLabels.includes(term))
     .flatMap((term) => {
@@ -200,10 +190,17 @@ export function scoreCandidate(input: {
   const lexical = terms.length ? Math.round((matchedTerms.length / terms.length) * 100) : 0;
   const jdSignals = detectSignals(input.jobText);
   const resumeSignals = detectSignals(input.resumeText);
-  const matchedSignals = [...new Set([...resumeSignals, ...jdSignals.filter((signal) => includesPhrase(input.resumeText, signal))])];
-  const skillScore = jdSignals.length ? Math.round((jdSignals.filter((signal) => matchedSignals.includes(signal)).length / jdSignals.length) * 100) : Math.min(100, matchedSignals.length * 15);
   const family = roleFamily(input.jobText, input.roleTemplate);
-  const roleBoost = roleBoosts[family].filter((signal) => matchedSignals.includes(signal)).length * 2;
+  const transferable = transferableSignals(jdSignals, resumeSignals);
+  const matchedSignals = [...new Set([...resumeSignals, ...jdSignals.filter((signal) => termsFor(signal).some((term) => includesPhrase(input.resumeText, term))), ...transferable])];
+  const requiredWeight = jdSignals.reduce((sum, signal) => sum + skillWeight(signal, family), 0);
+  const matchedWeight = jdSignals.reduce((sum, signal) => {
+    if (resumeSignals.includes(signal)) return sum + skillWeight(signal, family);
+    if (transferable.includes(signal)) return sum + skillWeight(signal, family) * 0.58;
+    return sum;
+  }, 0);
+  const skillScore = jdSignals.length ? Math.round((matchedWeight / Math.max(0.1, requiredWeight)) * 100) : Math.min(100, matchedSignals.length * 15);
+  const roleBoost = roleSkills(family).filter((skill) => resumeSignals.includes(skill.id)).length * 2;
   const ruleOutcomes = hardRuleOutcomes(input.resumeText, input.hardRules);
   const missingRules = ruleOutcomes.filter((outcome) => !outcome.passed).map((outcome) => outcome.rule);
   const rejected = missingRules.length > 0;
@@ -228,7 +225,7 @@ export function scoreCandidate(input: {
   return {
     jobId: input.jobId,
     candidateId: input.candidateId,
-    modelVersion: "TalentRank hybrid-v0.6",
+    modelVersion: "TalentRank hybrid-v0.7-taxonomy",
     score,
     confidence: Math.min(96, Math.max(45, 55 + evidenceSnippets.length * 8 + matchedSignals.length * 2)),
     verdict: verdict(score, rejected),
@@ -247,6 +244,7 @@ export function scoreCandidate(input: {
       ...(rejected ? ["Failed knockout rule"] : []),
       ...(evidenceSnippets.length ? [] : ["No grounded evidence"]),
       ...(skillScore < 55 ? ["Weak skill evidence"] : []),
+      ...(transferable.length ? ["Transferable skill evidence"] : []),
     ],
   };
 }

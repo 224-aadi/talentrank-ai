@@ -1,5 +1,6 @@
 import mammoth from "mammoth";
 import { PDFParse } from "pdf-parse";
+import { skillIds, termsFor } from "./skill-taxonomy";
 import type { StructuredResumeProfile } from "./types";
 
 export interface ParsedResumeFile {
@@ -20,50 +21,6 @@ const sectionAliases: Record<string, string[]> = {
   projects: ["projects", "selected projects", "academic projects"],
   certifications: ["certifications", "certificates", "licenses"],
 };
-
-const skillLexicon = [
-  "python",
-  "sql",
-  "r",
-  "java",
-  "javascript",
-  "typescript",
-  "react",
-  "node",
-  "aws",
-  "azure",
-  "gcp",
-  "docker",
-  "kubernetes",
-  "tableau",
-  "power bi",
-  "excel",
-  "pandas",
-  "numpy",
-  "scikit-learn",
-  "sklearn",
-  "tensorflow",
-  "pytorch",
-  "machine learning",
-  "statistics",
-  "regression",
-  "classification",
-  "forecasting",
-  "analytics",
-  "data visualization",
-  "etl",
-  "spark",
-  "airflow",
-  "snowflake",
-  "postgresql",
-  "mysql",
-  "mongodb",
-  "salesforce",
-  "crm",
-  "financial modeling",
-  "accounting",
-  "operations",
-];
 
 function extension(fileName: string) {
   return fileName.split(".").pop()?.toLowerCase() || "";
@@ -125,7 +82,7 @@ function includesSkill(text: string, skill: string) {
 
 function inferSkills(text: string, sections: Record<string, string[]>) {
   const skillText = [text, ...(sections.skills || [])].join("\n");
-  return skillLexicon.filter((skill) => includesSkill(skillText, skill)).sort();
+  return skillIds.filter((skill) => termsFor(skill).some((term) => includesSkill(skillText, term))).sort();
 }
 
 function linesWith(text: string, pattern: RegExp, limit = 8) {
@@ -142,7 +99,7 @@ export function extractStructuredProfile(text: string): StructuredResumeProfile 
   const phone = text.match(/(?:\+?1[\s.-]?)?(?:\(?\d{3}\)?[\s.-]?)\d{3}[\s.-]?\d{4}/)?.[0];
   const links = [...new Set(text.match(/(?:https?:\/\/)?(?:www\.)?(?:linkedin\.com|github\.com|portfolio\.|kaggle\.com)[^\s,)]+/gi) || [])];
   const quantifiedEvidence = linesWith(text, /(\d+%|\$\d+|\b\d+x\b|\b\d+\+?\s*(?:users|records|rows|models|dashboards|hours|minutes|years|projects)\b)/i, 10);
-  const senioritySignals = linesWith(text, /\b(?:led|owned|managed|mentored|architected|launched|deployed|production|stakeholder)\b/i, 8);
+  const senioritySignals = linesWith(text, /\b(?:led|owned|managed|mentored|architected|launched|deployed|production|stakeholder|observability|scaling|executive|reliability)\b/i, 8);
 
   return {
     contact: {

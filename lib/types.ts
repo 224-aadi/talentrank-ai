@@ -143,6 +143,29 @@ export interface RecruiterDecisionRecord {
   createdAt: string;
 }
 
+export type BenchmarkLabelValue = "good_match" | "bad_match" | "interviewed" | "offer" | "hired";
+
+export interface BenchmarkLabel {
+  id: string;
+  jobId: string;
+  candidateId: string;
+  label: BenchmarkLabelValue;
+  notes?: string;
+  createdAt: string;
+}
+
+export interface CalibrationMetrics {
+  evaluatedAt: string;
+  labeledCount: number;
+  precisionAt10: number;
+  ndcgAt10: number;
+  falseKnockoutRate: number;
+  overrideRate: number;
+  scoreToInterviewCorrelation: number;
+  avgScore: number;
+  interviewRate: number;
+}
+
 export interface TalentRankDb {
   schemaVersion: number;
   createdAt: string;
@@ -152,6 +175,7 @@ export interface TalentRankDb {
   resumes: ResumeDocument[];
   matchRuns: MatchRun[];
   decisions?: RecruiterDecisionRecord[];
+  benchmarkLabels?: BenchmarkLabel[];
   auditEvents: AuditEvent[];
   evaluations: EvaluationSnapshot[];
   vectorRecords?: VectorRecord[];

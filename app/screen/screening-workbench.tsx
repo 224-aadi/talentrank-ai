@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import type { Job } from "@/lib/types";
 
 type DecisionValue = "shortlist" | "hold" | "reject" | "interview";
+type BenchmarkValue = "good_match" | "bad_match" | "interviewed" | "offer" | "hired";
 
 type MatchRow = {
   id: string;
@@ -119,6 +120,7 @@ export default function ScreeningWorkbench({
   const [isSearching, setIsSearching] = useState(false);
   const [decisionNotes, setDecisionNotes] = useState<Record<string, string>>({});
   const [savingDecisionId, setSavingDecisionId] = useState("");
+  const [savingLabelId, setSavingLabelId] = useState("");
   const [error, setError] = useState("");
 
   const metrics = useMemo(() => {
@@ -229,6 +231,30 @@ export default function ScreeningWorkbench({
       setError(decisionError instanceof Error ? decisionError.message : "Decision failed");
     } finally {
       setSavingDecisionId("");
+    }
+  }
+
+  async function labelBenchmark(match: MatchRow, label: BenchmarkValue) {
+    if (!match.candidate || !match.job) return;
+    setSavingLabelId(`${match.id}:${label}`);
+    setError("");
+    try {
+      const response = await fetch("/api/benchmarks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jobId: match.job.id,
+          candidateId: match.candidate.id,
+          label,
+          notes: decisionNotes[match.id]?.trim() || undefined,
+        }),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error ? JSON.stringify(payload.error) : "Label failed");
+    } catch (labelError) {
+      setError(labelError instanceof Error ? labelError.message : "Label failed");
+    } finally {
+      setSavingLabelId("");
     }
   }
 
@@ -416,6 +442,21 @@ export default function ScreeningWorkbench({
                           onClick={() => decide(match, decision)}
                         >
                           {savingDecisionId === `${match.id}:${decision}` ? "Saving..." : decision}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="benchmark-panel">
+                    <span>Benchmark label</span>
+                    <div>
+                      {(["good_match", "bad_match", "interviewed", "offer", "hired"] as const).map((label) => (
+                        <button
+                          key={label}
+                          type="button"
+                          disabled={!match.candidate || !match.job || savingLabelId === `${match.id}:${label}`}
+                          onClick={() => labelBenchmark(match, label)}
+                        >
+                          {savingLabelId === `${match.id}:${label}` ? "Saving..." : label.replace("_", " ")}
                         </button>
                       ))}
                     </div>

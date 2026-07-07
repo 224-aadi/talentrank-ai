@@ -1,17 +1,17 @@
 const metrics = [
   ["Hybrid search", "BM25 + Boolean + semantic"],
   ["Workflow", "Jobs, candidates, decisions, audit"],
-  ["Governance", "Blind review + evidence + compliance"],
+  ["Quality", "Precision@10 + nDCG + overrides"],
   ["Backend", "Next API + Prisma schema"],
 ];
 
 const milestones = [
-  "Connect Postgres and Prisma migrations",
+  "Swap JSON repository to Prisma with a live DATABASE_URL",
   "Move PDF/DOCX parsing server-side with OCR fallback",
   "Move vectors to Postgres/vector database infrastructure",
   "Harden saved-pool retrieval with filters and benchmark tests",
   "Add auth, orgs, RBAC, secure file storage",
-  "Run labeled benchmark set and calibration dashboard",
+  "Import a larger labeled benchmark set",
 ];
 
 export default function HomePage() {
@@ -27,6 +27,7 @@ export default function HomePage() {
           </p>
           <div className="actions">
             <a href="/screen">Open match workbench</a>
+            <a href="/calibration">Open calibration dashboard</a>
             <a href="/scanner/index.html">Open scanner MVP</a>
             <a href="/api/health">Check API</a>
           </div>
@@ -47,7 +48,7 @@ export default function HomePage() {
           <h2>What is now real</h2>
           <p>
             The repo now has a full-stack spine: Next.js app shell, typed API routes,
-            JSON persistence boundary, Prisma schema, audit/evaluation endpoints, saved-pool retrieval, managed embedding support, and the original scanner preserved.
+            JSON persistence boundary, Prisma schema, audit/evaluation endpoints, saved-pool retrieval, managed embedding support, calibration metrics, and the original scanner preserved.
           </p>
         </article>
         <article>

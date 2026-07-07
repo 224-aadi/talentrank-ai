@@ -57,6 +57,7 @@ model Candidate {
   resumes        ResumeDocument[]
   matchRuns      MatchRun[]
   decisions      RecruiterDecision[]
+  benchmarkLabels BenchmarkLabel[]
   auditEvents    AuditEvent[]
 }
 
@@ -127,6 +128,19 @@ model RecruiterDecision {
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+model BenchmarkLabel {
+  id          String         @id @default(cuid())
+  jobId       String
+  candidateId String
+  label       BenchmarkLabelValue
+  notes       String?
+  createdAt   DateTime       @default(now())
+  candidate   Candidate      @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+  @@index([candidateId])
+}
+
 model AuditEvent {
   id             String        @id @default(cuid())
   organizationId String
@@ -191,4 +205,12 @@ enum Decision {
   HOLD
   REJECT
   INTERVIEW
+}
+
+enum BenchmarkLabelValue {
+  GOOD_MATCH
+  BAD_MATCH
+  INTERVIEWED
+  OFFER
+  HIRED
 }
