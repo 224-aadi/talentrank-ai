@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { requireRole } from "@/lib/auth";
 import { createAuditEvent, listAuditEvents } from "@/lib/store";
 
 const auditSchema = z.object({
@@ -22,10 +23,11 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const user = await requireRole("admin");
   const parsed = auditSchema.safeParse(await request.json());
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
-  const event = await createAuditEvent(parsed.data);
+  const event = await createAuditEvent({ ...parsed.data, actorId: user.id, organizationId: parsed.data.organizationId || user.organizationId });
   return NextResponse.json({ event }, { status: 201 });
 }

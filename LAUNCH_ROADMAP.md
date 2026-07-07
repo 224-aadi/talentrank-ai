@@ -31,6 +31,8 @@ TalentRank should compete as an explainable candidate intelligence layer, not as
 - Skill graph taxonomy with aliases, adjacent skills, seniority signals, transferable evidence, and role-family weighting.
 - Calibration dashboard with benchmark labels, precision@10, nDCG@10, false knockout rate, override rate, and score-to-interview correlation.
 - Prisma/Postgres schema, env template, and database setup guide.
+- Prisma repository adapter behind `TALENTRANK_USE_PRISMA=true`.
+- Header-based auth context with organization and role enforcement on write APIs.
 - Recruiter Boolean search syntax:
   - `python AND sql`
   - `"sensor data"`
@@ -87,6 +89,7 @@ TalentRank should compete as an explainable candidate intelligence layer, not as
    - Avoid protected-class inference.
    - Make scoring explainable and auditable.
    - Log model version, input files, score components, hard-rule outcomes, and reviewer decisions.
+   - Header-based org/user/role context is implemented as the auth boundary for deployment middleware.
    - Add bias and adverse-impact monitoring before enterprise launch.
 
 ## Differentiating Metrics
@@ -103,9 +106,9 @@ TalentRank should compete as an explainable candidate intelligence layer, not as
 
 1. Convert this static prototype into a full-stack app with persistent jobs and candidates.
 2. Add a backend parser pipeline with OCR and structured JSON extraction.
-3. Swap JSON repository functions to Prisma when `DATABASE_URL` is configured.
+3. Connect a live Postgres database, run migrations, and enable `TALENTRANK_USE_PRISMA=true`.
 4. Harden BM25/Boolean retrieval with saved searches, filters, and benchmark coverage.
 5. Expand the skill taxonomy into a larger licensed/imported skill graph.
 6. Add recall@50, segment calibration, and benchmark dataset import/export.
-7. Add organization accounts, roles, audit logs, and secure file storage.
+7. Replace header auth with SSO/login, account management, and secure file storage.
 8. Run benchmark tests on a labeled resume/JD dataset before selling.

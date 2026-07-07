@@ -12,7 +12,8 @@ DATABASE_URL=postgresql://user:pass@localhost:5432/talentrank npx prisma validat
 
 1. Create a Postgres database.
 2. Set `DATABASE_URL`.
-3. Run:
+3. Set `TALENTRANK_USE_PRISMA=true`.
+4. Run:
 
 ```bash
 npm run prisma:generate
@@ -25,4 +26,4 @@ The schema includes organizations, users, jobs, candidates, resumes, vector reco
 
 ## Next Adapter Step
 
-The remaining implementation step is swapping the JSON repository functions in `lib/store.ts` to a Prisma-backed adapter when `DATABASE_URL` is present. The schema and env contract are ready for that cutover.
+The runtime store uses JSON by default for local development. When `DATABASE_URL` and `TALENTRANK_USE_PRISMA=true` are set, `lib/store.ts` routes repository calls to the Prisma adapter in `lib/prisma-store.ts`.

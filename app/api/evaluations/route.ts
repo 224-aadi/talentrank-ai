@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { requireRole } from "@/lib/auth";
 import { createEvaluation } from "@/lib/store";
 
 const evaluationSchema = z.object({
@@ -16,6 +17,7 @@ const evaluationSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  await requireRole("recruiter");
   const parsed = evaluationSchema.safeParse(await request.json());
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });

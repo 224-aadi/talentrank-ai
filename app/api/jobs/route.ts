@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { requireRole } from "@/lib/auth";
 import { createJob, listJobs } from "@/lib/store";
 
 const jobSchema = z.object({
@@ -15,10 +16,11 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const user = await requireRole("recruiter");
   const parsed = jobSchema.safeParse(await request.json());
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
-  const job = await createJob(parsed.data);
+  const job = await createJob({ ...parsed.data, organizationId: user.organizationId });
   return NextResponse.json({ job }, { status: 201 });
 }

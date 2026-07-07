@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { requireRole, type AuthUser } from "@/lib/auth";
 import { parseCandidateName, scoreCandidate } from "@/lib/matching";
 import { extractStructuredProfile, parseResumeFile, type ParsedResumeFile } from "@/lib/parsing";
 import {
@@ -44,6 +45,7 @@ type StoredResumeInput = {
 
 export async function POST(request: Request) {
   try {
+    const user = await requireRole("recruiter");
     const contentType = request.headers.get("content-type") || "";
     if (contentType.includes("multipart/form-data")) {
       const formData = await request.formData();
@@ -59,7 +61,7 @@ export async function POST(request: Request) {
       }
       const resumes = await Promise.all(files.map((file) => parseResumeFile(file)));
       const storedResumes = resumeIds.length ? await getCandidatePoolByResumeIds(resumeIds) : [];
-      return await screen(job, resumes, storedResumes);
+      return await screen(job, resumes, storedResumes, user);
     }
 
     const parsed = screenSchema.safeParse(await request.json());
@@ -76,6 +78,7 @@ export async function POST(request: Request) {
         parseConfidence: Math.min(100, Math.max(45, Math.round(resume.text.length / 35))),
       })),
       parsed.data.resumeIds.length ? await getCandidatePoolByResumeIds(parsed.data.resumeIds) : [],
+      user,
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : "Screening failed";
@@ -83,13 +86,14 @@ export async function POST(request: Request) {
   }
 }
 
-async function screen(jobInput: z.infer<typeof jobSchema>, resumes: ParsedResumeFile[], storedResumes: StoredResumeInput[] = []) {
-  const job = await createJob(jobInput);
+async function screen(jobInput: z.infer<typeof jobSchema>, resumes: ParsedResumeFile[], storedResumes: StoredResumeInput[] = [], user?: AuthUser) {
+  const job = await createJob({ ...jobInput, organizationId: user?.organizationId });
   const results = [];
 
   for (const resumeInput of resumes) {
     const candidateName = parseCandidateName(resumeInput.fileName, resumeInput.text);
     const { candidate, resume } = await createCandidateWithResume({
+      organizationId: user?.organizationId,
       name: candidateName,
       email: resumeInput.parsedJson.contact.email,
       phone: resumeInput.parsedJson.contact.phone,

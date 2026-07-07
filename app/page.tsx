@@ -1,3 +1,5 @@
+import { currentUser } from "@/lib/auth";
+
 const metrics = [
   ["Hybrid search", "BM25 + Boolean + semantic"],
   ["Workflow", "Jobs, candidates, decisions, audit"],
@@ -14,7 +16,9 @@ const milestones = [
   "Import a larger labeled benchmark set",
 ];
 
-export default function HomePage() {
+export default async function HomePage() {
+  const user = await currentUser();
+
   return (
     <main className="shell">
       <section className="hero">
@@ -25,6 +29,7 @@ export default function HomePage() {
             Explainable candidate matching with hard-rule screening, hybrid search,
             recruiter decisions, audit events, and a production database model ready for the next build phase.
           </p>
+          <p className="auth-pill">{user.name} · {user.role} · {user.organizationId}</p>
           <div className="actions">
             <a href="/screen">Open match workbench</a>
             <a href="/calibration">Open calibration dashboard</a>

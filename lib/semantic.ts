@@ -189,7 +189,7 @@ export async function ensureVectorIndex(pool: CandidatePoolItem[]) {
     })));
   }
 
-  const refreshed = missing.length ? await listVectorRecords() : existing;
+  const refreshed: VectorRecord[] = missing.length ? await listVectorRecords() : existing;
   const resumeIds = new Set(pool.map((item) => item.resume.id));
   return {
     config,

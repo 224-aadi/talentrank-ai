@@ -75,6 +75,7 @@ This repo now includes:
 - Skill graph taxonomy with aliases, adjacent skills, seniority signals, and role-family weights
 - Calibration dashboard with precision@10, nDCG@10, false knockout rate, override rate, and score-to-interview correlation
 - Prisma/Postgres schema and database setup guide
+- Header-based auth context with organization and role enforcement for write APIs
 - Launch architecture docs
 - Compliance checklist
 - Original browser MVP
@@ -104,13 +105,25 @@ OPENAI_EMBEDDING_DIMENSIONS=256
 
 The app stores section vectors in the local JSON vector store today, and the Prisma `VectorRecord` model is ready for Postgres-backed storage.
 
+## Auth And Persistence
+
+Local development uses a demo recruiter from request headers. In production, place TalentRank behind real auth middleware and forward:
+
+- `x-talentrank-user-id`
+- `x-talentrank-org-id`
+- `x-talentrank-email`
+- `x-talentrank-name`
+- `x-talentrank-role`
+
+Set `TALENTRANK_USE_PRISMA=true` with `DATABASE_URL` to route the repository layer through Prisma instead of JSON.
+
 ## Current Limitations
 
 This is still an MVP:
 
 - OCR fallback for scanned PDFs is not implemented yet.
-- No authentication yet.
-- No real database yet.
+- Real login/SSO provider is not connected yet.
+- Prisma adapter is opt-in and requires a live Postgres database.
 - Managed vector database storage is not deployed yet.
 - No production skill taxonomy yet.
 - No independent bias audit yet.

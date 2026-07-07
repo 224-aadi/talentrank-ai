@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { requireRole } from "@/lib/auth";
 import { createRecruiterDecision, listRecruiterDecisions } from "@/lib/store";
 
 const decisionSchema = z.object({
@@ -16,10 +17,11 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const user = await requireRole("recruiter");
   const parsed = decisionSchema.safeParse(await request.json());
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
-  const result = await createRecruiterDecision(parsed.data);
+  const result = await createRecruiterDecision({ ...parsed.data, userId: user.id });
   return NextResponse.json(result, { status: 201 });
 }

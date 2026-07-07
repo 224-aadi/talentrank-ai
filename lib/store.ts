@@ -1,11 +1,14 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
+import { prismaEnabled } from "./prisma";
+import * as prismaStore from "./prisma-store";
 import type {
   AuditEvent,
   BenchmarkLabel,
   BenchmarkLabelValue,
   Candidate,
+  CandidatePoolItem,
   CalibrationMetrics,
   EvaluationSnapshot,
   Job,
@@ -92,16 +95,19 @@ function benchmarkLabels(db: TalentRankDb) {
 }
 
 export async function listJobs() {
+  if (prismaEnabled()) return await prismaStore.listJobs();
   const db = await readDb();
   return db.jobs;
 }
 
 export async function getJob(jobId: string) {
+  if (prismaEnabled()) return await prismaStore.getJob(jobId);
   const db = await readDb();
   return db.jobs.find((job) => job.id === jobId) || null;
 }
 
 export async function createJob(input: Pick<Job, "title" | "description" | "roleTemplate" | "hardRules"> & Partial<Job>) {
+  if (prismaEnabled()) return await prismaStore.createJob(input);
   const db = await readDb();
   const timestamp = now();
   const job: Job = {
@@ -132,11 +138,13 @@ export async function createJob(input: Pick<Job, "title" | "description" | "role
 }
 
 export async function listAuditEvents() {
+  if (prismaEnabled()) return await prismaStore.listAuditEvents();
   const db = await readDb();
   return db.auditEvents;
 }
 
 export async function createAuditEvent(input: Omit<AuditEvent, "id" | "at">) {
+  if (prismaEnabled()) return await prismaStore.createAuditEvent(input);
   const db = await readDb();
   const event: AuditEvent = {
     id: createId("audit"),
@@ -149,6 +157,7 @@ export async function createAuditEvent(input: Omit<AuditEvent, "id" | "at">) {
 }
 
 export async function createEvaluation(input: Omit<EvaluationSnapshot, "id" | "at">) {
+  if (prismaEnabled()) return await prismaStore.createEvaluation(input);
   const db = await readDb();
   const evaluation: EvaluationSnapshot = {
     id: createId("eval"),
@@ -171,6 +180,7 @@ export async function createCandidateWithResume(input: {
   parsedJson?: ResumeDocument["parsedJson"];
   parseConfidence: number;
 }) {
+  if (prismaEnabled()) return await prismaStore.createCandidateWithResume(input);
   const db = await readDb();
   const timestamp = now();
   const candidate: Candidate = {
@@ -214,6 +224,7 @@ export async function createCandidateWithResume(input: {
 }
 
 export async function createMatchRun(input: Omit<MatchRun, "id" | "createdAt">) {
+  if (prismaEnabled()) return await prismaStore.createMatchRun(input);
   const db = await readDb();
   const matchRun: MatchRun = {
     id: createId("match"),
@@ -243,6 +254,7 @@ export async function createRecruiterDecision(input: {
   notes?: string;
   userId?: string;
 }) {
+  if (prismaEnabled()) return await prismaStore.createRecruiterDecision(input);
   const db = await readDb();
   const timestamp = now();
   const decision: RecruiterDecisionRecord = {
@@ -283,6 +295,7 @@ export async function createRecruiterDecision(input: {
 }
 
 export async function listRecruiterDecisions(jobId?: string) {
+  if (prismaEnabled()) return await prismaStore.listRecruiterDecisions(jobId);
   const db = await readDb();
   const all = decisions(db);
   return jobId ? all.filter((item) => item.jobId === jobId) : all;
@@ -294,6 +307,7 @@ export async function createBenchmarkLabel(input: {
   label: BenchmarkLabelValue;
   notes?: string;
 }) {
+  if (prismaEnabled()) return await prismaStore.createBenchmarkLabel(input);
   const db = await readDb();
   const timestamp = now();
   const label: BenchmarkLabel = {
@@ -322,6 +336,7 @@ export async function createBenchmarkLabel(input: {
 }
 
 export async function listBenchmarkLabels(jobId?: string) {
+  if (prismaEnabled()) return await prismaStore.listBenchmarkLabels(jobId);
   const db = await readDb();
   const labels = benchmarkLabels(db);
   return jobId ? labels.filter((label) => label.jobId === jobId) : labels;
@@ -347,6 +362,7 @@ function correlation(pairs: Array<{ score: number; interviewed: number }>) {
 }
 
 export async function calibrationMetrics(jobId?: string): Promise<CalibrationMetrics> {
+  if (prismaEnabled()) return await prismaStore.calibrationMetrics(jobId);
   const db = await readDb();
   const runs = (jobId ? db.matchRuns.filter((run) => run.jobId === jobId) : db.matchRuns).sort((a, b) => b.score - a.score);
   const labelMap = new Map<string, BenchmarkLabelValue>();
@@ -403,7 +419,8 @@ export async function calibrationMetrics(jobId?: string): Promise<CalibrationMet
   };
 }
 
-export async function listCandidatePool() {
+export async function listCandidatePool(): Promise<CandidatePoolItem[]> {
+  if (prismaEnabled()) return await prismaStore.listCandidatePool();
   const db = await readDb();
   return db.resumes
     .map((resume) => ({
@@ -413,18 +430,21 @@ export async function listCandidatePool() {
     .filter((item): item is { resume: ResumeDocument; candidate: Candidate } => Boolean(item.candidate));
 }
 
-export async function getCandidatePoolByResumeIds(resumeIds: string[]) {
+export async function getCandidatePoolByResumeIds(resumeIds: string[]): Promise<CandidatePoolItem[]> {
+  if (prismaEnabled()) return await prismaStore.getCandidatePoolByResumeIds(resumeIds);
   const wanted = new Set(resumeIds);
   const pool = await listCandidatePool();
   return pool.filter((item) => wanted.has(item.resume.id));
 }
 
-export async function listVectorRecords() {
+export async function listVectorRecords(): Promise<VectorRecord[]> {
+  if (prismaEnabled()) return await prismaStore.listVectorRecords();
   const db = await readDb();
   return vectors(db);
 }
 
 export async function upsertVectorRecords(records: VectorRecord[]) {
+  if (prismaEnabled()) return await prismaStore.upsertVectorRecords(records);
   if (!records.length) return [];
   const db = await readDb();
   const existing = vectors(db);
@@ -438,6 +458,7 @@ export async function upsertVectorRecords(records: VectorRecord[]) {
 }
 
 export async function listMatchRuns(jobId?: string) {
+  if (prismaEnabled()) return await prismaStore.listMatchRuns(jobId);
   const db = await readDb();
   const runs = jobId ? db.matchRuns.filter((run) => run.jobId === jobId) : db.matchRuns;
   const allDecisions = decisions(db);

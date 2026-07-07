@@ -11,6 +11,8 @@ This folder contains a launch-path MVP:
 - `lib/retrieval.ts`: candidate pool retrieval with Boolean query parsing and BM25-style ranking.
 - `lib/semantic.ts`: section-level embedding provider, local vector fallback, OpenAI-managed embeddings, JSON vector index, and cosine similarity retrieval.
 - `lib/skill-taxonomy.ts`: aliases, adjacent skills, seniority signals, transferable evidence, and role-family weights.
+- `lib/auth.ts`: header-based auth context, organization context, and role checks.
+- `lib/prisma-store.ts`: Prisma-backed repository adapter enabled by `TALENTRANK_USE_PRISMA=true`.
 - `prisma/schema.prisma`: production database model.
 - `DATABASE.md`: Postgres setup and Prisma validation guide.
 - `index.html`, `styles.css`, `app.js`: recruiter-facing screening UI.
@@ -39,6 +41,7 @@ The original scanner remains available at `/scanner/index.html`.
 
 ```text
 GET  /api/health
+GET  /api/auth/session
 GET  /api/jobs
 POST /api/jobs
 GET  /api/audit
@@ -107,6 +110,7 @@ Browser UI
 
 ## Security Target
 
+- Current milestone: header-based auth context and role checks on write APIs.
 - SSO/SAML/OIDC for enterprise customers.
 - Role-based access control.
 - Per-tenant encryption keys.

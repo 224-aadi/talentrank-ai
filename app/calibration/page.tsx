@@ -1,4 +1,11 @@
 import { calibrationMetrics, listBenchmarkLabels, listMatchRuns } from "@/lib/store";
+import type { BenchmarkLabel, Candidate, Job, MatchRun, RecruiterDecisionRecord } from "@/lib/types";
+
+type MatchListRow = MatchRun & {
+  job: Job | null;
+  candidate: Candidate | null;
+  latestDecision?: RecruiterDecisionRecord | null;
+};
 
 const metricHelp: Record<string, string> = {
   precisionAt10: "Relevant labeled candidates in the top 10 ranked results.",
@@ -14,6 +21,8 @@ export default async function CalibrationPage() {
     listBenchmarkLabels(),
     listMatchRuns(),
   ]);
+  const typedLabels = labels as BenchmarkLabel[];
+  const typedMatches = matches as MatchListRow[];
 
   const cards = [
     ["Precision@10", `${metrics.precisionAt10}%`, metricHelp.precisionAt10],
@@ -51,28 +60,28 @@ export default async function CalibrationPage() {
         <article>
           <h2>Recent Labels</h2>
           <div className="calibration-table">
-            {labels.slice(0, 12).map((label) => (
+            {typedLabels.slice(0, 12).map((label) => (
               <div key={label.id}>
                 <span>{label.label}</span>
                 <strong>{label.candidateId}</strong>
                 <small>{label.notes || "No notes"} · {new Date(label.createdAt).toLocaleDateString()}</small>
               </div>
             ))}
-            {!labels.length ? <p>No benchmark labels yet. Recruiter decisions still derive early calibration signals.</p> : null}
+            {!typedLabels.length ? <p>No benchmark labels yet. Recruiter decisions still derive early calibration signals.</p> : null}
           </div>
         </article>
 
         <article>
           <h2>Ranked Sample</h2>
           <div className="calibration-table">
-            {matches.slice(0, 12).map((match) => (
+            {typedMatches.slice(0, 12).map((match) => (
               <div key={match.id}>
                 <span>{match.score}</span>
                 <strong>{match.candidate?.name || match.candidateId}</strong>
                 <small>{match.verdict} · {match.latestDecision?.decision || "no decision"}</small>
               </div>
             ))}
-            {!matches.length ? <p>No match runs yet. Run a screen to generate calibration inputs.</p> : null}
+            {!typedMatches.length ? <p>No match runs yet. Run a screen to generate calibration inputs.</p> : null}
           </div>
         </article>
       </section>
