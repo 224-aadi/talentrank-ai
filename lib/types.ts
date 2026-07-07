@@ -144,3 +144,17 @@ export interface TalentRankDb {
   auditEvents: AuditEvent[];
   evaluations: EvaluationSnapshot[];
 }
+
+export interface CandidatePoolItem {
+  candidate: Candidate;
+  resume: ResumeDocument;
+}
+
+export interface RetrievalResult extends CandidatePoolItem {
+  retrievalScore: number;
+  bm25Score: number;
+  booleanMatched: boolean;
+  matchedTerms: string[];
+  rejectedTerms: string[];
+  snippets: EvidenceSnippet[];
+}

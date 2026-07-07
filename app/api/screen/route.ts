@@ -7,9 +7,11 @@ import {
   createEvaluation,
   createJob,
   createMatchRun,
+  getCandidatePoolByResumeIds,
 } from "@/lib/store";
+import type { Candidate, ResumeDocument } from "@/lib/types";
 
-const screenSchema = z.object({
+const baseScreenSchema = z.object({
   job: z.object({
     title: z.string().min(1),
     description: z.string().min(1),
@@ -25,10 +27,20 @@ const screenSchema = z.object({
         text: z.string().min(1),
       }),
     )
-    .min(1),
+    .default([]),
+  resumeIds: z.array(z.string()).default([]),
 });
 
-const jobSchema = screenSchema.shape.job;
+const screenSchema = baseScreenSchema.refine((input) => input.resumes.length > 0 || input.resumeIds.length > 0, {
+  message: "Upload resumes or select saved candidates.",
+});
+
+const jobSchema = baseScreenSchema.shape.job;
+
+type StoredResumeInput = {
+  candidate: Candidate;
+  resume: ResumeDocument;
+};
 
 export async function POST(request: Request) {
   try {
@@ -38,11 +50,16 @@ export async function POST(request: Request) {
       const jobPayload = JSON.parse(String(formData.get("job") || "{}"));
       const job = jobSchema.parse(jobPayload);
       const files = formData.getAll("resumes").filter((item): item is File => item instanceof File);
-      if (!files.length) {
-        return NextResponse.json({ error: "Upload at least one resume file." }, { status: 400 });
+      const resumeIds = [
+        ...formData.getAll("resumeIds").map(String),
+        ...JSON.parse(String(formData.get("savedResumeIds") || "[]")),
+      ].filter(Boolean);
+      if (!files.length && !resumeIds.length) {
+        return NextResponse.json({ error: "Upload resumes or select saved candidates." }, { status: 400 });
       }
       const resumes = await Promise.all(files.map((file) => parseResumeFile(file)));
-      return await screen(job, resumes);
+      const storedResumes = resumeIds.length ? await getCandidatePoolByResumeIds(resumeIds) : [];
+      return await screen(job, resumes, storedResumes);
     }
 
     const parsed = screenSchema.safeParse(await request.json());
@@ -58,6 +75,7 @@ export async function POST(request: Request) {
         parsedJson: extractStructuredProfile(resume.text),
         parseConfidence: Math.min(100, Math.max(45, Math.round(resume.text.length / 35))),
       })),
+      parsed.data.resumeIds.length ? await getCandidatePoolByResumeIds(parsed.data.resumeIds) : [],
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : "Screening failed";
@@ -65,7 +83,7 @@ export async function POST(request: Request) {
   }
 }
 
-async function screen(jobInput: z.infer<typeof jobSchema>, resumes: ParsedResumeFile[]) {
+async function screen(jobInput: z.infer<typeof jobSchema>, resumes: ParsedResumeFile[], storedResumes: StoredResumeInput[] = []) {
   const job = await createJob(jobInput);
   const results = [];
 
@@ -96,6 +114,27 @@ async function screen(jobInput: z.infer<typeof jobSchema>, resumes: ParsedResume
         ...resume,
         parser: resumeInput.parser,
         warnings: resumeInput.warnings,
+      },
+      matchRun,
+    });
+  }
+
+  for (const item of storedResumes) {
+    const scored = scoreCandidate({
+      jobId: job.id,
+      candidateId: item.candidate.id,
+      jobText: job.description,
+      resumeText: item.resume.rawText || "",
+      hardRules: job.hardRules,
+      roleTemplate: job.roleTemplate,
+    });
+    const matchRun = await createMatchRun(scored);
+    results.push({
+      candidate: item.candidate,
+      resume: {
+        ...item.resume,
+        parser: "saved-pool",
+        warnings: [],
       },
       matchRun,
     });

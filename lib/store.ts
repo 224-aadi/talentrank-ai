@@ -205,11 +205,28 @@ export async function createMatchRun(input: Omit<MatchRun, "id" | "createdAt">) 
   return matchRun;
 }
 
+export async function listCandidatePool() {
+  const db = await readDb();
+  return db.resumes
+    .map((resume) => ({
+      resume,
+      candidate: db.candidates.find((candidate) => candidate.id === resume.candidateId),
+    }))
+    .filter((item): item is { resume: ResumeDocument; candidate: Candidate } => Boolean(item.candidate));
+}
+
+export async function getCandidatePoolByResumeIds(resumeIds: string[]) {
+  const wanted = new Set(resumeIds);
+  const pool = await listCandidatePool();
+  return pool.filter((item) => wanted.has(item.resume.id));
+}
+
 export async function listMatchRuns(jobId?: string) {
   const db = await readDb();
   const runs = jobId ? db.matchRuns.filter((run) => run.jobId === jobId) : db.matchRuns;
   return runs.map((run) => ({
     ...run,
+    hardRuleOutcomes: run.hardRuleOutcomes || [],
     job: db.jobs.find((job) => job.id === run.jobId) || null,
     candidate: db.candidates.find((candidate) => candidate.id === run.candidateId) || null,
   }));

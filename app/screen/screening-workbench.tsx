@@ -58,6 +58,31 @@ type MatchRow = {
   job: Job | null;
 };
 
+type RetrievalRow = {
+  retrievalScore: number;
+  bm25Score: number;
+  booleanMatched: boolean;
+  matchedTerms: string[];
+  snippets: Array<{
+    label: string;
+    text: string;
+  }>;
+  candidate: {
+    id: string;
+    name: string;
+    email?: string;
+  };
+  resume: {
+    id: string;
+    fileName: string;
+    parseConfidence: number;
+    parsedJson?: {
+      skills?: string[];
+      quantifiedEvidence?: string[];
+    };
+  };
+};
+
 export default function ScreeningWorkbench({
   initialJobs,
   initialMatches,
@@ -70,9 +95,14 @@ export default function ScreeningWorkbench({
   const [hardRules, setHardRules] = useState("");
   const [roleTemplate, setRoleTemplate] = useState("auto");
   const [resumeFiles, setResumeFiles] = useState<File[]>([]);
+  const [poolQuery, setPoolQuery] = useState("python AND sql");
+  const [poolResults, setPoolResults] = useState<RetrievalRow[]>([]);
+  const [selectedResumeIds, setSelectedResumeIds] = useState<string[]>([]);
+  const [poolSize, setPoolSize] = useState(0);
   const [matches, setMatches] = useState<MatchRow[]>(initialMatches);
   const [jobs, setJobs] = useState(initialJobs);
   const [isRunning, setIsRunning] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
   const [error, setError] = useState("");
 
   const metrics = useMemo(() => {
@@ -87,6 +117,28 @@ export default function ScreeningWorkbench({
   function handleFiles(files: FileList | null) {
     if (!files) return;
     setResumeFiles([...files]);
+  }
+
+  function toggleResume(resumeId: string) {
+    setSelectedResumeIds((current) =>
+      current.includes(resumeId) ? current.filter((id) => id !== resumeId) : [...current, resumeId],
+    );
+  }
+
+  async function searchPool() {
+    setIsSearching(true);
+    setError("");
+    try {
+      const response = await fetch(`/api/candidates/search?q=${encodeURIComponent(poolQuery)}&limit=12`);
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || "Candidate search failed");
+      setPoolResults(payload.results);
+      setPoolSize(payload.poolSize);
+    } catch (searchError) {
+      setError(searchError instanceof Error ? searchError.message : "Candidate search failed");
+    } finally {
+      setIsSearching(false);
+    }
   }
 
   async function runScreen() {
@@ -107,6 +159,7 @@ export default function ScreeningWorkbench({
         }),
       );
       for (const file of resumeFiles) formData.append("resumes", file);
+      formData.append("savedResumeIds", JSON.stringify(selectedResumeIds));
       const response = await fetch("/api/screen", {
         method: "POST",
         body: formData,
@@ -171,7 +224,36 @@ export default function ScreeningWorkbench({
             <input multiple type="file" accept=".pdf,.docx,.txt,.md,.csv" onChange={(event) => handleFiles(event.target.files)} />
             <strong>{resumeFiles.length ? `${resumeFiles.length} files ready` : "Upload PDF/DOCX/TXT/MD resumes"}</strong>
           </label>
-          <button disabled={isRunning || !description || !resumeFiles.length} onClick={runScreen}>
+          <div className="pool-search">
+            <label>
+              <span>Saved candidate retrieval</span>
+              <input value={poolQuery} onChange={(event) => setPoolQuery(event.target.value)} placeholder={'python AND sql -"sales"'} />
+            </label>
+            <button type="button" disabled={isSearching} onClick={searchPool}>
+              {isSearching ? "Searching..." : "Search pool"}
+            </button>
+            <p>{poolSize ? `${poolSize} saved resumes indexed` : "Search saved resumes already parsed by TalentRank."}</p>
+          </div>
+          {poolResults.length ? (
+            <div className="pool-results">
+              {poolResults.map((item) => (
+                <label key={item.resume.id} className={selectedResumeIds.includes(item.resume.id) ? "selected" : ""}>
+                  <input
+                    type="checkbox"
+                    checked={selectedResumeIds.includes(item.resume.id)}
+                    onChange={() => toggleResume(item.resume.id)}
+                  />
+                  <span>
+                    <strong>{item.candidate.name}</strong>
+                    <small>
+                      Retrieval {item.retrievalScore} · BM25 {item.bm25Score} · {item.matchedTerms.slice(0, 5).join(", ") || "broad match"}
+                    </small>
+                  </span>
+                </label>
+              ))}
+            </div>
+          ) : null}
+          <button disabled={isRunning || !description || (!resumeFiles.length && !selectedResumeIds.length)} onClick={runScreen}>
             {isRunning ? "Screening..." : "Run server-side screen"}
           </button>
           {error ? <p className="form-error">{error}</p> : null}

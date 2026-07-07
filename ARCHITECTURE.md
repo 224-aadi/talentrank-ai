@@ -8,6 +8,7 @@ This folder contains a launch-path MVP:
 - `lib/`: typed domain model and persistence boundary.
 - `lib/parsing.ts`: server-side resume parsing and structured profile extraction for PDF, DOCX, and text formats.
 - `lib/matching.ts`: server-side matching, hard-rule outcomes, and evidence scoring.
+- `lib/retrieval.ts`: candidate pool retrieval with Boolean query parsing and BM25-style ranking.
 - `prisma/schema.prisma`: production database model.
 - `index.html`, `styles.css`, `app.js`: recruiter-facing screening UI.
 - `server.js`: dependency-free Node.js server for static hosting and JSON APIs.
@@ -90,8 +91,8 @@ Browser UI
 2. Extract raw text server-side from PDF, DOCX, TXT, MD, and CSV inputs.
 3. Index raw text with BM25.
 4. Index structured fields such as skills, titles, companies, degrees, and locations.
-5. Generate embeddings for resume sections and JD requirements.
-6. Retrieve broadly with Boolean/BM25.
+5. Retrieve broadly with Boolean/BM25 over the saved candidate pool.
+6. Generate embeddings for resume sections and JD requirements.
 7. Expand with skill taxonomy and aliases.
 8. Rerank using semantic similarity, hard-rule outcomes, evidence coverage, recency, and role-family weights.
 9. Return score, confidence, hard-rule outcomes, evidence, gaps, and risks.

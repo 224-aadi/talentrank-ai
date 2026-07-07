@@ -68,6 +68,7 @@ This repo now includes:
 - Server-side screening endpoint and persisted match workbench
 - Server-side resume ingestion for PDF, DOCX, TXT, MD, and CSV files
 - Structured resume profiles and recruiter-facing evidence explanations
+- Saved candidate pool retrieval with Boolean search and BM25-style ranking
 - Launch architecture docs
 - Compliance checklist
 - Original browser MVP
