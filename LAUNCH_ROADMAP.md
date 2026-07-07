@@ -26,7 +26,7 @@ TalentRank should compete as an explainable candidate intelligence layer, not as
 - Hard-rule keywords with all/any gate behavior.
 - Hybrid scoring across JD match, skills, experience, and education.
 - Saved candidate pool retrieval with Boolean gates and BM25-style ranking.
-- Semantic retrieval over resume sections and JD/query text with a swappable vector interface.
+- Semantic retrieval over resume sections and JD/query text with local fallback, OpenAI-managed embeddings, and a JSON vector index.
 - Skill aliases and competency signal groups.
 - Recruiter Boolean search syntax:
   - `python AND sql`
@@ -56,7 +56,7 @@ TalentRank should compete as an explainable candidate intelligence layer, not as
 
 2. Search And Ranking
    - Stage 1 retrieval: BM25/keyword/Boolean search over resumes. Baseline saved-pool retrieval is implemented.
-   - Stage 2 semantic retrieval: embeddings over experience bullets, skills, projects, and job requirements. Baseline local semantic retrieval is implemented.
+   - Stage 2 semantic retrieval: embeddings over experience bullets, skills, projects, and job requirements. Local fallback and OpenAI-managed embeddings are implemented.
    - Stage 3 reranking: scorecard model combining semantic fit, hard requirements, recency, experience level, education, and recruiter preferences.
    - Stage 4 explanations: cite exact resume evidence and missing requirements.
 
@@ -99,7 +99,7 @@ TalentRank should compete as an explainable candidate intelligence layer, not as
 
 1. Convert this static prototype into a full-stack app with persistent jobs and candidates.
 2. Add a backend parser pipeline with OCR and structured JSON extraction.
-3. Replace local semantic vectors with managed embeddings and a production vector database.
+3. Move vector storage from JSON to Postgres/vector database infrastructure.
 4. Harden BM25/Boolean retrieval with saved searches, filters, and benchmark coverage.
 5. Add a skill taxonomy service and role-family templates.
 6. Add recruiter feedback labels and score calibration dashboards.

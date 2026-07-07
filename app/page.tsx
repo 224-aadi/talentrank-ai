@@ -8,7 +8,7 @@ const metrics = [
 const milestones = [
   "Connect Postgres and Prisma migrations",
   "Move PDF/DOCX parsing server-side with OCR fallback",
-  "Upgrade local vectors to managed embeddings and vector DB",
+  "Move vectors to Postgres/vector database infrastructure",
   "Harden saved-pool retrieval with filters and benchmark tests",
   "Add auth, orgs, RBAC, secure file storage",
   "Run labeled benchmark set and calibration dashboard",
@@ -47,7 +47,7 @@ export default function HomePage() {
           <h2>What is now real</h2>
           <p>
             The repo now has a full-stack spine: Next.js app shell, typed API routes,
-            JSON persistence boundary, Prisma schema, audit/evaluation endpoints, saved-pool retrieval, and the original scanner preserved.
+            JSON persistence boundary, Prisma schema, audit/evaluation endpoints, saved-pool retrieval, managed embedding support, and the original scanner preserved.
           </p>
         </article>
         <article>

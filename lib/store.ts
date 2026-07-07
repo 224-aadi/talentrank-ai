@@ -9,6 +9,7 @@ import type {
   MatchRun,
   ResumeDocument,
   TalentRankDb,
+  VectorRecord,
 } from "./types";
 
 const dataDir = path.join(process.cwd(), ".data");
@@ -39,6 +40,7 @@ function emptyDb(): TalentRankDb {
     matchRuns: [],
     auditEvents: [],
     evaluations: [],
+    vectorRecords: [],
   };
 }
 
@@ -58,6 +60,11 @@ export async function readDb(): Promise<TalentRankDb> {
 
 export async function writeDb(db: TalentRankDb) {
   await fs.writeFile(dbPath, JSON.stringify(db, null, 2));
+}
+
+function vectors(db: TalentRankDb) {
+  db.vectorRecords ||= [];
+  return db.vectorRecords;
 }
 
 export async function listJobs() {
@@ -219,6 +226,24 @@ export async function getCandidatePoolByResumeIds(resumeIds: string[]) {
   const wanted = new Set(resumeIds);
   const pool = await listCandidatePool();
   return pool.filter((item) => wanted.has(item.resume.id));
+}
+
+export async function listVectorRecords() {
+  const db = await readDb();
+  return vectors(db);
+}
+
+export async function upsertVectorRecords(records: VectorRecord[]) {
+  if (!records.length) return [];
+  const db = await readDb();
+  const existing = vectors(db);
+  const keys = new Set(records.map((record) => `${record.resumeId}:${record.section}:${record.provider}:${record.model}:${record.dimensions}`));
+  db.vectorRecords = [
+    ...records,
+    ...existing.filter((record) => !keys.has(`${record.resumeId}:${record.section}:${record.provider}:${record.model}:${record.dimensions}`)),
+  ];
+  await writeDb(db);
+  return records;
 }
 
 export async function listMatchRuns(jobId?: string) {

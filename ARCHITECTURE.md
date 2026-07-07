@@ -9,7 +9,7 @@ This folder contains a launch-path MVP:
 - `lib/parsing.ts`: server-side resume parsing and structured profile extraction for PDF, DOCX, and text formats.
 - `lib/matching.ts`: server-side matching, hard-rule outcomes, and evidence scoring.
 - `lib/retrieval.ts`: candidate pool retrieval with Boolean query parsing and BM25-style ranking.
-- `lib/semantic.ts`: section-level local vector embeddings and cosine similarity retrieval.
+- `lib/semantic.ts`: section-level embedding provider, local vector fallback, OpenAI-managed embeddings, JSON vector index, and cosine similarity retrieval.
 - `prisma/schema.prisma`: production database model.
 - `index.html`, `styles.css`, `app.js`: recruiter-facing screening UI.
 - `server.js`: dependency-free Node.js server for static hosting and JSON APIs.
@@ -41,6 +41,7 @@ GET  /api/jobs
 POST /api/jobs
 GET  /api/audit
 POST /api/audit
+GET  /api/candidates/search
 POST /api/evaluations
 POST /api/screen
 GET  /api/matches
@@ -93,7 +94,7 @@ Browser UI
 3. Index raw text with BM25.
 4. Index structured fields such as skills, titles, companies, degrees, and locations.
 5. Retrieve broadly with Boolean/BM25 over the saved candidate pool.
-6. Generate embeddings for resume sections and JD requirements. Baseline local vectors are implemented; managed embeddings/vector DB remain a deployment upgrade.
+6. Generate embeddings for resume sections and JD requirements. Local vectors and OpenAI-managed embeddings are implemented; hosted vector database deployment remains a production upgrade.
 7. Expand with skill taxonomy and aliases.
 8. Rerank using semantic similarity, hard-rule outcomes, evidence coverage, recency, and role-family weights.
 9. Return score, confidence, hard-rule outcomes, evidence, gaps, and risks.

@@ -63,6 +63,8 @@ type RetrievalRow = {
   bm25Score: number;
   semanticScore: number;
   topSemanticSection?: string;
+  semanticProvider: string;
+  embeddingModel: string;
   booleanMatched: boolean;
   matchedTerms: string[];
   snippets: Array<{
@@ -266,7 +268,7 @@ export default function ScreeningWorkbench({
                     <strong>{item.candidate.name}</strong>
                     <small>
                       Retrieval {item.retrievalScore} · BM25 {item.bm25Score} · Semantic {item.semanticScore}
-                      {item.topSemanticSection ? ` · ${item.topSemanticSection}` : ""} · {item.matchedTerms.slice(0, 5).join(", ") || "broad match"}
+                      {item.topSemanticSection ? ` · ${item.topSemanticSection}` : ""} · {item.semanticProvider}/{item.embeddingModel} · {item.matchedTerms.slice(0, 5).join(", ") || "broad match"}
                     </small>
                   </span>
                 </label>

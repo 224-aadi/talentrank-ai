@@ -72,6 +72,26 @@ model ResumeDocument {
   parseConfidence Int         @default(0)
   createdAt       DateTime    @default(now())
   candidate       Candidate   @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  vectors         VectorRecord[]
+}
+
+model VectorRecord {
+  id          String         @id @default(cuid())
+  resumeId    String
+  candidateId String
+  section     String
+  text        String
+  embedding   Float[]
+  provider    String
+  model       String
+  dimensions  Int
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  resume      ResumeDocument @relation(fields: [resumeId], references: [id], onDelete: Cascade)
+
+  @@unique([resumeId, section, provider, model, dimensions])
+  @@index([candidateId])
+  @@index([provider, model])
 }
 
 model MatchRun {

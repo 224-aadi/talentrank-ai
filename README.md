@@ -69,7 +69,7 @@ This repo now includes:
 - Server-side resume ingestion for PDF, DOCX, TXT, MD, and CSV files
 - Structured resume profiles and recruiter-facing evidence explanations
 - Saved candidate pool retrieval with Boolean search and BM25-style ranking
-- Semantic retrieval over resume sections with a swappable local vector interface
+- Semantic retrieval over resume sections with local or OpenAI-managed embeddings
 - Launch architecture docs
 - Compliance checklist
 - Original browser MVP
@@ -86,14 +86,26 @@ TalentRank uses a hybrid score:
 - Evidence snippets and missing-signal analysis.
 - Confidence and risk flags.
 
+## Embeddings
+
+Semantic retrieval works without external services using `talentrank-local-hash-v1`. To switch to managed embeddings, set:
+
+```bash
+OPENAI_API_KEY=your_api_key
+OPENAI_EMBEDDING_MODEL=text-embedding-3-small
+OPENAI_EMBEDDING_DIMENSIONS=256
+```
+
+The app stores section vectors in the local JSON vector store today, and the Prisma `VectorRecord` model is ready for Postgres-backed storage.
+
 ## Current Limitations
 
 This is still an MVP:
 
-- File parsing is browser-side.
+- OCR fallback for scanned PDFs is not implemented yet.
 - No authentication yet.
 - No real database yet.
-- No vector embeddings yet.
+- Managed vector database storage is not deployed yet.
 - No production skill taxonomy yet.
 - No independent bias audit yet.
 - No enterprise security controls yet.

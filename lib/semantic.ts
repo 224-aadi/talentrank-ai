@@ -1,6 +1,8 @@
-import type { ResumeDocument } from "./types";
+import { createId, listVectorRecords, upsertVectorRecords } from "./store";
+import type { CandidatePoolItem, ResumeDocument, VectorRecord } from "./types";
 
-const dimensions = 128;
+const localDimensions = 128;
+const defaultOpenAiDimensions = 256;
 
 const semanticStopWords = new Set([
   "a",
@@ -30,7 +32,12 @@ const semanticStopWords = new Set([
 export type SemanticSection = {
   label: string;
   text: string;
-  vector: number[];
+};
+
+export type EmbeddingConfig = {
+  provider: "local" | "openai";
+  model: string;
+  dimensions: number;
 };
 
 function normalize(text: string) {
@@ -59,7 +66,7 @@ function ngrams(items: string[]) {
   return grams;
 }
 
-export function embedText(text: string) {
+export function localEmbedText(text: string, dimensions = localDimensions) {
   const vector = Array.from({ length: dimensions }, () => 0);
   for (const gram of ngrams(tokens(text))) {
     const bucket = hash(gram) % dimensions;
@@ -74,7 +81,22 @@ export function cosineSimilarity(left: number[], right: number[]) {
   return left.reduce((sum, value, index) => sum + value * (right[index] || 0), 0);
 }
 
-function sectionTexts(resume: ResumeDocument) {
+export function embeddingConfig(): EmbeddingConfig {
+  if (process.env.OPENAI_API_KEY) {
+    return {
+      provider: "openai",
+      model: process.env.OPENAI_EMBEDDING_MODEL || "text-embedding-3-small",
+      dimensions: Number(process.env.OPENAI_EMBEDDING_DIMENSIONS || defaultOpenAiDimensions),
+    };
+  }
+  return {
+    provider: "local",
+    model: "talentrank-local-hash-v1",
+    dimensions: localDimensions,
+  };
+}
+
+function sectionTexts(resume: ResumeDocument): SemanticSection[] {
   const parsed = resume.parsedJson;
   if (!parsed) return [{ label: "resume", text: resume.rawText || "" }];
 
@@ -90,20 +112,109 @@ function sectionTexts(resume: ResumeDocument) {
   return sections.length ? sections : [{ label: "resume", text: resume.rawText || "" }];
 }
 
-export function semanticSections(resume: ResumeDocument): SemanticSection[] {
-  return sectionTexts(resume).map((section) => ({
-    ...section,
-    vector: embedText(section.text),
-  }));
+async function openAiEmbeddings(input: string[], config: EmbeddingConfig) {
+  const response = await fetch("https://api.openai.com/v1/embeddings", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+    },
+    body: JSON.stringify({
+      input,
+      model: config.model,
+      dimensions: config.dimensions,
+      encoding_format: "float",
+    }),
+  });
+  if (!response.ok) {
+    const detail = await response.text();
+    throw new Error(`OpenAI embeddings failed: ${response.status} ${detail.slice(0, 180)}`);
+  }
+  const payload = await response.json() as { data: Array<{ embedding: number[] }> };
+  return payload.data.map((item) => item.embedding);
 }
 
-export function bestSemanticMatch(query: string, resume: ResumeDocument) {
-  const queryVector = embedText(query);
-  return semanticSections(resume)
-    .map((section) => ({
-      label: section.label,
-      text: section.text,
-      similarity: cosineSimilarity(queryVector, section.vector),
-    }))
-    .sort((a, b) => b.similarity - a.similarity)[0] || { label: "resume", text: resume.rawText || "", similarity: 0 };
+async function embedTexts(input: string[], config = embeddingConfig()) {
+  if (!input.length) return [];
+  if (config.provider === "openai") {
+    return await openAiEmbeddings(input, config);
+  }
+  return input.map((text) => localEmbedText(text, config.dimensions));
+}
+
+function vectorKey(record: Pick<VectorRecord, "resumeId" | "section" | "provider" | "model" | "dimensions">) {
+  return `${record.resumeId}:${record.section}:${record.provider}:${record.model}:${record.dimensions}`;
+}
+
+export async function ensureVectorIndex(pool: CandidatePoolItem[]) {
+  const config = embeddingConfig();
+  const existing = await listVectorRecords();
+  const existingKeys = new Set(existing.map(vectorKey));
+  const missing: Array<{ candidateId: string; resumeId: string; section: SemanticSection }> = [];
+
+  for (const item of pool) {
+    for (const section of sectionTexts(item.resume)) {
+      const key = vectorKey({
+        resumeId: item.resume.id,
+        section: section.label,
+        provider: config.provider,
+        model: config.model,
+        dimensions: config.dimensions,
+      });
+      if (!existingKeys.has(key)) {
+        missing.push({
+          candidateId: item.candidate.id,
+          resumeId: item.resume.id,
+          section,
+        });
+      }
+    }
+  }
+
+  if (missing.length) {
+    const embeddings = await embedTexts(missing.map((item) => item.section.text), config);
+    const timestamp = new Date().toISOString();
+    await upsertVectorRecords(missing.map((item, index) => ({
+      id: createId("vec"),
+      candidateId: item.candidateId,
+      resumeId: item.resumeId,
+      section: item.section.label,
+      text: item.section.text,
+      embedding: embeddings[index],
+      provider: config.provider,
+      model: config.model,
+      dimensions: embeddings[index]?.length || config.dimensions,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    })));
+  }
+
+  const refreshed = missing.length ? await listVectorRecords() : existing;
+  const resumeIds = new Set(pool.map((item) => item.resume.id));
+  return {
+    config,
+    records: refreshed.filter((record) =>
+      resumeIds.has(record.resumeId)
+      && record.provider === config.provider
+      && record.model === config.model
+      && record.dimensions === config.dimensions,
+    ),
+  };
+}
+
+export async function bestSemanticMatches(query: string, pool: CandidatePoolItem[]) {
+  const { config, records } = await ensureVectorIndex(pool);
+  const [queryVector] = await embedTexts([query], config);
+  const bestByResume = new Map<string, VectorRecord & { similarity: number }>();
+
+  for (const record of records) {
+    const similarity = cosineSimilarity(queryVector, record.embedding);
+    const current = bestByResume.get(record.resumeId);
+    if (!current || similarity > current.similarity) bestByResume.set(record.resumeId, { ...record, similarity });
+  }
+
+  return {
+    config,
+    byResumeId: bestByResume,
+  };
 }

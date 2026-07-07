@@ -1,5 +1,5 @@
 import type { CandidatePoolItem, EvidenceSnippet, RetrievalResult } from "./types";
-import { bestSemanticMatch } from "./semantic";
+import { bestSemanticMatches } from "./semantic";
 
 const stopWords = new Set([
   "a",
@@ -133,7 +133,7 @@ function bm25(text: string, terms: string[], avgDocLength: number, df: Map<strin
   }, 0);
 }
 
-export function retrieveCandidates(pool: CandidatePoolItem[], query: string, limit = 20, mode: "lexical" | "semantic" | "hybrid" = "hybrid"): RetrievalResult[] {
+export async function retrieveCandidates(pool: CandidatePoolItem[], query: string, limit = 20, mode: "lexical" | "semantic" | "hybrid" = "hybrid"): Promise<RetrievalResult[]> {
   const parsed = parseRetrievalQuery(query);
   const fallbackTerms = pool.length ? [] : tokenize(query).slice(0, 8);
   const terms = parsed.positiveTerms.length ? parsed.positiveTerms : fallbackTerms;
@@ -141,6 +141,7 @@ export function retrieveCandidates(pool: CandidatePoolItem[], query: string, lim
     ? pool.reduce((sum, item) => sum + tokenize(item.resume.rawText || "").length, 0) / pool.length
     : 1;
   const df = documentFrequency(pool, terms);
+  const semantic = mode === "lexical" ? null : await bestSemanticMatches(query, pool);
 
   return pool
     .map((item) => {
@@ -149,8 +150,8 @@ export function retrieveCandidates(pool: CandidatePoolItem[], query: string, lim
       const matchedTerms = terms.filter((term) => containsTerm(text, term));
       const rejectedTerms = parsed.excluded.filter((term) => containsTerm(text, term));
       const bm25Score = bm25(text, terms, avgDocLength, df, pool.length);
-      const semanticMatch = bestSemanticMatch(query, item.resume);
-      const semanticScore = Math.max(0, Math.round(semanticMatch.similarity * 100));
+      const semanticMatch = semantic?.byResumeId.get(item.resume.id);
+      const semanticScore = Math.max(0, Math.round((semanticMatch?.similarity || 0) * 100));
       const structuredBoost = terms.filter((term) => item.resume.parsedJson?.skills.some((skill) => containsTerm(skill, term))).length * 0.8;
       const lexicalScore = bm25Score + structuredBoost + (passedBoolean ? 2 : 0);
       const retrievalScore = Math.round(
@@ -165,7 +166,9 @@ export function retrieveCandidates(pool: CandidatePoolItem[], query: string, lim
         retrievalScore,
         bm25Score: Math.round(bm25Score * 10) / 10,
         semanticScore,
-        topSemanticSection: semanticMatch.label,
+        topSemanticSection: semanticMatch?.section,
+        semanticProvider: semantic?.config.provider || "none",
+        embeddingModel: semantic?.config.model || "none",
         booleanMatched: passedBoolean,
         matchedTerms,
         rejectedTerms,
@@ -174,9 +177,9 @@ export function retrieveCandidates(pool: CandidatePoolItem[], query: string, lim
             const snippet = snippetFor(text, term);
             return snippet ? [snippet] : [];
           }),
-          ...(semanticMatch.text
+          ...(semanticMatch?.text
             ? [{
-                label: semanticMatch.label,
+                label: semanticMatch.section,
                 requirement: "Semantic section",
                 source: "candidate pool",
                 strength: "transferable" as const,

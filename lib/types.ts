@@ -143,6 +143,7 @@ export interface TalentRankDb {
   matchRuns: MatchRun[];
   auditEvents: AuditEvent[];
   evaluations: EvaluationSnapshot[];
+  vectorRecords?: VectorRecord[];
 }
 
 export interface CandidatePoolItem {
@@ -155,8 +156,24 @@ export interface RetrievalResult extends CandidatePoolItem {
   bm25Score: number;
   semanticScore: number;
   topSemanticSection?: string;
+  semanticProvider: string;
+  embeddingModel: string;
   booleanMatched: boolean;
   matchedTerms: string[];
   rejectedTerms: string[];
   snippets: EvidenceSnippet[];
+}
+
+export interface VectorRecord {
+  id: string;
+  resumeId: string;
+  candidateId: string;
+  section: string;
+  text: string;
+  embedding: number[];
+  provider: "local" | "openai";
+  model: string;
+  dimensions: number;
+  createdAt: string;
+  updatedAt: string;
 }
