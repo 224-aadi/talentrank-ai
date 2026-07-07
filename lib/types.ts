@@ -42,6 +42,7 @@ export interface ResumeDocument {
   mimeType: string;
   storageKey: string;
   rawText?: string;
+  parsedJson?: StructuredResumeProfile;
   parseStatus: "pending" | "parsed" | "failed";
   parseConfidence: number;
   createdAt: string;
@@ -64,6 +65,7 @@ export interface MatchRun {
   };
   matchedSignals: string[];
   missingSignals: string[];
+  hardRuleOutcomes: HardRuleOutcome[];
   evidence: EvidenceSnippet[];
   riskFlags: string[];
   createdAt: string;
@@ -72,6 +74,31 @@ export interface MatchRun {
 export interface EvidenceSnippet {
   label: string;
   text: string;
+  source?: string;
+  strength?: "exact" | "alias" | "transferable";
+  requirement?: string;
+}
+
+export interface HardRuleOutcome {
+  rule: string;
+  passed: boolean;
+  evidence?: string;
+}
+
+export interface StructuredResumeProfile {
+  contact: {
+    email?: string;
+    phone?: string;
+    links: string[];
+  };
+  sections: Record<string, string[]>;
+  skills: string[];
+  education: string[];
+  experience: string[];
+  projects: string[];
+  certifications: string[];
+  quantifiedEvidence: string[];
+  senioritySignals: string[];
 }
 
 export interface AuditEvent {

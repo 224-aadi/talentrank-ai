@@ -67,6 +67,7 @@ This repo now includes:
 - Prisma/Postgres schema
 - Server-side screening endpoint and persisted match workbench
 - Server-side resume ingestion for PDF, DOCX, TXT, MD, and CSV files
+- Structured resume profiles and recruiter-facing evidence explanations
 - Launch architecture docs
 - Compliance checklist
 - Original browser MVP

@@ -17,12 +17,38 @@ type MatchRow = {
   };
   matchedSignals: string[];
   missingSignals: string[];
+  hardRuleOutcomes?: Array<{
+    rule: string;
+    passed: boolean;
+    evidence?: string;
+  }>;
+  evidence?: Array<{
+    label: string;
+    text: string;
+    source?: string;
+    strength?: "exact" | "alias" | "transferable";
+    requirement?: string;
+  }>;
   riskFlags: string[];
   resume?: {
     fileName: string;
     parser?: string;
     warnings?: string[];
     parseConfidence?: number;
+    parsedJson?: {
+      contact?: {
+        email?: string;
+        phone?: string;
+        links?: string[];
+      };
+      skills?: string[];
+      education?: string[];
+      experience?: string[];
+      projects?: string[];
+      certifications?: string[];
+      quantifiedEvidence?: string[];
+      senioritySignals?: string[];
+    };
   };
   candidate: {
     id: string;
@@ -176,14 +202,47 @@ export default function ScreeningWorkbench({
                       {match.resume.parser ? ` via ${match.resume.parser}` : ""} · {match.resume.parseConfidence ?? "?"}% parse
                     </p>
                   ) : null}
+                  {match.resume?.parsedJson ? (
+                    <div className="profile-strip">
+                      <span>{match.resume.parsedJson.skills?.length || 0} skills</span>
+                      <span>{match.resume.parsedJson.experience?.length || 0} experience lines</span>
+                      <span>{match.resume.parsedJson.quantifiedEvidence?.length || 0} quantified proofs</span>
+                      {match.candidate?.email || match.resume.parsedJson.contact?.email ? (
+                        <span>{match.candidate?.email || match.resume.parsedJson.contact?.email}</span>
+                      ) : null}
+                    </div>
+                  ) : null}
                   <div className="breakdown">
                     <span>JD {match.breakdown.match}</span>
                     <span>Skills {match.breakdown.skills}</span>
                     <span>Exp {match.breakdown.experience}</span>
                     <span>Edu {match.breakdown.education}</span>
                   </div>
+                  {match.hardRuleOutcomes?.length ? (
+                    <div className="rule-grid">
+                      {match.hardRuleOutcomes.map((outcome) => (
+                        <span key={outcome.rule} className={outcome.passed ? "pass" : "fail"}>
+                          {outcome.passed ? "Pass" : "Fail"} · {outcome.rule}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
                   <p><strong>Matched:</strong> {match.matchedSignals.slice(0, 8).join(", ") || "Limited evidence"}</p>
                   {match.missingSignals.length ? <p><strong>Gaps:</strong> {match.missingSignals.slice(0, 6).join(", ")}</p> : null}
+                  {match.evidence?.length ? (
+                    <div className="evidence-panel">
+                      <strong>Evidence</strong>
+                      {match.evidence.slice(0, 5).map((item) => (
+                        <blockquote key={`${item.label}-${item.text}`}>
+                          <span>{item.requirement || item.label} · {item.strength || "exact"}</span>
+                          {item.text}
+                        </blockquote>
+                      ))}
+                    </div>
+                  ) : null}
+                  {match.resume?.parsedJson?.skills?.length ? (
+                    <p><strong>Extracted skills:</strong> {match.resume.parsedJson.skills.slice(0, 14).join(", ")}</p>
+                  ) : null}
                   {match.resume?.warnings?.length ? <p><strong>Parser warnings:</strong> {match.resume.warnings.join(", ")}</p> : null}
                   {match.riskFlags.length ? <div className="risk-row">{match.riskFlags.map((risk) => <span key={risk}>{risk}</span>)}</div> : null}
                 </div>

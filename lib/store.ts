@@ -137,6 +137,7 @@ export async function createCandidateWithResume(input: {
   fileName: string;
   mimeType: string;
   rawText: string;
+  parsedJson?: ResumeDocument["parsedJson"];
   parseConfidence: number;
 }) {
   const db = await readDb();
@@ -158,6 +159,7 @@ export async function createCandidateWithResume(input: {
     mimeType: input.mimeType,
     storageKey: `local/${candidate.id}/${input.fileName}`,
     rawText: input.rawText,
+    parsedJson: input.parsedJson,
     parseStatus: "parsed",
     parseConfidence: input.parseConfidence,
     createdAt: timestamp,

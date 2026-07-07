@@ -1,4 +1,4 @@
-import type { EvidenceSnippet, MatchRun, MatchVerdict, RoleTemplate } from "./types";
+import type { EvidenceSnippet, HardRuleOutcome, MatchRun, MatchVerdict, RoleTemplate } from "./types";
 
 const stopWords = new Set([
   "a",
@@ -57,6 +57,14 @@ function includesPhrase(text: string, phrase: string) {
   return normalize(text).includes(normalize(phrase)) || compact(text).includes(compact(phrase));
 }
 
+function evidenceLine(text: string, terms: string[]) {
+  const chunks = text
+    .split(/\n+|(?:\s•\s)|(?<=[.!?])\s+/)
+    .map((chunk) => chunk.trim())
+    .filter((chunk) => chunk.length > 24);
+  return chunks.find((chunk) => terms.some((term) => includesPhrase(chunk, term)))?.slice(0, 260);
+}
+
 function tokens(text: string) {
   return normalize(text)
     .split(" ")
@@ -108,20 +116,58 @@ function roleFamily(jobText: string, selected: RoleTemplate) {
   return "operations";
 }
 
-function evidence(resumeText: string, signals: string[]): EvidenceSnippet[] {
-  const chunks = resumeText
-    .replace(/\s+/g, " ")
-    .split(/(?:\s•\s|(?<=[.!?])\s+)/)
-    .map((chunk) => chunk.trim())
-    .filter((chunk) => chunk.length > 35);
+function hardRuleOutcomes(resumeText: string, hardRules: string[]): HardRuleOutcome[] {
+  return hardRules.map((rule) => {
+    const evidence = evidenceLine(resumeText, [rule]);
+    return {
+      rule,
+      passed: Boolean(evidence) || includesPhrase(resumeText, rule),
+      evidence,
+    };
+  });
+}
+
+function signalEvidence(resumeText: string, signals: string[], jdSignals: string[]): EvidenceSnippet[] {
   return signals
-    .map((signal) => {
+    .flatMap((signal) => {
       const terms = [signal, ...(skillAliases[signal] || [])];
-      const text = chunks.find((chunk) => terms.some((term) => includesPhrase(chunk, term)));
-      return text ? { label: signal, text: text.slice(0, 220) } : null;
+      const exact = evidenceLine(resumeText, [signal]);
+      const alias = exact ? undefined : evidenceLine(resumeText, skillAliases[signal] || []);
+      const text = exact || alias;
+      return text
+        ? [
+            {
+              label: signal,
+              requirement: jdSignals.includes(signal) ? "JD signal" : "Resume signal",
+              source: "resume evidence",
+              strength: exact ? ("exact" as const) : ("alias" as const),
+              text,
+            },
+          ]
+        : [];
     })
-    .filter((item): item is EvidenceSnippet => Boolean(item))
-    .slice(0, 5);
+    .slice(0, 8);
+}
+
+function transferableEvidence(resumeText: string, jobText: string, existingLabels: string[]): EvidenceSnippet[] {
+  const terms = importantTerms(jobText, 24);
+  return terms
+    .filter((term) => !existingLabels.includes(term))
+    .flatMap((term) => {
+      const text = evidenceLine(resumeText, [term]);
+      return text
+        ? [
+            {
+              label: term,
+              requirement: "JD keyword",
+              source: "resume evidence",
+              strength: "transferable" as const,
+              text,
+            },
+          ]
+        : [];
+    })
+    .slice(0, 4);
 }
 
 function verdict(score: number, rejected: boolean): MatchVerdict {
@@ -158,13 +204,27 @@ export function scoreCandidate(input: {
   const skillScore = jdSignals.length ? Math.round((jdSignals.filter((signal) => matchedSignals.includes(signal)).length / jdSignals.length) * 100) : Math.min(100, matchedSignals.length * 15);
   const family = roleFamily(input.jobText, input.roleTemplate);
   const roleBoost = roleBoosts[family].filter((signal) => matchedSignals.includes(signal)).length * 2;
-  const missingRules = input.hardRules.filter((rule) => !includesPhrase(input.resumeText, rule));
+  const ruleOutcomes = hardRuleOutcomes(input.resumeText, input.hardRules);
+  const missingRules = ruleOutcomes.filter((outcome) => !outcome.passed).map((outcome) => outcome.rule);
   const rejected = missingRules.length > 0;
   const match = Math.max(lexical, Math.round(skillScore * 0.75));
   const experience = experienceScore(input.jobText, input.resumeText);
   const education = educationScore(input.resumeText);
   const score = rejected ? 0 : Math.min(100, Math.round(match * 0.42 + skillScore * 0.3 + experience * 0.18 + education * 0.1 + roleBoost));
-  const evidenceSnippets = evidence(input.resumeText, matchedSignals);
+  const signalSnippets = signalEvidence(input.resumeText, matchedSignals, jdSignals);
+  const evidenceSnippets = [
+    ...ruleOutcomes
+      .filter((outcome) => outcome.passed && outcome.evidence)
+      .map((outcome) => ({
+        label: outcome.rule,
+        requirement: "Hard rule",
+        source: "knockout proof",
+        strength: "exact" as const,
+        text: outcome.evidence || "",
+      })),
+    ...signalSnippets,
+    ...transferableEvidence(input.resumeText, input.jobText, signalSnippets.map((snippet) => snippet.label)),
+  ].slice(0, 10);
   return {
     jobId: input.jobId,
     candidateId: input.candidateId,
@@ -181,6 +241,7 @@ export function scoreCandidate(input: {
     },
     matchedSignals,
     missingSignals: jdSignals.filter((signal) => !matchedSignals.includes(signal)),
+    hardRuleOutcomes: ruleOutcomes,
     evidence: evidenceSnippets,
     riskFlags: [
       ...(rejected ? ["Failed knockout rule"] : []),

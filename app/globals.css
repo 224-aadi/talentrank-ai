@@ -367,7 +367,9 @@ h1 {
 }
 
 .breakdown,
-.risk-row {
+.risk-row,
+.profile-strip,
+.rule-grid {
   display: flex;
   flex-wrap: wrap;
   gap: 7px;
@@ -375,7 +377,9 @@ h1 {
 }
 
 .breakdown span,
-.risk-row span {
+.risk-row span,
+.profile-strip span,
+.rule-grid span {
   padding: 4px 7px;
   border-radius: 999px;
   font-size: 0.76rem;
@@ -383,9 +387,58 @@ h1 {
   background: #e5efff;
 }
 
+.profile-strip span {
+  color: #24423b;
+  background: #edf6f2;
+}
+
+.rule-grid span {
+  color: #24423b;
+  background: #dff5e8;
+}
+
+.rule-grid .fail {
+  color: #7a271a;
+  background: #fee4e2;
+}
+
 .risk-row span {
   color: #6d4308;
   background: #fff1cc;
+}
+
+.evidence-panel {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 12px;
+  border-left: 3px solid var(--teal);
+  border-radius: 8px;
+  background: #f7f9f8;
+}
+
+.evidence-panel > strong {
+  color: var(--forest);
+  font-size: 0.82rem;
+  text-transform: uppercase;
+}
+
+.evidence-panel blockquote {
+  margin: 0;
+  padding: 0 0 0 10px;
+  border-left: 1px solid var(--line);
+  color: var(--ink);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.evidence-panel blockquote span {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 850;
+  text-transform: uppercase;
 }
 
 @media (max-width: 920px) {

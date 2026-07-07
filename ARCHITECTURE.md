@@ -6,8 +6,8 @@ This folder contains a launch-path MVP:
 
 - `app/`: Next.js application shell and API routes.
 - `lib/`: typed domain model and persistence boundary.
-- `lib/parsing.ts`: server-side resume parsing for PDF, DOCX, and text formats.
-- `lib/matching.ts`: server-side matching and evidence scoring.
+- `lib/parsing.ts`: server-side resume parsing and structured profile extraction for PDF, DOCX, and text formats.
+- `lib/matching.ts`: server-side matching, hard-rule outcomes, and evidence scoring.
 - `prisma/schema.prisma`: production database model.
 - `index.html`, `styles.css`, `app.js`: recruiter-facing screening UI.
 - `server.js`: dependency-free Node.js server for static hosting and JSON APIs.
@@ -94,7 +94,7 @@ Browser UI
 6. Retrieve broadly with Boolean/BM25.
 7. Expand with skill taxonomy and aliases.
 8. Rerank using semantic similarity, hard-rule outcomes, evidence coverage, recency, and role-family weights.
-9. Return score, confidence, evidence, gaps, and risks.
+9. Return score, confidence, hard-rule outcomes, evidence, gaps, and risks.
 
 ## Security Target
 

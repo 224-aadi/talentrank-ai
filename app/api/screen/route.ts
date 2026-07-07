@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { parseCandidateName, scoreCandidate } from "@/lib/matching";
-import { parseResumeFile, type ParsedResumeFile } from "@/lib/parsing";
+import { extractStructuredProfile, parseResumeFile, type ParsedResumeFile } from "@/lib/parsing";
 import {
   createCandidateWithResume,
   createEvaluation,
@@ -55,6 +55,7 @@ export async function POST(request: Request) {
         ...resume,
         parser: "json",
         warnings: [],
+        parsedJson: extractStructuredProfile(resume.text),
         parseConfidence: Math.min(100, Math.max(45, Math.round(resume.text.length / 35))),
       })),
     );
@@ -72,9 +73,12 @@ async function screen(jobInput: z.infer<typeof jobSchema>, resumes: ParsedResume
     const candidateName = parseCandidateName(resumeInput.fileName, resumeInput.text);
     const { candidate, resume } = await createCandidateWithResume({
       name: candidateName,
+      email: resumeInput.parsedJson.contact.email,
+      phone: resumeInput.parsedJson.contact.phone,
       fileName: resumeInput.fileName,
       mimeType: resumeInput.mimeType,
       rawText: resumeInput.text,
+      parsedJson: resumeInput.parsedJson,
       parseConfidence: resumeInput.parseConfidence,
     });
     const scored = scoreCandidate({

@@ -19,6 +19,7 @@ TalentRank should compete as an explainable candidate intelligence layer, not as
 - JSON repository layer that can be replaced with Postgres.
 - Server-side screening API that persists jobs, candidates, resumes, match runs, audits, and evaluation snapshots.
 - Server-side resume ingestion for PDF, DOCX, TXT, MD, and CSV files.
+- Structured resume JSON extraction for contact, sections, skills, education, experience, projects, certifications, quantified evidence, and seniority signals.
 - Next match workbench for persisted ranked results.
 - Batch resume upload with PDF, DOCX, TXT, and MD support.
 - JD upload or paste.
@@ -34,6 +35,8 @@ TalentRank should compete as an explainable candidate intelligence layer, not as
 - Parsed profile fields: name, email, phone, degree, GPA, sections, skills, quantified evidence.
 - Verdicts: Strong match, Recruiter review, Needs evidence, Low match, Auto-reject.
 - Confidence score, parse health, risk flags, evidence snippets, and gap analysis.
+- Hard-rule pass/fail outcomes with supporting resume evidence.
+- Recruiter-facing evidence panels with exact, alias, and transferable proof labels.
 - CSV export with recruiter-facing explanations.
 - JD quality warning when the input is not a real job description.
 - Role-family templates for data, software, sales, finance, and operations.
@@ -47,7 +50,7 @@ TalentRank should compete as an explainable candidate intelligence layer, not as
 1. Document Processing
    - Server-side parsing with multiple parsers and OCR fallback.
    - Preserve layout sections, tables, dates, bullets, and skill blocks.
-   - Store parsed raw text plus structured JSON.
+   - Store parsed raw text plus structured JSON. Baseline structured JSON is implemented; deeper layout fidelity and OCR remain.
 
 2. Search And Ranking
    - Stage 1 retrieval: BM25/keyword/Boolean search over resumes.
