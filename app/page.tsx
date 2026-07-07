@@ -1,4 +1,5 @@
 import { currentUser } from "@/lib/auth";
+import { redirect } from "next/navigation";
 
 const metrics = [
   ["Hybrid search", "BM25 + Boolean + semantic"],
@@ -18,6 +19,7 @@ const milestones = [
 
 export default async function HomePage() {
   const user = await currentUser();
+  if (!user) redirect("/login");
 
   return (
     <main className="shell">
@@ -37,6 +39,9 @@ export default async function HomePage() {
             <a href="/scanner/index.html">Open scanner MVP</a>
             <a href="/api/health">Check API</a>
           </div>
+          <form action="/api/auth/logout" method="post" className="logout-form">
+            <button type="submit">Sign out</button>
+          </form>
         </div>
       </section>
 

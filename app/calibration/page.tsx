@@ -1,3 +1,5 @@
+import { redirect } from "next/navigation";
+import { currentUser } from "@/lib/auth";
 import { calibrationMetrics, listBenchmarkLabels, listMatchRuns } from "@/lib/store";
 import type { BenchmarkLabel, Candidate, Job, MatchRun, RecruiterDecisionRecord } from "@/lib/types";
 
@@ -16,6 +18,8 @@ const metricHelp: Record<string, string> = {
 };
 
 export default async function CalibrationPage() {
+  const user = await currentUser();
+  if (!user) redirect("/login");
   const [metrics, labels, matches] = await Promise.all([
     calibrationMetrics(),
     listBenchmarkLabels(),

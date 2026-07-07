@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireRole, type AuthUser } from "@/lib/auth";
 import { parseCandidateName, scoreCandidate } from "@/lib/matching";
 import { extractStructuredProfile, parseResumeFile, type ParsedResumeFile } from "@/lib/parsing";
+import { storeUploadedResumeFile } from "@/lib/secure-storage";
 import {
   createCandidateWithResume,
   createEvaluation,
@@ -59,7 +60,17 @@ export async function POST(request: Request) {
       if (!files.length && !resumeIds.length) {
         return NextResponse.json({ error: "Upload resumes or select saved candidates." }, { status: 400 });
       }
-      const resumes = await Promise.all(files.map((file) => parseResumeFile(file)));
+      const resumes = await Promise.all(files.map(async (file) => {
+        const [parsedFile, storedFile] = await Promise.all([parseResumeFile(file), storeUploadedResumeFile(file)]);
+        return {
+          ...parsedFile,
+          storageKey: storedFile.storageKey,
+          warnings: [
+            ...parsedFile.warnings,
+            storedFile.encrypted ? "Original resume file stored encrypted" : "Original resume file stored without encryption key configured",
+          ],
+        };
+      }));
       const storedResumes = resumeIds.length ? await getCandidatePoolByResumeIds(resumeIds) : [];
       return await screen(job, resumes, storedResumes, user);
     }
@@ -99,6 +110,7 @@ async function screen(jobInput: z.infer<typeof jobSchema>, resumes: ParsedResume
       phone: resumeInput.parsedJson.contact.phone,
       fileName: resumeInput.fileName,
       mimeType: resumeInput.mimeType,
+      storageKey: resumeInput.storageKey,
       rawText: resumeInput.text,
       parsedJson: resumeInput.parsedJson,
       parseConfidence: resumeInput.parseConfidence,

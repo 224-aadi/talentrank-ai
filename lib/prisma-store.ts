@@ -283,6 +283,7 @@ export async function createCandidateWithResume(input: {
   rawText: string;
   parsedJson?: ResumeDocument["parsedJson"];
   parseConfidence: number;
+  storageKey?: string;
 }) {
   const organizationId = input.organizationId || "org_demo";
   await ensureOrg(organizationId);
@@ -300,7 +301,7 @@ export async function createCandidateWithResume(input: {
       candidateId: candidate.id,
       fileName: input.fileName,
       mimeType: input.mimeType,
-      storageKey: `local/${candidate.id}/${input.fileName}`,
+      storageKey: input.storageKey || `local/${candidate.id}/${input.fileName}`,
       rawText: input.rawText,
       parsedJson: input.parsedJson,
       parseStatus: "PARSED",
@@ -507,6 +508,11 @@ export async function listCandidatePool() {
     orderBy: { createdAt: "desc" },
   });
   return resumes.map((item: any) => ({ resume: mapResume(item), candidate: mapCandidate(item.candidate) }));
+}
+
+export async function getResumeDocument(resumeId: string) {
+  const resume = await client.resumeDocument.findUnique({ where: { id: resumeId } });
+  return resume ? mapResume(resume) : null;
 }
 
 export async function getCandidatePoolByResumeIds(resumeIds: string[]) {

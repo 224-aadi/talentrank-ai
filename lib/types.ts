@@ -12,6 +12,18 @@ export interface Organization {
   createdAt: string;
 }
 
+export interface AuthUserRecord {
+  id: string;
+  organizationId: string;
+  email: string;
+  name: string;
+  role: "admin" | "recruiter" | "reviewer";
+  passwordHash?: string;
+  createdAt: string;
+  updatedAt: string;
+  lastLoginAt?: string;
+}
+
 export interface Job {
   id: string;
   organizationId: string;
@@ -277,6 +289,7 @@ export interface TalentRankDb {
   schemaVersion: number;
   createdAt: string;
   organizations: Organization[];
+  users?: AuthUserRecord[];
   jobs: Job[];
   candidates: Candidate[];
   resumes: ResumeDocument[];

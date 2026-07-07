@@ -80,6 +80,8 @@ This repo now includes:
 - Prisma/Postgres schema and database setup guide
 - Header-based auth context with organization and role enforcement for write APIs
 - Compliance Trust Center with protected-class guardrails, audit export, retention report, candidate deletion controls, and explainability report endpoints
+- Session auth with signed HttpOnly cookies, PBKDF2 password hashes, admin user creation API, and optional trusted-header SSO mode
+- Secure resume file storage with encrypted local storage when `TALENTRANK_STORAGE_KEY` is configured
 - Docker, CI, deploy checks, and production health reporting
 - Launch architecture docs
 - Compliance checklist
@@ -112,7 +114,28 @@ The app stores section vectors in the local JSON vector store today, and the Pri
 
 ## Auth And Persistence
 
-Local development uses a demo recruiter from request headers. In production, place TalentRank behind real auth middleware and forward:
+TalentRank defaults to session auth. Local development bootstraps an admin account:
+
+```text
+email: admin@talentrank.local
+password: talentrank-admin
+```
+
+Set production secrets before deployment:
+
+```bash
+TALENTRANK_AUTH_SECRET=long_random_session_secret
+TALENTRANK_BOOTSTRAP_EMAIL=founder@company.com
+TALENTRANK_BOOTSTRAP_PASSWORD=temporary_first_admin_password
+TALENTRANK_STORAGE_KEY=long_random_file_encryption_secret
+```
+
+Admin-only user management:
+
+- `GET /api/auth/users`
+- `POST /api/auth/users` with `email`, `name`, `role`, and `password`
+
+For enterprise SSO/proxy deployments, set `TALENTRANK_AUTH_MODE=headers` and forward:
 
 - `x-talentrank-user-id`
 - `x-talentrank-org-id`
@@ -146,6 +169,7 @@ Compliance endpoints:
 - `GET /api/compliance/audit-export` exports audit events.
 - `GET /api/compliance/explainability?matchRunId=...` exports score, evidence, gaps, hard rules, decision, and guardrail context.
 - `DELETE /api/candidates/:candidateId` deletes a candidate and related artifacts; admin role required.
+- `GET /api/resumes/:resumeId/download` downloads the original stored resume; recruiter role required.
 
 ## Deployment
 
@@ -156,12 +180,12 @@ See [DEPLOYMENT.md](./DEPLOYMENT.md) for Docker, CI, Postgres migration, health 
 This is still an MVP:
 
 - OCR requires an external provider configured with `OCR_API_URL`.
-- Real login/SSO provider is not connected yet.
+- Native session login is implemented; external SSO is still via trusted-header mode.
 - Prisma adapter is opt-in and requires a live Postgres database.
 - Managed vector database storage is not deployed yet.
 - No production skill taxonomy yet.
 - No independent third-party bias audit yet.
-- No enterprise security controls yet.
+- Enterprise file storage providers, malware scanning, and rate limiting are not connected yet.
 
 See:
 

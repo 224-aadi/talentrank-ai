@@ -20,9 +20,15 @@ npm run prisma:generate
 npm run prisma:migrate
 ```
 
+After pulling the auth milestone, create a migration for the new user auth fields:
+
+```bash
+npx prisma migrate dev --name add_user_auth_fields
+```
+
 ## Production Tables
 
-The schema includes organizations, users, jobs, candidates, resumes, vector records, match runs, recruiter decisions, benchmark labels, audit events, and evaluation snapshots.
+The schema includes organizations, users, jobs, candidates, resumes, vector records, match runs, recruiter decisions, benchmark labels, audit events, and evaluation snapshots. Users now include `passwordHash` and `lastLoginAt` for native session auth.
 
 ## Next Adapter Step
 

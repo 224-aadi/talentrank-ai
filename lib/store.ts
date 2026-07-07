@@ -183,6 +183,7 @@ export async function createCandidateWithResume(input: {
   rawText: string;
   parsedJson?: ResumeDocument["parsedJson"];
   parseConfidence: number;
+  storageKey?: string;
 }) {
   if (prismaEnabled()) return await prismaStore.createCandidateWithResume(input);
   const db = await readDb();
@@ -202,7 +203,7 @@ export async function createCandidateWithResume(input: {
     candidateId: candidate.id,
     fileName: input.fileName,
     mimeType: input.mimeType,
-    storageKey: `local/${candidate.id}/${input.fileName}`,
+    storageKey: input.storageKey || `local/${candidate.id}/${input.fileName}`,
     rawText: input.rawText,
     parsedJson: input.parsedJson,
     parseStatus: "parsed",
@@ -432,6 +433,12 @@ export async function listCandidatePool(): Promise<CandidatePoolItem[]> {
       candidate: db.candidates.find((candidate) => candidate.id === resume.candidateId),
     }))
     .filter((item): item is { resume: ResumeDocument; candidate: Candidate } => Boolean(item.candidate));
+}
+
+export async function getResumeDocument(resumeId: string) {
+  if (prismaEnabled()) return await prismaStore.getResumeDocument(resumeId);
+  const db = await readDb();
+  return db.resumes.find((resume) => resume.id === resumeId) || null;
 }
 
 export async function getCandidatePoolByResumeIds(resumeIds: string[]): Promise<CandidatePoolItem[]> {

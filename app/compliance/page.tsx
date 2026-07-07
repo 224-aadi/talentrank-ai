@@ -1,3 +1,5 @@
+import { redirect } from "next/navigation";
+import { currentUser } from "@/lib/auth";
 import { runtimeMode } from "@/lib/env";
 import { listAuditEvents, retentionReport } from "@/lib/store";
 
@@ -12,6 +14,8 @@ const controls = [
 ];
 
 export default async function CompliancePage() {
+  const user = await currentUser();
+  if (!user) redirect("/login");
   const [runtime, retention, auditEvents] = await Promise.all([
     Promise.resolve(runtimeMode()),
     retentionReport(365),

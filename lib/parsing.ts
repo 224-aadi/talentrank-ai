@@ -12,6 +12,7 @@ export interface ParsedResumeFile {
   parser: string;
   warnings: string[];
   parsedJson: StructuredResumeProfile;
+  storageKey?: string;
 }
 
 const maxFileBytes = 8 * 1024 * 1024;

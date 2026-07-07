@@ -1,0 +1,30 @@
+import { NextResponse } from "next/server";
+import { loginWithPassword, authCookie } from "@/lib/auth";
+
+function redirectTo(request: Request, path: string) {
+  return new URL(path, request.url);
+}
+
+export async function POST(request: Request) {
+  const contentType = request.headers.get("content-type") || "";
+  const payload = contentType.includes("application/json")
+    ? await request.json()
+    : Object.fromEntries((await request.formData()).entries());
+  const email = String(payload.email || "");
+  const password = String(payload.password || "");
+  const result = await loginWithPassword(email, password);
+
+  if (!result) {
+    if (contentType.includes("application/json")) {
+      return NextResponse.json({ error: "Invalid email or password." }, { status: 401 });
+    }
+    return NextResponse.redirect(redirectTo(request, "/login?error=invalid"), { status: 303 });
+  }
+
+  const response = contentType.includes("application/json")
+    ? NextResponse.json({ user: result.user })
+    : NextResponse.redirect(redirectTo(request, "/"), { status: 303 });
+  const cookie = authCookie(result.token, result.maxAge);
+  response.cookies.set(cookie.name, cookie.value, cookie.options);
+  return response;
+}
