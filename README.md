@@ -16,6 +16,7 @@ TalentRank AI is an explainable ATS screening and candidate-ranking platform bui
 - Record recruiter decisions.
 - Export ranked results.
 - Persist audit, evaluation, and decision events through the Next backend.
+- Monitor compliance guardrails, retention, explainability, and adverse-impact reports.
 
 ## Run Locally
 
@@ -68,6 +69,8 @@ This repo now includes:
 - Prisma/Postgres schema
 - Server-side screening endpoint and persisted match workbench
 - Server-side resume ingestion for PDF, DOCX, TXT, MD, and CSV files
+- OCR fallback hook for scanned PDFs through `OCR_API_URL`
+- Deeper resume parsing for bullets, date ranges, table-like layouts, work history timelines, and layout warnings
 - Structured resume profiles and recruiter-facing evidence explanations
 - Saved candidate pool retrieval with Boolean search and BM25-style ranking
 - Semantic retrieval over resume sections with local or OpenAI-managed embeddings
@@ -76,6 +79,7 @@ This repo now includes:
 - Calibration dashboard with precision@10, nDCG@10, false knockout rate, override rate, and score-to-interview correlation
 - Prisma/Postgres schema and database setup guide
 - Header-based auth context with organization and role enforcement for write APIs
+- Compliance Trust Center with protected-class guardrails, audit export, retention report, candidate deletion controls, and explainability report endpoints
 - Docker, CI, deploy checks, and production health reporting
 - Launch architecture docs
 - Compliance checklist
@@ -118,6 +122,31 @@ Local development uses a demo recruiter from request headers. In production, pla
 
 Set `TALENTRANK_USE_PRISMA=true` with `DATABASE_URL` to route the repository layer through Prisma instead of JSON.
 
+## OCR And Compliance
+
+Scanned PDFs are detected when embedded PDF text is sparse. Configure a production OCR service:
+
+```bash
+OCR_API_URL=https://your-ocr-service.example.com/extract
+OCR_API_KEY=optional_bearer_token
+```
+
+The OCR endpoint should accept multipart form data with a `file` field and return JSON like:
+
+```json
+{ "text": "extracted resume text", "provider": "textract", "confidence": 0.94 }
+```
+
+Compliance endpoints:
+
+- `GET /compliance` opens the Trust Center.
+- `POST /api/compliance/guardrails` scans job/resume text for protected-class guardrail terms.
+- `POST /api/compliance/adverse-impact` computes four-fifths-rule monitoring from lawfully collected audit groups.
+- `GET /api/compliance/retention?days=365` lists records past retention threshold.
+- `GET /api/compliance/audit-export` exports audit events.
+- `GET /api/compliance/explainability?matchRunId=...` exports score, evidence, gaps, hard rules, decision, and guardrail context.
+- `DELETE /api/candidates/:candidateId` deletes a candidate and related artifacts; admin role required.
+
 ## Deployment
 
 See [DEPLOYMENT.md](./DEPLOYMENT.md) for Docker, CI, Postgres migration, health check, and platform setup.
@@ -126,12 +155,12 @@ See [DEPLOYMENT.md](./DEPLOYMENT.md) for Docker, CI, Postgres migration, health 
 
 This is still an MVP:
 
-- OCR fallback for scanned PDFs is not implemented yet.
+- OCR requires an external provider configured with `OCR_API_URL`.
 - Real login/SSO provider is not connected yet.
 - Prisma adapter is opt-in and requires a live Postgres database.
 - Managed vector database storage is not deployed yet.
 - No production skill taxonomy yet.
-- No independent bias audit yet.
+- No independent third-party bias audit yet.
 - No enterprise security controls yet.
 
 See:

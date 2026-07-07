@@ -99,6 +99,113 @@ export interface StructuredResumeProfile {
   certifications: string[];
   quantifiedEvidence: string[];
   senioritySignals: string[];
+  bullets?: string[];
+  dates?: string[];
+  tables?: ParsedResumeTable[];
+  workTimeline?: WorkTimelineItem[];
+  layoutWarnings?: string[];
+}
+
+export interface ParsedResumeTable {
+  title?: string;
+  headers: string[];
+  rows: string[][];
+}
+
+export interface WorkTimelineItem {
+  title?: string;
+  organization?: string;
+  start?: string;
+  end?: string;
+  raw: string;
+}
+
+export type ProtectedClassCategory =
+  | "age"
+  | "disability_or_health"
+  | "family_or_marital_status"
+  | "gender_or_sex"
+  | "national_origin_or_citizenship"
+  | "photo_or_appearance"
+  | "race_or_ethnicity"
+  | "religion"
+  | "veteran_status";
+
+export interface ProtectedClassSignal {
+  category: ProtectedClassCategory;
+  term: string;
+  source: "job" | "resume";
+  severity: "review" | "high";
+  recommendation: string;
+}
+
+export interface ComplianceGuardrailReport {
+  generatedAt: string;
+  protectedClassInference: "disabled";
+  signals: ProtectedClassSignal[];
+  riskLevel: "clear" | "review" | "high";
+  recommendations: string[];
+}
+
+export interface AdverseImpactGroupInput {
+  group: string;
+  selected: number;
+  total: number;
+}
+
+export interface AdverseImpactMetric {
+  group: string;
+  selected: number;
+  total: number;
+  selectionRate: number;
+  impactRatio: number;
+  flagged: boolean;
+}
+
+export interface AdverseImpactReport {
+  generatedAt: string;
+  methodology: string;
+  metrics: AdverseImpactMetric[];
+  warnings: string[];
+}
+
+export interface RetentionReport {
+  generatedAt: string;
+  retentionDays: number;
+  cutoff: string;
+  dueCount: number;
+  dueCandidates: Array<{
+    candidateId: string;
+    candidateName: string;
+    resumeId?: string;
+    fileName?: string;
+    createdAt: string;
+    ageDays: number;
+  }>;
+}
+
+export interface ExplainabilityReport {
+  generatedAt: string;
+  matchRun: MatchRun;
+  job: Job | null;
+  candidate: Candidate | null;
+  resume: ResumeDocument | null;
+  latestDecision?: RecruiterDecisionRecord | null;
+  guardrails: ComplianceGuardrailReport;
+  summary: string[];
+}
+
+export interface DeletionResult {
+  candidateId: string;
+  deleted: boolean;
+  removed: {
+    candidates: number;
+    resumes: number;
+    matchRuns: number;
+    decisions: number;
+    benchmarkLabels: number;
+    vectors: number;
+  };
 }
 
 export interface AuditEvent {

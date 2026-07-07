@@ -5,6 +5,7 @@ TalentRank is intended to support recruiters, not replace human decision-making.
 ## Product Guardrails
 
 - Do not infer or score protected characteristics.
+- TalentRank guardrail reports flag protected-class language but do not infer protected-class membership.
 - Do not use name, photo, age, gender, race, ethnicity, disability, religion, marital status, pregnancy, or citizenship as scoring features.
 - Keep hard rules explicit and customer-configured.
 - Require human review before rejection when the product is used for consequential employment decisions.
@@ -30,6 +31,13 @@ Customers may need to disclose:
 
 ## Launch Controls
 
+- Trust Center at `/compliance`.
+- Protected-class language scan at `/api/compliance/guardrails`.
+- Adverse-impact monitor at `/api/compliance/adverse-impact`.
+- Retention report at `/api/compliance/retention`.
+- Audit export at `/api/compliance/audit-export`.
+- Match explainability export at `/api/compliance/explainability?matchRunId=...`.
+- Candidate deletion endpoint at `DELETE /api/candidates/:candidateId`.
 - Annual independent bias audit process.
 - Internal model card and public-facing system description.
 - Data processing agreement and subprocessors list.
@@ -52,6 +60,13 @@ Customers may need to disclose:
 - Evidence coverage.
 - Parse failure rate.
 - Candidate complaint / appeal rate.
+
+## OCR And Parsing Controls
+
+- Scanned PDFs are detected when embedded PDF text is sparse.
+- OCR is provider-based through `OCR_API_URL` and optional `OCR_API_KEY`.
+- Resume parsing now captures bullets, dates, table-like structures, work timeline evidence, parse confidence, and layout warnings.
+- Low parse confidence or OCR warnings should trigger recruiter review before consequential decisions.
 
 ## Required Legal Review
 

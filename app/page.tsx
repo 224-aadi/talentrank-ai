@@ -4,15 +4,15 @@ const metrics = [
   ["Hybrid search", "BM25 + Boolean + semantic"],
   ["Workflow", "Jobs, candidates, decisions, audit"],
   ["Quality", "Precision@10 + nDCG + overrides"],
-  ["Backend", "Next API + Prisma schema"],
+  ["Trust", "Guardrails + retention + audit"],
 ];
 
 const milestones = [
   "Swap JSON repository to Prisma with a live DATABASE_URL",
-  "Move PDF/DOCX parsing server-side with OCR fallback",
+  "Connect a production OCR provider through OCR_API_URL",
   "Move vectors to Postgres/vector database infrastructure",
   "Harden saved-pool retrieval with filters and benchmark tests",
-  "Add auth, orgs, RBAC, secure file storage",
+  "Add real SSO, org invites, and secure file storage",
   "Import a larger labeled benchmark set",
 ];
 
@@ -33,6 +33,7 @@ export default async function HomePage() {
           <div className="actions">
             <a href="/screen">Open match workbench</a>
             <a href="/calibration">Open calibration dashboard</a>
+            <a href="/compliance">Open trust center</a>
             <a href="/scanner/index.html">Open scanner MVP</a>
             <a href="/api/health">Check API</a>
           </div>

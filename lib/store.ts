@@ -3,6 +3,7 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { prismaEnabled } from "./prisma";
 import * as prismaStore from "./prisma-store";
+import { explainabilitySummary, guardrailReport } from "./compliance";
 import type {
   AuditEvent,
   BenchmarkLabel,
@@ -10,11 +11,14 @@ import type {
   Candidate,
   CandidatePoolItem,
   CalibrationMetrics,
+  DeletionResult,
   EvaluationSnapshot,
+  ExplainabilityReport,
   Job,
   MatchRun,
   RecruiterDecision,
   RecruiterDecisionRecord,
+  RetentionReport,
   ResumeDocument,
   TalentRankDb,
   VectorRecord,
@@ -469,4 +473,109 @@ export async function listMatchRuns(jobId?: string) {
     candidate: db.candidates.find((candidate) => candidate.id === run.candidateId) || null,
     latestDecision: allDecisions.find((decision) => decision.jobId === run.jobId && decision.candidateId === run.candidateId) || null,
   }));
+}
+
+export async function retentionReport(retentionDays = 365): Promise<RetentionReport> {
+  if (prismaEnabled()) return await prismaStore.retentionReport(retentionDays);
+  const db = await readDb();
+  const cutoffTime = Date.now() - retentionDays * 24 * 60 * 60 * 1000;
+  const cutoff = new Date(cutoffTime).toISOString();
+  const dueCandidates = db.candidates
+    .filter((candidate) => new Date(candidate.createdAt).getTime() <= cutoffTime)
+    .map((candidate) => {
+      const resume = db.resumes.find((item) => item.candidateId === candidate.id);
+      return {
+        candidateId: candidate.id,
+        candidateName: candidate.name,
+        resumeId: resume?.id,
+        fileName: resume?.fileName,
+        createdAt: candidate.createdAt,
+        ageDays: Math.floor((Date.now() - new Date(candidate.createdAt).getTime()) / (24 * 60 * 60 * 1000)),
+      };
+    });
+  return {
+    generatedAt: now(),
+    retentionDays,
+    cutoff,
+    dueCount: dueCandidates.length,
+    dueCandidates,
+  };
+}
+
+export async function auditExport() {
+  if (prismaEnabled()) return await prismaStore.auditExport();
+  return {
+    generatedAt: now(),
+    events: await listAuditEvents(),
+  };
+}
+
+export async function explainabilityReport(matchRunId: string): Promise<ExplainabilityReport | null> {
+  if (prismaEnabled()) return await prismaStore.explainabilityReport(matchRunId);
+  const db = await readDb();
+  const matchRun = db.matchRuns.find((run) => run.id === matchRunId);
+  if (!matchRun) return null;
+  const job = db.jobs.find((item) => item.id === matchRun.jobId) || null;
+  const candidate = db.candidates.find((item) => item.id === matchRun.candidateId) || null;
+  const resume = db.resumes.find((item) => item.candidateId === matchRun.candidateId) || null;
+  const latestDecision = decisions(db).find((item) => item.jobId === matchRun.jobId && item.candidateId === matchRun.candidateId) || null;
+  return {
+    generatedAt: now(),
+    matchRun,
+    job,
+    candidate,
+    resume,
+    latestDecision,
+    guardrails: guardrailReport({ jobText: job?.description, resumeText: resume?.rawText }),
+    summary: explainabilitySummary(matchRun),
+  };
+}
+
+export async function deleteCandidate(candidateId: string, actorId = "user_demo"): Promise<DeletionResult> {
+  if (prismaEnabled()) return await prismaStore.deleteCandidate(candidateId, actorId);
+  const db = await readDb();
+  const candidate = db.candidates.find((item) => item.id === candidateId);
+  const resumeIds = new Set(db.resumes.filter((resume) => resume.candidateId === candidateId).map((resume) => resume.id));
+  const before = {
+    candidates: db.candidates.length,
+    resumes: db.resumes.length,
+    matchRuns: db.matchRuns.length,
+    decisions: decisions(db).length,
+    benchmarkLabels: benchmarkLabels(db).length,
+    vectors: vectors(db).length,
+  };
+
+  db.candidates = db.candidates.filter((item) => item.id !== candidateId);
+  db.resumes = db.resumes.filter((item) => item.candidateId !== candidateId);
+  db.matchRuns = db.matchRuns.filter((item) => item.candidateId !== candidateId);
+  db.decisions = decisions(db).filter((item) => item.candidateId !== candidateId);
+  db.benchmarkLabels = benchmarkLabels(db).filter((item) => item.candidateId !== candidateId);
+  db.vectorRecords = vectors(db).filter((item) => item.candidateId !== candidateId && !resumeIds.has(item.resumeId));
+  db.auditEvents.unshift({
+    id: createId("audit"),
+    type: "candidate.deleted",
+    at: now(),
+    actorId,
+    organizationId: candidate?.organizationId || "org_demo",
+    candidateId,
+    candidateName: candidate?.name,
+    metadata: {
+      retentionControl: true,
+      removedResumeCount: before.resumes - db.resumes.length,
+    },
+  });
+  await writeDb(db);
+
+  return {
+    candidateId,
+    deleted: Boolean(candidate),
+    removed: {
+      candidates: before.candidates - db.candidates.length,
+      resumes: before.resumes - db.resumes.length,
+      matchRuns: before.matchRuns - db.matchRuns.length,
+      decisions: before.decisions - decisions(db).length,
+      benchmarkLabels: before.benchmarkLabels - benchmarkLabels(db).length,
+      vectors: before.vectors - vectors(db).length,
+    },
+  };
 }

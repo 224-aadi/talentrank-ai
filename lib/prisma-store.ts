@@ -1,4 +1,5 @@
 import { prisma } from "./prisma";
+import { explainabilitySummary, guardrailReport } from "./compliance";
 import type {
   AuditEvent,
   BenchmarkLabel,
@@ -11,6 +12,7 @@ import type {
   RecruiterDecision,
   RecruiterDecisionRecord,
   ResumeDocument,
+  RetentionReport,
   VectorRecord,
 } from "./types";
 
@@ -567,4 +569,112 @@ export async function listMatchRuns(jobId?: string) {
     candidate: run.candidate ? mapCandidate(run.candidate) : null,
     latestDecision: mappedDecisions.find((decision) => decision.jobId === run.jobId && decision.candidateId === run.candidateId) || null,
   }));
+}
+
+export async function retentionReport(retentionDays = 365): Promise<RetentionReport> {
+  const cutoffDate = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000);
+  const candidates = await client.candidate.findMany({
+    where: { createdAt: { lte: cutoffDate } },
+    include: { resumes: true },
+    orderBy: { createdAt: "asc" },
+  });
+  const dueCandidates = candidates.map((candidate: any) => {
+    const resume = candidate.resumes?.[0];
+    return {
+      candidateId: candidate.id,
+      candidateName: candidate.name,
+      resumeId: resume?.id,
+      fileName: resume?.fileName,
+      createdAt: iso(candidate.createdAt),
+      ageDays: Math.floor((Date.now() - new Date(candidate.createdAt).getTime()) / (24 * 60 * 60 * 1000)),
+    };
+  });
+  return {
+    generatedAt: new Date().toISOString(),
+    retentionDays,
+    cutoff: cutoffDate.toISOString(),
+    dueCount: dueCandidates.length,
+    dueCandidates,
+  };
+}
+
+export async function auditExport() {
+  return {
+    generatedAt: new Date().toISOString(),
+    events: await listAuditEvents(),
+  };
+}
+
+export async function explainabilityReport(matchRunId: string) {
+  const run = await client.matchRun.findUnique({
+    where: { id: matchRunId },
+    include: { job: true, candidate: true },
+  });
+  if (!run) return null;
+  const [resume, decision] = await Promise.all([
+    client.resumeDocument.findFirst({ where: { candidateId: run.candidateId }, orderBy: { createdAt: "desc" } }),
+    client.recruiterDecision.findFirst({
+      where: { jobId: run.jobId, candidateId: run.candidateId },
+      orderBy: { createdAt: "desc" },
+    }),
+  ]);
+  const matchRun = mapMatchRun(run);
+  const job = run.job ? mapJob(run.job) : null;
+  const mappedResume = resume ? mapResume(resume) : null;
+  return {
+    generatedAt: new Date().toISOString(),
+    matchRun,
+    job,
+    candidate: run.candidate ? mapCandidate(run.candidate) : null,
+    resume: mappedResume,
+    latestDecision: decision ? mapDecision(decision) : null,
+    guardrails: guardrailReport({ jobText: job?.description, resumeText: mappedResume?.rawText }),
+    summary: explainabilitySummary(matchRun),
+  };
+}
+
+export async function deleteCandidate(candidateId: string, actorId = "user_demo") {
+  const candidate = await client.candidate.findUnique({
+    where: { id: candidateId },
+    include: { resumes: true },
+  });
+  if (!candidate) {
+    return {
+      candidateId,
+      deleted: false,
+      removed: { candidates: 0, resumes: 0, matchRuns: 0, decisions: 0, benchmarkLabels: 0, vectors: 0 },
+    };
+  }
+  const resumeIds = candidate.resumes.map((resume: any) => resume.id);
+  const [matchRuns, decisions, labels, vectors] = await Promise.all([
+    client.matchRun.count({ where: { candidateId } }),
+    client.recruiterDecision.count({ where: { candidateId } }),
+    client.benchmarkLabel.count({ where: { candidateId } }),
+    client.vectorRecord.count({ where: { OR: [{ candidateId }, { resumeId: { in: resumeIds } }] } }),
+  ]);
+  await client.auditEvent.create({
+    data: {
+      organizationId: candidate.organizationId,
+      candidateId,
+      actorId,
+      type: "candidate.deleted",
+      payload: {
+        candidateName: candidate.name,
+        metadata: { retentionControl: true, removedResumeCount: candidate.resumes.length },
+      },
+    },
+  });
+  await client.candidate.delete({ where: { id: candidateId } });
+  return {
+    candidateId,
+    deleted: true,
+    removed: {
+      candidates: 1,
+      resumes: candidate.resumes.length,
+      matchRuns,
+      decisions,
+      benchmarkLabels: labels,
+      vectors,
+    },
+  };
 }

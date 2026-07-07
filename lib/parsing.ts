@@ -1,7 +1,8 @@
 import mammoth from "mammoth";
 import { PDFParse } from "pdf-parse";
+import { ocrConfigured, runOcr } from "./ocr";
 import { skillIds, termsFor } from "./skill-taxonomy";
-import type { StructuredResumeProfile } from "./types";
+import type { ParsedResumeTable, StructuredResumeProfile, WorkTimelineItem } from "./types";
 
 export interface ParsedResumeFile {
   fileName: string;
@@ -31,7 +32,7 @@ function confidenceFor(text: string, parser: string, warnings: string[]) {
   const sectionScore = ["education", "experience", "skills", "projects"].filter((section) =>
     text.toLowerCase().includes(section),
   ).length * 10;
-  const parserScore = parser === "pdf" || parser === "docx" ? 25 : 18;
+  const parserScore = parser === "pdf+ocr" ? 22 : parser === "pdf" || parser === "docx" ? 25 : 18;
   return Math.max(30, Math.min(98, parserScore + lengthScore + sectionScore - warnings.length * 8));
 }
 
@@ -93,6 +94,91 @@ function linesWith(text: string, pattern: RegExp, limit = 8) {
     .slice(0, limit);
 }
 
+function extractBullets(text: string) {
+  return text
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter((line) => /^(?:[-*•]|[0-9]+[.)])\s+/.test(line) || /^\b(?:built|led|owned|created|developed|implemented|analyzed|managed|designed|deployed|improved)\b/i.test(line))
+    .map((line) => line.replace(/^(?:[-*•]|[0-9]+[.)])\s+/, ""))
+    .filter((line) => line.length > 12)
+    .slice(0, 40);
+}
+
+function extractDates(text: string) {
+  const matches = text.match(/\b(?:(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s+)?(?:19|20)\d{2}\s*(?:-|–|—|to)\s*(?:(?:present|current)|(?:(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s+)?(?:19|20)\d{2})|\b(?:19|20)\d{2}\b/gi);
+  return [...new Set(matches || [])].slice(0, 30);
+}
+
+function splitColumns(line: string) {
+  if (line.includes("|")) {
+    return line.split("|").map((cell) => cell.trim()).filter(Boolean);
+  }
+  return line.split(/\s{2,}/).map((cell) => cell.trim()).filter(Boolean);
+}
+
+function extractTables(text: string): ParsedResumeTable[] {
+  const tables: ParsedResumeTable[] = [];
+  let current: string[][] = [];
+  const flush = () => {
+    if (current.length >= 2) {
+      tables.push({
+        headers: current[0],
+        rows: current.slice(1),
+      });
+    }
+    current = [];
+  };
+
+  for (const rawLine of text.split(/\n+/)) {
+    const line = rawLine.trim();
+    const cells = splitColumns(line);
+    if (cells.length >= 3 && line.length < 180) {
+      current.push(cells);
+    } else {
+      flush();
+    }
+  }
+  flush();
+  return tables.slice(0, 6);
+}
+
+function extractWorkTimeline(text: string, sections: Record<string, string[]>): WorkTimelineItem[] {
+  const source = (sections.experience || text.split(/\n+/)).map((line) => line.trim()).filter(Boolean);
+  const timeline: WorkTimelineItem[] = [];
+  const rangePattern = /\b((?:(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s+)?(?:19|20)\d{2})\s*(?:-|–|—|to)\s*((?:present|current)|(?:(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s+)?(?:19|20)\d{2})\b/i;
+
+  for (let index = 0; index < source.length; index += 1) {
+    const line = source[index];
+    const match = line.match(rangePattern);
+    if (!match) continue;
+    const previous = source[index - 1] || "";
+    const next = source[index + 1] || "";
+    const titleLine = line.replace(match[0], "").replace(/[|,;]+$/g, "").trim() || previous;
+    const [title, organization] = titleLine.includes(" at ")
+      ? titleLine.split(/\s+at\s+/i, 2)
+      : titleLine.includes(" | ")
+        ? titleLine.split(/\s+\|\s+/, 2)
+        : [titleLine || next, undefined];
+    timeline.push({
+      title: title?.trim() || undefined,
+      organization: organization?.trim() || undefined,
+      start: match[1],
+      end: match[2],
+      raw: line,
+    });
+  }
+  return timeline.slice(0, 12);
+}
+
+function layoutWarnings(text: string, tables: ParsedResumeTable[], timeline: WorkTimelineItem[]) {
+  const warnings: string[] = [];
+  const longLines = text.split(/\n+/).filter((line) => line.length > 180).length;
+  if (longLines > 4) warnings.push("Several unusually long lines detected; resume layout may have collapsed during extraction");
+  if (!tables.length && /\s{4,}/.test(text)) warnings.push("Column-like spacing detected but no stable table structure was recovered");
+  if (!timeline.length && /\b(?:experience|employment|work history)\b/i.test(text)) warnings.push("Experience section detected but no date-based work timeline was recovered");
+  return warnings;
+}
+
 export function extractStructuredProfile(text: string): StructuredResumeProfile {
   const sections = extractSections(text);
   const email = text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0];
@@ -100,6 +186,10 @@ export function extractStructuredProfile(text: string): StructuredResumeProfile 
   const links = [...new Set(text.match(/(?:https?:\/\/)?(?:www\.)?(?:linkedin\.com|github\.com|portfolio\.|kaggle\.com)[^\s,)]+/gi) || [])];
   const quantifiedEvidence = linesWith(text, /(\d+%|\$\d+|\b\d+x\b|\b\d+\+?\s*(?:users|records|rows|models|dashboards|hours|minutes|years|projects)\b)/i, 10);
   const senioritySignals = linesWith(text, /\b(?:led|owned|managed|mentored|architected|launched|deployed|production|stakeholder|observability|scaling|executive|reliability)\b/i, 8);
+  const bullets = extractBullets(text);
+  const dates = extractDates(text);
+  const tables = extractTables(text);
+  const workTimeline = extractWorkTimeline(text, sections);
 
   return {
     contact: {
@@ -115,6 +205,11 @@ export function extractStructuredProfile(text: string): StructuredResumeProfile 
     certifications: sections.certifications || linesWith(text, /\b(?:certified|certification|certificate|license)\b/i, 6),
     quantifiedEvidence,
     senioritySignals,
+    bullets,
+    dates,
+    tables,
+    workTimeline,
+    layoutWarnings: layoutWarnings(text, tables, workTimeline),
   };
 }
 
@@ -123,7 +218,27 @@ async function parsePdf(file: File) {
   const parser = new PDFParse({ data: buffer });
   try {
     const parsed = await parser.getText();
-    return cleanText(parsed.text || "");
+    const text = cleanText(parsed.text || "");
+    if (text.length >= 80) return { text, parser: "pdf", warnings: [] };
+    const ocr = await runOcr(file);
+    const ocrText = cleanText(ocr.text);
+    if (ocrText) {
+      return {
+        text: ocrText,
+        parser: "pdf+ocr",
+        warnings: [`OCR fallback used via ${ocr.provider}.`, ...ocr.warnings],
+      };
+    }
+    return {
+      text,
+      parser: "pdf",
+      warnings: [
+        ocrConfigured()
+          ? "PDF yielded very little embedded text and OCR did not return readable content"
+          : "Likely scanned PDF detected; configure OCR_API_URL for OCR fallback",
+        ...ocr.warnings,
+      ],
+    };
   } finally {
     await parser.destroy();
   }
@@ -147,8 +262,10 @@ export async function parseResumeFile(file: File): Promise<ParsedResumeFile> {
   let text = "";
 
   if (ext === "pdf" || mimeType === "application/pdf") {
-    parser = "pdf";
-    text = await parsePdf(file);
+    const parsedPdf = await parsePdf(file);
+    parser = parsedPdf.parser;
+    text = parsedPdf.text;
+    warnings.push(...parsedPdf.warnings);
   } else if (ext === "docx" || mimeType.includes("wordprocessingml")) {
     parser = "docx";
     text = await parseDocx(file);
@@ -160,7 +277,7 @@ export async function parseResumeFile(file: File): Promise<ParsedResumeFile> {
   }
 
   if (!text) {
-    throw new Error(`${file.name} did not yield readable text.`);
+    throw new Error(`${file.name} did not yield readable text. ${warnings.join(" ")}`.trim());
   }
   if (text.length < 250) warnings.push("Very little text extracted");
   if (!/education|experience|skills|project/i.test(text)) warnings.push("Common resume sections not detected");
