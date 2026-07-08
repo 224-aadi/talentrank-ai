@@ -37,6 +37,7 @@ TalentRank should compete as an explainable candidate intelligence layer, not as
 - Header-based auth context with organization and role enforcement on write APIs.
 - Dockerfile, Docker Compose, CI workflow, deployment guide, and health readiness endpoint.
 - Production env template, release script, migration entrypoint, and mock OCR/storage/malware integrations for deployment rehearsal.
+- Admin Operations Center with integration readiness, backup export, signed-download gateway support, and retention/backup scripts.
 - Trust Center with protected-class guardrails, retention reporting, audit export, adverse-impact report endpoint, candidate deletion controls, and match explainability exports.
 - Upload security checks, optional malware scanning, rate limiting, structured logs, and admin ops metrics.
 - Recruiter Boolean search syntax:

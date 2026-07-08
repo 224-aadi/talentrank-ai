@@ -50,6 +50,9 @@ export function runtimeMode(): RuntimeMode {
   if (storage === "external" && !process.env.TALENTRANK_STORAGE_UPLOAD_URL) {
     warnings.push("TALENTRANK_STORAGE_PROVIDER requires TALENTRANK_STORAGE_UPLOAD_URL.");
   }
+  if (storage === "external" && !process.env.TALENTRANK_STORAGE_DOWNLOAD_URL) {
+    warnings.push("TALENTRANK_STORAGE_PROVIDER requires TALENTRANK_STORAGE_DOWNLOAD_URL for signed downloads.");
+  }
   if (process.env.NODE_ENV === "production" && !process.env.TALENTRANK_MALWARE_SCAN_URL) {
     warnings.push("Production uploads should configure TALENTRANK_MALWARE_SCAN_URL.");
   }

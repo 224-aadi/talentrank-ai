@@ -217,7 +217,10 @@ Production helpers:
 - `.env.production.example` documents required secrets.
 - `npm run deploy:release` runs readiness checks, Prisma generation, and migrations.
 - `npm run mock:integrations` starts local mock OCR, storage, and malware-scan providers.
+- `npm run ops:backup` writes a local JSON-mode backup snapshot.
+- `npm run ops:retention` prints a retention queue report.
 - Docker Compose starts Postgres, the web app, and mock integrations for deployment rehearsal.
+- Admin Operations Center: `/admin`
 
 ## Current Limitations
 

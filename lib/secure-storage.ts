@@ -114,3 +114,19 @@ export async function readStoredFile(storageKey: string) {
   const buffer = await fs.readFile(target);
   return decrypt(buffer);
 }
+
+export async function externalDownloadUrl(storageKey: string, fileName: string) {
+  const endpoint = process.env.TALENTRANK_STORAGE_DOWNLOAD_URL;
+  if (!endpoint || !storageKey.startsWith("external/")) return null;
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      ...(process.env.TALENTRANK_STORAGE_TOKEN ? { authorization: `Bearer ${process.env.TALENTRANK_STORAGE_TOKEN}` } : {}),
+    },
+    body: JSON.stringify({ storageKey, fileName }),
+  });
+  if (!response.ok) throw new Error(`External storage download gateway returned HTTP ${response.status}.`);
+  const payload = await response.json().catch(() => ({}));
+  return typeof payload.url === "string" ? payload.url : null;
+}

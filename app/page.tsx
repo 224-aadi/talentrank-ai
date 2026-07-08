@@ -36,6 +36,7 @@ export default async function HomePage() {
             <a href="/screen">Open match workbench</a>
             <a href="/calibration">Open calibration dashboard</a>
             <a href="/compliance">Open trust center</a>
+            <a href="/admin">Open admin ops</a>
             <a href="/scanner/index.html">Open scanner MVP</a>
             <a href="/api/health">Check API</a>
           </div>

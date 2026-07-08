@@ -31,8 +31,11 @@ OCR_API_KEY=your_ocr_key
 TALENTRANK_AUTH_MODE=headers
 TALENTRANK_STORAGE_PROVIDER=external
 TALENTRANK_STORAGE_UPLOAD_URL=https://your-storage-gateway.example.com/upload
+TALENTRANK_STORAGE_DOWNLOAD_URL=https://your-storage-gateway.example.com/signed-download
 TALENTRANK_STORAGE_TOKEN=optional_bearer_token
 TALENTRANK_MAX_BATCH_FILES=50
+TALENTRANK_BACKUP_URL=https://your-backup-gateway.example.com/upload
+TALENTRANK_RETENTION_DAYS=365
 ```
 
 ## Auth
@@ -55,7 +58,24 @@ Remove or rotate `TALENTRANK_BOOTSTRAP_PASSWORD` after the first real admin acco
 
 Local secure storage writes original resumes under `.data/secure-files`. With `TALENTRANK_STORAGE_KEY`, files are encrypted with AES-256-GCM. For multi-instance deployments, replace local disk with shared object storage before serving customers.
 
-External storage uses an HTTP upload gateway. The gateway should accept multipart form data with `key` and `file`, persist to S3/R2/GCS or equivalent, and return `{ "storageKey": "...", "encrypted": true }`.
+External storage uses HTTP upload and signed-download gateways. The upload gateway should accept multipart form data with `key` and `file`, persist to S3/R2/GCS or equivalent, and return `{ "storageKey": "...", "encrypted": true }`. The download gateway should accept `{ "storageKey": "...", "fileName": "..." }` and return `{ "url": "https://signed-download-url" }`.
+
+## Admin Operations
+
+Admins can open:
+
+```text
+/admin
+```
+
+This page reports integration readiness and links to backup export, health, and metrics endpoints.
+
+Operational scripts:
+
+```bash
+npm run ops:backup
+npm run ops:retention
+```
 
 ## Upload Safety
 
@@ -136,6 +156,7 @@ TALENTRANK_MALWARE_SCAN_URL=http://127.0.0.1:3060/scan
 OCR_API_URL=http://127.0.0.1:3060/ocr
 TALENTRANK_STORAGE_PROVIDER=external
 TALENTRANK_STORAGE_UPLOAD_URL=http://127.0.0.1:3060/upload
+TALENTRANK_STORAGE_DOWNLOAD_URL=http://127.0.0.1:3060/signed-download
 ```
 
 The mock service is for deployment rehearsal only; it does not perform real OCR, malware detection, or encryption.

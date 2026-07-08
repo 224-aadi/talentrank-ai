@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/auth";
 import { incrementMetric, logEvent } from "@/lib/observability";
 import { clientKey, checkRateLimit } from "@/lib/rate-limit";
-import { readStoredFile } from "@/lib/secure-storage";
+import { externalDownloadUrl, readStoredFile } from "@/lib/secure-storage";
 import { getResumeDocument } from "@/lib/store";
 
 export async function GET(_: Request, context: { params: Promise<{ resumeId: string }> }) {
@@ -16,7 +16,11 @@ export async function GET(_: Request, context: { params: Promise<{ resumeId: str
     const resume = await getResumeDocument(resumeId);
     if (!resume) return NextResponse.json({ error: "Resume not found." }, { status: 404 });
     if (!resume.storageKey.startsWith("secure/")) {
-      return NextResponse.json({ error: "Original file is not available in secure storage." }, { status: 404 });
+      const signedUrl = await externalDownloadUrl(resume.storageKey, resume.fileName);
+      if (!signedUrl) return NextResponse.json({ error: "Original file is not available in secure storage." }, { status: 404 });
+      incrementMetric("resume.download");
+      logEvent("resume.download.signed", { resumeId, candidateId: resume.candidateId, actorId: user.id });
+      return NextResponse.redirect(signedUrl, { status: 302 });
     }
 
     const buffer = await readStoredFile(resume.storageKey);

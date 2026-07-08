@@ -220,6 +220,18 @@ h1 {
   background: var(--mint);
 }
 
+.control-row .status-missing,
+.control-row .status-warning {
+  color: #7a3f05;
+  background: rgba(183, 121, 31, 0.12);
+}
+
+.control-row .status-ready,
+.control-row .status-optional {
+  color: var(--forest);
+  background: var(--mint);
+}
+
 .endpoint-list a {
   padding: 12px;
   border: 1px solid rgba(127, 144, 138, 0.22);

@@ -58,6 +58,10 @@ if (mode.storage === "external" && !process.env.TALENTRANK_STORAGE_UPLOAD_URL) {
   failures.push("TALENTRANK_STORAGE_UPLOAD_URL is required when TALENTRANK_STORAGE_PROVIDER is set.");
 }
 
+if (mode.storage === "external" && !process.env.TALENTRANK_STORAGE_DOWNLOAD_URL) {
+  failures.push("TALENTRANK_STORAGE_DOWNLOAD_URL is required when TALENTRANK_STORAGE_PROVIDER is set.");
+}
+
 if (mode.nodeEnv === "production" && !process.env.TALENTRANK_MALWARE_SCAN_URL) {
   failures.push("TALENTRANK_MALWARE_SCAN_URL is required for production resume uploads.");
 }

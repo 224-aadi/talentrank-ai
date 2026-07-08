@@ -39,6 +39,12 @@ const server = http.createServer(async (request, response) => {
     return;
   }
 
+  if (request.url === "/signed-download") {
+    response.writeHead(200, { "content-type": "application/json" });
+    response.end(JSON.stringify({ url: `http://127.0.0.1:${port}/mock-signed-download` }));
+    return;
+  }
+
   response.writeHead(404).end();
 });
 
