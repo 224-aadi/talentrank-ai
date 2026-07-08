@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { currentUser } from "@/lib/auth";
-import { calibrationMetrics, listBenchmarkLabels, listMatchRuns } from "@/lib/store";
-import type { BenchmarkLabel, Candidate, Job, MatchRun, RecruiterDecisionRecord } from "@/lib/types";
+import { calibrationMetrics, listBenchmarkCases, listBenchmarkLabels, listBenchmarkRuns, listMatchRuns } from "@/lib/store";
+import type { BenchmarkCase, BenchmarkLabel, BenchmarkRun, Candidate, Job, MatchRun, RecruiterDecisionRecord } from "@/lib/types";
 
 type MatchListRow = MatchRun & {
   job: Job | null;
@@ -11,6 +11,8 @@ type MatchListRow = MatchRun & {
 
 const metricHelp: Record<string, string> = {
   precisionAt10: "Relevant labeled candidates in the top 10 ranked results.",
+  precisionAt5: "Relevant labeled candidates in the top 5 ranked results.",
+  recallAt50: "Share of all relevant labeled candidates found in the top 50.",
   ndcgAt10: "Ranking quality with stronger labels weighted higher.",
   falseKnockoutRate: "Auto-rejected candidates later labeled relevant.",
   overrideRate: "Recruiter decisions that disagree with the score/verdict.",
@@ -20,16 +22,22 @@ const metricHelp: Record<string, string> = {
 export default async function CalibrationPage() {
   const user = await currentUser();
   if (!user) redirect("/login");
-  const [metrics, labels, matches] = await Promise.all([
+  const [metrics, labels, matches, cases, runs] = await Promise.all([
     calibrationMetrics(),
     listBenchmarkLabels(),
     listMatchRuns(),
+    listBenchmarkCases(),
+    listBenchmarkRuns(),
   ]);
   const typedLabels = labels as BenchmarkLabel[];
   const typedMatches = matches as MatchListRow[];
+  const typedCases = cases as BenchmarkCase[];
+  const typedRuns = runs as BenchmarkRun[];
 
   const cards = [
+    ["Precision@5", `${metrics.precisionAt5 || 0}%`, metricHelp.precisionAt5],
     ["Precision@10", `${metrics.precisionAt10}%`, metricHelp.precisionAt10],
+    ["Recall@50", `${metrics.recallAt50 || 0}%`, metricHelp.recallAt50],
     ["nDCG@10", `${metrics.ndcgAt10}%`, metricHelp.ndcgAt10],
     ["False Knockout", `${metrics.falseKnockoutRate}%`, metricHelp.falseKnockoutRate],
     ["Override Rate", `${metrics.overrideRate}%`, metricHelp.overrideRate],
@@ -76,6 +84,20 @@ export default async function CalibrationPage() {
         </article>
 
         <article>
+          <h2>Benchmark Runs</h2>
+          <div className="calibration-table">
+            {typedRuns.slice(0, 12).map((run) => (
+              <div key={run.id}>
+                <span>{run.metrics.precisionAt10}%</span>
+                <strong>{run.modelVersion}</strong>
+                <small>{run.caseCount} cases · {new Date(run.at).toLocaleDateString()} · nDCG {run.metrics.ndcgAt10}%</small>
+              </div>
+            ))}
+            {!typedRuns.length ? <p>No benchmark snapshots yet. POST to /api/benchmarks/runs after labeling a test set.</p> : null}
+          </div>
+        </article>
+
+        <article>
           <h2>Ranked Sample</h2>
           <div className="calibration-table">
             {typedMatches.slice(0, 12).map((match) => (
@@ -86,6 +108,34 @@ export default async function CalibrationPage() {
               </div>
             ))}
             {!typedMatches.length ? <p>No match runs yet. Run a screen to generate calibration inputs.</p> : null}
+          </div>
+        </article>
+
+        <article>
+          <h2>Segment Quality</h2>
+          <div className="calibration-table">
+            {(metrics.segmentMetrics || []).slice(0, 12).map((item) => (
+              <div key={`${item.segment}:${item.value}`}>
+                <span>{item.precisionAt10}%</span>
+                <strong>{item.segment}: {item.value}</strong>
+                <small>{item.labeledCount} labeled · avg score {item.avgScore} · interview {item.interviewRate}%</small>
+              </div>
+            ))}
+            {!metrics.segmentMetrics?.length ? <p>No segment metrics yet. Import benchmark cases with role family, seniority, location, or source.</p> : null}
+          </div>
+        </article>
+
+        <article>
+          <h2>Benchmark Cases</h2>
+          <div className="calibration-table">
+            {typedCases.slice(0, 12).map((item) => (
+              <div key={item.id}>
+                <span>{item.expectedLabel}</span>
+                <strong>{item.candidateId}</strong>
+                <small>{item.roleFamily || "any role"} · {item.seniority || "any seniority"} · {item.source || "no source"}</small>
+              </div>
+            ))}
+            {!typedCases.length ? <p>No imported benchmark cases yet.</p> : null}
           </div>
         </article>
       </section>

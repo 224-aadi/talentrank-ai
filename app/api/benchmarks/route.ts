@@ -11,6 +11,7 @@ const benchmarkSchema = z.object({
 });
 
 export async function GET(request: Request) {
+  await requireRole("recruiter");
   const url = new URL(request.url);
   const jobId = url.searchParams.get("jobId") || undefined;
   return NextResponse.json({

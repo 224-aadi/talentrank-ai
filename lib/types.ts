@@ -276,13 +276,57 @@ export interface BenchmarkLabel {
 export interface CalibrationMetrics {
   evaluatedAt: string;
   labeledCount: number;
+  precisionAt5?: number;
   precisionAt10: number;
+  recallAt50?: number;
   ndcgAt10: number;
   falseKnockoutRate: number;
+  falseKnockoutByHardRule?: Array<{ rule: string; falseKnockouts: number; autoRejects: number; rate: number }>;
   overrideRate: number;
   scoreToInterviewCorrelation: number;
   avgScore: number;
   interviewRate: number;
+  segmentMetrics?: SegmentCalibrationMetric[];
+}
+
+export interface SegmentCalibrationMetric {
+  segment: string;
+  value: string;
+  labeledCount: number;
+  precisionAt10: number;
+  avgScore: number;
+  interviewRate: number;
+}
+
+export interface BenchmarkCase {
+  id: string;
+  jobId: string;
+  candidateId: string;
+  expectedLabel: BenchmarkLabelValue;
+  roleFamily?: string;
+  seniority?: string;
+  location?: string;
+  source?: string;
+  notes?: string;
+  createdAt: string;
+}
+
+export interface BenchmarkRun {
+  id: string;
+  at: string;
+  jobId?: string;
+  modelVersion: string;
+  metrics: CalibrationMetrics;
+  caseCount: number;
+  notes?: string;
+}
+
+export interface BenchmarkComparison {
+  generatedAt: string;
+  baseline: BenchmarkRun | null;
+  challenger: BenchmarkRun | null;
+  deltas: Record<string, number>;
+  summary: string[];
 }
 
 export interface TalentRankDb {
@@ -296,6 +340,8 @@ export interface TalentRankDb {
   matchRuns: MatchRun[];
   decisions?: RecruiterDecisionRecord[];
   benchmarkLabels?: BenchmarkLabel[];
+  benchmarkCases?: BenchmarkCase[];
+  benchmarkRuns?: BenchmarkRun[];
   auditEvents: AuditEvent[];
   evaluations: EvaluationSnapshot[];
   vectorRecords?: VectorRecord[];

@@ -1,9 +1,13 @@
 import { prisma } from "./prisma";
 import { explainabilitySummary, guardrailReport } from "./compliance";
+import { compareBenchmarkRuns, computeCalibrationMetrics } from "./benchmarking";
 import type {
   AuditEvent,
+  BenchmarkCase,
+  BenchmarkComparison,
   BenchmarkLabel,
   BenchmarkLabelValue,
+  BenchmarkRun,
   CalibrationMetrics,
   Candidate,
   EvaluationSnapshot,
@@ -123,6 +127,33 @@ function mapBenchmark(label: any): BenchmarkLabel {
     label: label.label.toLowerCase(),
     notes: label.notes || undefined,
     createdAt: iso(label.createdAt),
+  };
+}
+
+function mapBenchmarkCase(item: any): BenchmarkCase {
+  return {
+    id: item.id,
+    jobId: item.jobId,
+    candidateId: item.candidateId,
+    expectedLabel: item.expectedLabel.toLowerCase(),
+    roleFamily: item.roleFamily || undefined,
+    seniority: item.seniority || undefined,
+    location: item.location || undefined,
+    source: item.source || undefined,
+    notes: item.notes || undefined,
+    createdAt: iso(item.createdAt),
+  };
+}
+
+function mapBenchmarkRun(item: any): BenchmarkRun {
+  return {
+    id: item.id,
+    at: iso(item.createdAt),
+    jobId: item.jobId || undefined,
+    modelVersion: item.modelVersion,
+    metrics: item.metrics,
+    caseCount: item.caseCount,
+    notes: item.notes || undefined,
   };
 }
 
@@ -429,6 +460,80 @@ export async function listBenchmarkLabels(jobId?: string) {
   })).map(mapBenchmark);
 }
 
+export async function importBenchmarkCases(input: Array<Omit<BenchmarkCase, "id" | "createdAt">>) {
+  await Promise.all(input.map((item) =>
+    client.benchmarkCase.upsert({
+      where: {
+        jobId_candidateId: {
+          jobId: item.jobId,
+          candidateId: item.candidateId,
+        },
+      },
+      update: {
+        expectedLabel: upper(item.expectedLabel),
+        roleFamily: item.roleFamily,
+        seniority: item.seniority,
+        location: item.location,
+        source: item.source,
+        notes: item.notes,
+      },
+      create: {
+        jobId: item.jobId,
+        candidateId: item.candidateId,
+        expectedLabel: upper(item.expectedLabel),
+        roleFamily: item.roleFamily,
+        seniority: item.seniority,
+        location: item.location,
+        source: item.source,
+        notes: item.notes,
+      },
+    }),
+  ));
+  return await listBenchmarkCases();
+}
+
+export async function listBenchmarkCases(jobId?: string) {
+  return (await client.benchmarkCase.findMany({
+    where: jobId ? { jobId } : undefined,
+    orderBy: { createdAt: "desc" },
+  })).map(mapBenchmarkCase);
+}
+
+export async function createBenchmarkRun(input: { jobId?: string; modelVersion?: string; notes?: string }) {
+  await ensureOrg("org_demo");
+  const metrics = await calibrationMetrics(input.jobId);
+  const latestRun = await client.matchRun.findFirst({
+    where: input.jobId ? { jobId: input.jobId } : undefined,
+    orderBy: { createdAt: "desc" },
+  });
+  const caseCount = await client.benchmarkCase.count({ where: input.jobId ? { jobId: input.jobId } : undefined });
+  const run = await client.benchmarkRun.create({
+    data: {
+      organizationId: "org_demo",
+      jobId: input.jobId,
+      modelVersion: input.modelVersion || latestRun?.modelVersion || "unknown",
+      metrics,
+      caseCount,
+      notes: input.notes,
+    },
+  });
+  return mapBenchmarkRun(run);
+}
+
+export async function listBenchmarkRuns(jobId?: string) {
+  return (await client.benchmarkRun.findMany({
+    where: jobId ? { jobId } : undefined,
+    orderBy: { createdAt: "desc" },
+  })).map(mapBenchmarkRun);
+}
+
+export async function compareBenchmarkRunIds(baselineId?: string, challengerId?: string): Promise<BenchmarkComparison> {
+  const runs = await listBenchmarkRuns();
+  const baseline = baselineId ? runs.find((run: BenchmarkRun) => run.id === baselineId) || null : runs[1] || null;
+  const challenger = challengerId ? runs.find((run: BenchmarkRun) => run.id === challengerId) || null : runs[0] || null;
+  return compareBenchmarkRuns(baseline, challenger);
+}
+
 function relevance(label?: BenchmarkLabelValue) {
   if (label === "hired") return 4;
   if (label === "offer") return 3;
@@ -449,57 +554,21 @@ function correlation(pairs: Array<{ score: number; interviewed: number }>) {
 }
 
 export async function calibrationMetrics(jobId?: string): Promise<CalibrationMetrics> {
-  const [runs, labelsResult, decisionsResult] = await Promise.all([
+  const [runs, labelsResult, decisionsResult, casesResult, jobsResult] = await Promise.all([
     client.matchRun.findMany({ where: jobId ? { jobId } : undefined, orderBy: { score: "desc" } }),
     listBenchmarkLabels(jobId),
     listRecruiterDecisions(jobId),
+    listBenchmarkCases(jobId),
+    listJobs(),
   ]);
-  const mappedRuns: MatchRun[] = runs.map(mapMatchRun);
-  const labels: BenchmarkLabel[] = labelsResult;
-  const decisions: RecruiterDecisionRecord[] = decisionsResult;
-  const labelMap = new Map<string, BenchmarkLabelValue>();
-  for (const label of labels) labelMap.set(`${label.jobId}:${label.candidateId}`, label.label);
-  for (const decision of decisions) {
-    const derived = decision.decision === "interview" ? "interviewed" : decision.decision === "shortlist" ? "good_match" : decision.decision === "reject" ? "bad_match" : undefined;
-    if (derived) labelMap.set(`${decision.jobId}:${decision.candidateId}`, derived);
-  }
-  const labeledRuns = mappedRuns.filter((run) => labelMap.has(`${run.jobId}:${run.candidateId}`));
-  const top10 = mappedRuns.slice(0, 10);
-  const labeledTop10 = top10.filter((run) => labelMap.has(`${run.jobId}:${run.candidateId}`));
-  const relevantTop10 = labeledTop10.filter((run) => relevance(labelMap.get(`${run.jobId}:${run.candidateId}`)) > 0);
-  const dcg = top10.reduce((sum, run, index) => {
-    const rel = relevance(labelMap.get(`${run.jobId}:${run.candidateId}`));
-    return sum + (2 ** rel - 1) / Math.log2(index + 2);
-  }, 0);
-  const ideal = [...labeledRuns]
-    .sort((a, b) => relevance(labelMap.get(`${b.jobId}:${b.candidateId}`)) - relevance(labelMap.get(`${a.jobId}:${a.candidateId}`)))
-    .slice(0, 10)
-    .reduce((sum, run, index) => sum + (2 ** relevance(labelMap.get(`${run.jobId}:${run.candidateId}`)) - 1) / Math.log2(index + 2), 0);
-  const autoRejects = labeledRuns.filter((run) => run.verdict === "Auto-reject");
-  const falseRejects = autoRejects.filter((run) => relevance(labelMap.get(`${run.jobId}:${run.candidateId}`)) > 0);
-  const overrides = decisions.filter((decision) => {
-    const run = mappedRuns.find((item) => item.jobId === decision.jobId && item.candidateId === decision.candidateId);
-    if (!run) return false;
-    return (decision.decision === "reject" && run.score >= 82) || (["shortlist", "interview"].includes(decision.decision) && run.score < 50);
+  return computeCalibrationMetrics({
+    runs: runs.map(mapMatchRun),
+    labels: labelsResult,
+    decisions: decisionsResult,
+    cases: casesResult,
+    jobs: jobsResult,
+    jobId,
   });
-  const interviewPairs = labeledRuns.map((run) => {
-    const label = labelMap.get(`${run.jobId}:${run.candidateId}`);
-    return {
-      score: run.score,
-      interviewed: label === "interviewed" || label === "offer" || label === "hired" ? 1 : 0,
-    };
-  });
-  return {
-    evaluatedAt: new Date().toISOString(),
-    labeledCount: labeledRuns.length,
-    precisionAt10: labeledTop10.length ? Math.round((relevantTop10.length / labeledTop10.length) * 100) : 0,
-    ndcgAt10: ideal ? Math.round((dcg / ideal) * 100) : 0,
-    falseKnockoutRate: autoRejects.length ? Math.round((falseRejects.length / autoRejects.length) * 100) : 0,
-    overrideRate: decisions.length ? Math.round((overrides.length / decisions.length) * 100) : 0,
-    scoreToInterviewCorrelation: Math.round(correlation(interviewPairs) * 100) / 100,
-    avgScore: labeledRuns.length ? Math.round(labeledRuns.reduce((sum, run) => sum + run.score, 0) / labeledRuns.length) : 0,
-    interviewRate: interviewPairs.length ? Math.round((interviewPairs.filter((item) => item.interviewed).length / interviewPairs.length) * 100) : 0,
-  };
 }
 
 export async function listCandidatePool() {

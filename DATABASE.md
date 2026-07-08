@@ -26,9 +26,15 @@ After pulling the auth milestone, create a migration for the new user auth field
 npx prisma migrate dev --name add_user_auth_fields
 ```
 
+After pulling the benchmark-quality milestone, create a migration for benchmark cases and benchmark run history:
+
+```bash
+npx prisma migrate dev --name add_benchmark_quality_tables
+```
+
 ## Production Tables
 
-The schema includes organizations, users, jobs, candidates, resumes, vector records, match runs, recruiter decisions, benchmark labels, audit events, and evaluation snapshots. Users now include `passwordHash` and `lastLoginAt` for native session auth.
+The schema includes organizations, users, jobs, candidates, resumes, vector records, match runs, recruiter decisions, benchmark labels, benchmark cases, benchmark runs, audit events, and evaluation snapshots. Users include `passwordHash` and `lastLoginAt` for native session auth.
 
 ## Next Adapter Step
 

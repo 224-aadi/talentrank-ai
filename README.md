@@ -77,6 +77,7 @@ This repo now includes:
 - Recruiter decisions with notes, candidate status updates, and audit events
 - Skill graph taxonomy with aliases, adjacent skills, seniority signals, and role-family weights
 - Calibration dashboard with precision@10, nDCG@10, false knockout rate, override rate, and score-to-interview correlation
+- Benchmark dataset import/export, benchmark run snapshots, recall@50, precision@5, segment calibration, and score-change comparison
 - Prisma/Postgres schema and database setup guide
 - Header-based auth context with organization and role enforcement for write APIs
 - Compliance Trust Center with protected-class guardrails, audit export, retention report, candidate deletion controls, and explainability report endpoints
@@ -174,6 +175,15 @@ Compliance endpoints:
 - `GET /api/resumes/:resumeId/download` downloads the original stored resume; recruiter role required.
 - `GET /api/ops/metrics` returns runtime mode and in-process operational counters; admin role required.
 
+Benchmark endpoints:
+
+- `GET /api/benchmarks/cases` lists imported benchmark test-set cases.
+- `POST /api/benchmarks/cases` imports cases with `jobId`, `candidateId`, `expectedLabel`, and optional segment fields.
+- `GET /api/benchmarks/runs` lists benchmark snapshots.
+- `POST /api/benchmarks/runs` creates a quality snapshot for the current model/version.
+- `GET /api/benchmarks/compare?baselineId=...&challengerId=...` reports metric deltas.
+- `GET /api/benchmarks/export` exports labels, cases, and run history.
+
 ## Upload Security And Storage
 
 Resume uploads enforce allowed extensions/MIME hints, PDF/DOCX magic-byte checks, max batch size, and optional malware scanning. Configure:
@@ -213,6 +223,7 @@ This is still an MVP:
 - No production skill taxonomy yet.
 - No independent third-party bias audit yet.
 - External object-storage gateway, hosted SSO, and enterprise observability integrations still need provider-specific wiring.
+- Benchmark quality still needs a larger real labeled dataset before public claims.
 
 See:
 

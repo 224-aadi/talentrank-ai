@@ -15,6 +15,7 @@ model Organization {
   jobs        Job[]
   candidates  Candidate[]
   auditEvents AuditEvent[]
+  benchmarkRuns BenchmarkRun[]
 }
 
 model User {
@@ -60,6 +61,7 @@ model Candidate {
   matchRuns      MatchRun[]
   decisions      RecruiterDecision[]
   benchmarkLabels BenchmarkLabel[]
+  benchmarkCases BenchmarkCase[]
   auditEvents    AuditEvent[]
 }
 
@@ -141,6 +143,39 @@ model BenchmarkLabel {
 
   @@index([jobId])
   @@index([candidateId])
+}
+
+model BenchmarkCase {
+  id            String               @id @default(cuid())
+  jobId         String
+  candidateId   String
+  expectedLabel BenchmarkLabelValue
+  roleFamily    String?
+  seniority     String?
+  location      String?
+  source        String?
+  notes         String?
+  createdAt     DateTime             @default(now())
+  candidate     Candidate            @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, candidateId])
+  @@index([jobId])
+  @@index([candidateId])
+}
+
+model BenchmarkRun {
+  id             String       @id @default(cuid())
+  organizationId String       @default("org_demo")
+  jobId          String?
+  modelVersion   String
+  metrics        Json
+  caseCount      Int          @default(0)
+  notes          String?
+  createdAt      DateTime     @default(now())
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+  @@index([modelVersion])
 }
 
 model AuditEvent {

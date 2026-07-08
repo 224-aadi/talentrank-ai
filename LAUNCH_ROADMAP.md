@@ -31,6 +31,7 @@ TalentRank should compete as an explainable candidate intelligence layer, not as
 - Skill aliases and competency signal groups.
 - Skill graph taxonomy with aliases, adjacent skills, seniority signals, transferable evidence, and role-family weighting.
 - Calibration dashboard with benchmark labels, precision@10, nDCG@10, false knockout rate, override rate, and score-to-interview correlation.
+- Benchmark dataset import/export, benchmark run history, precision@5, recall@50, segment metrics, hard-rule false-knockout breakdowns, and benchmark run comparison.
 - Prisma/Postgres schema, env template, and database setup guide.
 - Prisma repository adapter behind `TALENTRANK_USE_PRISMA=true`.
 - Header-based auth context with organization and role enforcement on write APIs.
@@ -84,8 +85,10 @@ TalentRank should compete as an explainable candidate intelligence layer, not as
 
 5. Calibration And Feedback
    - Recruiter labels: good match, bad match, interviewed, offer, hired are implemented.
-   - Score calibration by job family and seniority has a baseline dashboard.
-   - Measure precision@10, nDCG@10, false knockout rate, recruiter override rate, and score-to-interview correlation.
+   - Score calibration by job family and seniority has a dashboard with segment metrics.
+   - Measure precision@5, precision@10, recall@50, nDCG@10, false knockout rate, recruiter override rate, and score-to-interview correlation.
+   - Import/export labeled benchmark test sets and save benchmark run history.
+   - Compare benchmark runs to explain metric changes between model versions.
    - Let customers tune weights per role family.
    - Track decision drift when recruiters repeatedly override the model.
 
@@ -114,7 +117,7 @@ TalentRank should compete as an explainable candidate intelligence layer, not as
 3. Connect a live Postgres database, run migrations, and enable `TALENTRANK_USE_PRISMA=true` in production.
 4. Harden BM25/Boolean retrieval with saved searches, filters, and benchmark coverage.
 5. Expand the skill taxonomy into a larger licensed/imported skill graph.
-6. Add recall@50, segment calibration, and benchmark dataset import/export.
+6. Expand benchmark cases with larger real-world labeled datasets and golden regression fixtures.
 7. Replace header auth with SSO/login, account management, and secure file storage.
 8. Connect managed observability, backups, and retention automation.
 9. Run benchmark tests on a larger labeled resume/JD dataset before selling.

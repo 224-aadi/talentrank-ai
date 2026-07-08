@@ -4,10 +4,14 @@ import crypto from "node:crypto";
 import { prismaEnabled } from "./prisma";
 import * as prismaStore from "./prisma-store";
 import { explainabilitySummary, guardrailReport } from "./compliance";
+import { compareBenchmarkRuns, computeCalibrationMetrics } from "./benchmarking";
 import type {
   AuditEvent,
+  BenchmarkCase,
+  BenchmarkComparison,
   BenchmarkLabel,
   BenchmarkLabelValue,
+  BenchmarkRun,
   Candidate,
   CandidatePoolItem,
   CalibrationMetrics,
@@ -59,6 +63,8 @@ function emptyDb(): TalentRankDb {
     matchRuns: [],
     decisions: [],
     benchmarkLabels: [],
+    benchmarkCases: [],
+    benchmarkRuns: [],
     auditEvents: [],
     evaluations: [],
     vectorRecords: [],
@@ -96,6 +102,16 @@ function decisions(db: TalentRankDb) {
 function benchmarkLabels(db: TalentRankDb) {
   db.benchmarkLabels ||= [];
   return db.benchmarkLabels;
+}
+
+function benchmarkCases(db: TalentRankDb) {
+  db.benchmarkCases ||= [];
+  return db.benchmarkCases;
+}
+
+function benchmarkRuns(db: TalentRankDb) {
+  db.benchmarkRuns ||= [];
+  return db.benchmarkRuns;
 }
 
 export async function listJobs() {
@@ -347,81 +363,76 @@ export async function listBenchmarkLabels(jobId?: string) {
   return jobId ? labels.filter((label) => label.jobId === jobId) : labels;
 }
 
-function relevance(label?: BenchmarkLabelValue) {
-  if (label === "hired") return 4;
-  if (label === "offer") return 3;
-  if (label === "interviewed") return 2;
-  if (label === "good_match") return 1;
-  return 0;
-}
-
-function correlation(pairs: Array<{ score: number; interviewed: number }>) {
-  if (pairs.length < 2) return 0;
-  const avgScore = pairs.reduce((sum, item) => sum + item.score, 0) / pairs.length;
-  const avgInterview = pairs.reduce((sum, item) => sum + item.interviewed, 0) / pairs.length;
-  const numerator = pairs.reduce((sum, item) => sum + (item.score - avgScore) * (item.interviewed - avgInterview), 0);
-  const scoreVariance = pairs.reduce((sum, item) => sum + (item.score - avgScore) ** 2, 0);
-  const interviewVariance = pairs.reduce((sum, item) => sum + (item.interviewed - avgInterview) ** 2, 0);
-  const denominator = Math.sqrt(scoreVariance * interviewVariance);
-  return denominator ? numerator / denominator : 0;
-}
-
 export async function calibrationMetrics(jobId?: string): Promise<CalibrationMetrics> {
   if (prismaEnabled()) return await prismaStore.calibrationMetrics(jobId);
   const db = await readDb();
-  const runs = (jobId ? db.matchRuns.filter((run) => run.jobId === jobId) : db.matchRuns).sort((a, b) => b.score - a.score);
-  const labelMap = new Map<string, BenchmarkLabelValue>();
-  for (const label of benchmarkLabels(db)) {
-    if (!jobId || label.jobId === jobId) labelMap.set(`${label.jobId}:${label.candidateId}`, label.label);
-  }
-  for (const decision of decisions(db)) {
-    if (jobId && decision.jobId !== jobId) continue;
-    const derived = decision.decision === "interview" ? "interviewed" : decision.decision === "shortlist" ? "good_match" : decision.decision === "reject" ? "bad_match" : undefined;
-    if (derived) labelMap.set(`${decision.jobId}:${decision.candidateId}`, derived);
-  }
-
-  const labeledRuns = runs.filter((run) => labelMap.has(`${run.jobId}:${run.candidateId}`));
-  const top10 = runs.slice(0, 10);
-  const labeledTop10 = top10.filter((run) => labelMap.has(`${run.jobId}:${run.candidateId}`));
-  const relevantTop10 = labeledTop10.filter((run) => relevance(labelMap.get(`${run.jobId}:${run.candidateId}`)) > 0);
-  const dcg = top10.reduce((sum, run, index) => {
-    const rel = relevance(labelMap.get(`${run.jobId}:${run.candidateId}`));
-    return sum + (2 ** rel - 1) / Math.log2(index + 2);
-  }, 0);
-  const ideal = [...labeledRuns]
-    .sort((a, b) => relevance(labelMap.get(`${b.jobId}:${b.candidateId}`)) - relevance(labelMap.get(`${a.jobId}:${a.candidateId}`)))
-    .slice(0, 10)
-    .reduce((sum, run, index) => {
-      const rel = relevance(labelMap.get(`${run.jobId}:${run.candidateId}`));
-      return sum + (2 ** rel - 1) / Math.log2(index + 2);
-    }, 0);
-  const autoRejects = labeledRuns.filter((run) => run.verdict === "Auto-reject");
-  const falseRejects = autoRejects.filter((run) => relevance(labelMap.get(`${run.jobId}:${run.candidateId}`)) > 0);
-  const overrides = decisions(db).filter((decision) => {
-    if (jobId && decision.jobId !== jobId) return false;
-    const run = runs.find((item) => item.jobId === decision.jobId && item.candidateId === decision.candidateId);
-    if (!run) return false;
-    return (decision.decision === "reject" && run.score >= 82) || (["shortlist", "interview"].includes(decision.decision) && run.score < 50);
+  return computeCalibrationMetrics({
+    runs: jobId ? db.matchRuns.filter((run) => run.jobId === jobId) : db.matchRuns,
+    labels: benchmarkLabels(db),
+    decisions: decisions(db),
+    cases: benchmarkCases(db),
+    jobs: db.jobs,
+    jobId,
   });
-  const interviewPairs = labeledRuns.map((run) => {
-    const label = labelMap.get(`${run.jobId}:${run.candidateId}`);
-    return {
-      score: run.score,
-      interviewed: label === "interviewed" || label === "offer" || label === "hired" ? 1 : 0,
-    };
-  });
+}
 
-  return {
-    evaluatedAt: now(),
-    labeledCount: labeledRuns.length,
-    precisionAt10: labeledTop10.length ? Math.round((relevantTop10.length / labeledTop10.length) * 100) : 0,
-    ndcgAt10: ideal ? Math.round((dcg / ideal) * 100) : 0,
-    falseKnockoutRate: autoRejects.length ? Math.round((falseRejects.length / autoRejects.length) * 100) : 0,
-    overrideRate: decisions(db).length ? Math.round((overrides.length / decisions(db).length) * 100) : 0,
-    scoreToInterviewCorrelation: Math.round(correlation(interviewPairs) * 100) / 100,
-    avgScore: labeledRuns.length ? Math.round(labeledRuns.reduce((sum, run) => sum + run.score, 0) / labeledRuns.length) : 0,
-    interviewRate: interviewPairs.length ? Math.round((interviewPairs.filter((item) => item.interviewed).length / interviewPairs.length) * 100) : 0,
+export async function importBenchmarkCases(input: Array<Omit<BenchmarkCase, "id" | "createdAt">>) {
+  if (prismaEnabled()) return await prismaStore.importBenchmarkCases(input);
+  const db = await readDb();
+  const timestamp = now();
+  const rows: BenchmarkCase[] = input.map((item) => ({
+    id: createId("benchcase"),
+    createdAt: timestamp,
+    ...item,
+  }));
+  const keys = new Set(rows.map((item) => `${item.jobId}:${item.candidateId}`));
+  db.benchmarkCases = [
+    ...rows,
+    ...benchmarkCases(db).filter((item) => !keys.has(`${item.jobId}:${item.candidateId}`)),
+  ];
+  await writeDb(db);
+  return rows;
+}
+
+export async function listBenchmarkCases(jobId?: string): Promise<BenchmarkCase[]> {
+  if (prismaEnabled()) return await prismaStore.listBenchmarkCases(jobId);
+  const db = await readDb();
+  const rows = benchmarkCases(db);
+  return jobId ? rows.filter((item) => item.jobId === jobId) : rows;
+}
+
+export async function createBenchmarkRun(input: { jobId?: string; modelVersion?: string; notes?: string }): Promise<BenchmarkRun> {
+  if (prismaEnabled()) return await prismaStore.createBenchmarkRun(input);
+  const db = await readDb();
+  const metrics = await calibrationMetrics(input.jobId);
+  const modelVersion = input.modelVersion || db.matchRuns.find((run) => !input.jobId || run.jobId === input.jobId)?.modelVersion || "unknown";
+  const run: BenchmarkRun = {
+    id: createId("benchrun"),
+    at: now(),
+    jobId: input.jobId,
+    modelVersion,
+    metrics,
+    caseCount: benchmarkCases(db).filter((item) => !input.jobId || item.jobId === input.jobId).length,
+    notes: input.notes,
   };
+  benchmarkRuns(db).unshift(run);
+  await writeDb(db);
+  return run;
+}
+
+export async function listBenchmarkRuns(jobId?: string): Promise<BenchmarkRun[]> {
+  if (prismaEnabled()) return await prismaStore.listBenchmarkRuns(jobId);
+  const db = await readDb();
+  const rows = benchmarkRuns(db);
+  return jobId ? rows.filter((item) => item.jobId === jobId) : rows;
+}
+
+export async function compareBenchmarkRunIds(baselineId?: string, challengerId?: string): Promise<BenchmarkComparison> {
+  if (prismaEnabled()) return await prismaStore.compareBenchmarkRunIds(baselineId, challengerId);
+  const runs = await listBenchmarkRuns();
+  const baseline = baselineId ? runs.find((run) => run.id === baselineId) || null : runs[1] || null;
+  const challenger = challengerId ? runs.find((run) => run.id === challengerId) || null : runs[0] || null;
+  return compareBenchmarkRuns(baseline, challenger);
 }
 
 export async function listCandidatePool(): Promise<CandidatePoolItem[]> {
