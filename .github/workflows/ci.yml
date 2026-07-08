@@ -10,8 +10,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DATABASE_URL: postgresql://user:pass@localhost:5432/talentrank
-      TALENTRANK_AUTH_SECRET: ci-auth-secret
-      TALENTRANK_STORAGE_KEY: ci-storage-secret
+      TALENTRANK_AUTH_SECRET: 7zQ4nW9pL2sX8cV5bN1mK6rT3yH0aDqF
+      TALENTRANK_STORAGE_KEY: Lp82Qr57Nm14Xs93Vt60Ha31Kc49Wd26
       TALENTRANK_MALWARE_SCAN_URL: https://scanner.example.test/scan
     steps:
       - uses: actions/checkout@v4
