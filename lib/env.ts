@@ -4,7 +4,7 @@ export type RuntimeMode = {
   persistence: "json" | "prisma";
   auth: "header" | "session";
   embeddings: "local" | "openai";
-  ocr: "configured" | "not-configured";
+  ocr: "generic" | "ocrspace" | "not-configured";
   storage: "local-encrypted" | "local-unencrypted" | "external";
   ready: boolean;
   warnings: string[];
@@ -15,7 +15,11 @@ export function runtimeMode(): RuntimeMode {
   const persistence = prismaEnabled() ? "prisma" : "json";
   const auth = process.env.TALENTRANK_AUTH_MODE === "headers" ? "header" : "session";
   const embeddings = process.env.OPENAI_API_KEY ? "openai" : "local";
-  const ocr = process.env.OCR_API_URL ? "configured" : "not-configured";
+  const ocr = process.env.OCR_SPACE_API_KEY || process.env.OCR_PROVIDER === "ocrspace"
+    ? "ocrspace"
+    : process.env.OCR_API_URL
+      ? "generic"
+      : "not-configured";
   const storage = process.env.TALENTRANK_STORAGE_PROVIDER
     ? "external"
     : process.env.TALENTRANK_STORAGE_KEY
@@ -55,6 +59,9 @@ export function runtimeMode(): RuntimeMode {
   }
   if (process.env.NODE_ENV === "production" && !process.env.TALENTRANK_MALWARE_SCAN_URL) {
     warnings.push("Production uploads should configure TALENTRANK_MALWARE_SCAN_URL.");
+  }
+  if (process.env.OCR_PROVIDER === "ocrspace" && !process.env.OCR_SPACE_API_KEY) {
+    warnings.push("OCR_PROVIDER=ocrspace requires OCR_SPACE_API_KEY.");
   }
 
   return {

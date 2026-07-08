@@ -49,8 +49,10 @@ export function integrationStatus() {
     {
       key: "ocr",
       label: "OCR",
-      status: has("OCR_API_URL") ? "ready" : "optional",
-      detail: "OCR is needed for scanned PDFs; text PDFs and DOCX can parse without it.",
+      status: has("OCR_API_URL") || has("OCR_SPACE_API_KEY") ? "ready" : "optional",
+      detail: has("OCR_SPACE_API_KEY")
+        ? "OCR.space provider configured for scanned PDFs."
+        : "OCR is needed for scanned PDFs; text PDFs and DOCX can parse without it.",
     },
     {
       key: "embeddings",

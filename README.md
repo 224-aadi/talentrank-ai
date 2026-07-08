@@ -153,6 +153,7 @@ Set `TALENTRANK_USE_PRISMA=true` with `DATABASE_URL` to route the repository lay
 Scanned PDFs are detected when embedded PDF text is sparse. Configure a production OCR service:
 
 ```bash
+OCR_PROVIDER=generic
 OCR_API_URL=https://your-ocr-service.example.com/extract
 OCR_API_KEY=optional_bearer_token
 ```
@@ -161,6 +162,15 @@ The OCR endpoint should accept multipart form data with a `file` field and retur
 
 ```json
 { "text": "extracted resume text", "provider": "textract", "confidence": 0.94 }
+```
+
+Direct OCR.space provider mode is also supported without adding an SDK:
+
+```bash
+OCR_PROVIDER=ocrspace
+OCR_SPACE_API_KEY=your_ocr_space_api_key
+OCR_SPACE_LANGUAGE=eng
+OCR_SPACE_ENGINE=2
 ```
 
 Compliance endpoints:

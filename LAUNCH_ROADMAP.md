@@ -19,7 +19,7 @@ TalentRank should compete as an explainable candidate intelligence layer, not as
 - JSON repository layer that can be replaced with Postgres.
 - Server-side screening API that persists jobs, candidates, resumes, match runs, audits, and evaluation snapshots.
 - Server-side resume ingestion for PDF, DOCX, TXT, MD, and CSV files.
-- OCR fallback hook for scanned PDFs through `OCR_API_URL`.
+- OCR fallback for scanned PDFs through a generic OCR gateway or direct OCR.space provider mode.
 - Structured resume JSON extraction for contact, sections, skills, education, experience, projects, certifications, quantified evidence, seniority signals, bullets, dates, tables, layout warnings, and work history timelines.
 - Next match workbench for persisted ranked results.
 - Batch resume upload with PDF, DOCX, TXT, and MD support.
@@ -63,7 +63,7 @@ TalentRank should compete as an explainable candidate intelligence layer, not as
 ## Launch-Grade Backend Requirements
 
 1. Document Processing
-   - Server-side parsing with multiple parsers and an OCR provider hook are implemented.
+   - Server-side parsing with multiple parsers and OCR provider adapters are implemented.
    - Preserve layout sections, tables, dates, bullets, and skill blocks. Baseline extraction is implemented; production OCR quality depends on the configured provider.
    - Store parsed raw text plus structured JSON.
 

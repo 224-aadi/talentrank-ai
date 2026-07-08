@@ -10,6 +10,11 @@ const mode = {
     : process.env.TALENTRANK_STORAGE_KEY
       ? "local-encrypted"
       : "local-unencrypted",
+  ocr: process.env.OCR_SPACE_API_KEY || process.env.OCR_PROVIDER === "ocrspace"
+    ? "ocrspace"
+    : process.env.OCR_API_URL
+      ? "generic"
+      : "not-configured",
 };
 
 const warnings = [];
@@ -64,6 +69,10 @@ if (mode.storage === "external" && !process.env.TALENTRANK_STORAGE_DOWNLOAD_URL)
 
 if (mode.nodeEnv === "production" && !process.env.TALENTRANK_MALWARE_SCAN_URL) {
   failures.push("TALENTRANK_MALWARE_SCAN_URL is required for production resume uploads.");
+}
+
+if (process.env.OCR_PROVIDER === "ocrspace" && !process.env.OCR_SPACE_API_KEY) {
+  failures.push("OCR_SPACE_API_KEY is required when OCR_PROVIDER=ocrspace.");
 }
 
 console.log(JSON.stringify({ ok: failures.length === 0, mode, warnings, failures }, null, 2));

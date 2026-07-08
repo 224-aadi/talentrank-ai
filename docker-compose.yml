@@ -29,6 +29,7 @@ services:
       TALENTRANK_BOOTSTRAP_PASSWORD: talentrank-admin
       TALENTRANK_STORAGE_KEY: docker-dev-storage-secret-change-me
       TALENTRANK_MALWARE_SCAN_URL: http://mock-integrations:3060/scan
+      OCR_PROVIDER: generic
       OCR_API_URL: http://mock-integrations:3060/ocr
       TALENTRANK_STORAGE_DOWNLOAD_URL: http://mock-integrations:3060/signed-download
       OPENAI_EMBEDDING_MODEL: text-embedding-3-small

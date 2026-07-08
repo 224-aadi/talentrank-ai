@@ -26,8 +26,12 @@ TALENTRANK_MALWARE_SCAN_URL=https://your-scanner.example.com/scan
 OPENAI_API_KEY=your_api_key
 OPENAI_EMBEDDING_MODEL=text-embedding-3-small
 OPENAI_EMBEDDING_DIMENSIONS=256
+OCR_PROVIDER=generic
 OCR_API_URL=https://your-ocr-provider/extract
 OCR_API_KEY=your_ocr_key
+# Or:
+# OCR_PROVIDER=ocrspace
+# OCR_SPACE_API_KEY=your_ocr_space_api_key
 TALENTRANK_AUTH_MODE=headers
 TALENTRANK_STORAGE_PROVIDER=external
 TALENTRANK_STORAGE_UPLOAD_URL=https://your-storage-gateway.example.com/upload
@@ -154,6 +158,7 @@ Then point the app at:
 ```bash
 TALENTRANK_MALWARE_SCAN_URL=http://127.0.0.1:3060/scan
 OCR_API_URL=http://127.0.0.1:3060/ocr
+OCR_PROVIDER=generic
 TALENTRANK_STORAGE_PROVIDER=external
 TALENTRANK_STORAGE_UPLOAD_URL=http://127.0.0.1:3060/upload
 TALENTRANK_STORAGE_DOWNLOAD_URL=http://127.0.0.1:3060/signed-download

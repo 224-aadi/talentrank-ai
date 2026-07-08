@@ -64,7 +64,7 @@ Customers may need to disclose:
 ## OCR And Parsing Controls
 
 - Scanned PDFs are detected when embedded PDF text is sparse.
-- OCR is provider-based through `OCR_API_URL` and optional `OCR_API_KEY`.
+- OCR is provider-based through a generic `OCR_API_URL` gateway or direct `OCR_PROVIDER=ocrspace`.
 - Resume parsing now captures bullets, dates, table-like structures, work timeline evidence, parse confidence, and layout warnings.
 - Low parse confidence or OCR warnings should trigger recruiter review before consequential decisions.
 
