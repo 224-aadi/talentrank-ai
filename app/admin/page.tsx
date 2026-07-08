@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { currentUser, listAuthUsers } from "@/lib/auth";
 import { integrationStatus } from "@/lib/integrations";
 import { AdminUsersPanel } from "./admin-users-panel";
+import { IntegrationDiagnosticsPanel } from "./integration-diagnostics-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -73,6 +74,7 @@ export default async function AdminPage() {
           </p>
         </article>
       </section>
+      <IntegrationDiagnosticsPanel items={status.items} />
       <AdminUsersPanel initialUsers={users} currentUserId={user.id} />
     </main>
   );

@@ -244,6 +244,7 @@ Production helpers:
 - `npm run ops:retention` prints a retention queue report.
 - Docker Compose starts Postgres, the web app, and mock integrations for deployment rehearsal.
 - Admin Operations Center: `/admin`
+- Admin provider diagnostics: `/admin` can run live probes for database, storage, malware scanning, OCR, embeddings, OIDC discovery, and log drains through `POST /api/admin/integrations/test`.
 
 ## Current Limitations
 
@@ -255,7 +256,7 @@ This is still an MVP:
 - Managed vector database storage is not deployed yet.
 - No production skill taxonomy yet.
 - No independent third-party bias audit yet.
-- External object-storage gateway, hosted SSO, and enterprise observability integrations still need provider-specific wiring.
+- Provider integrations are implemented but still need staging validation with real customer/provider credentials before launch claims.
 - Benchmark quality still needs a larger real labeled dataset before public claims.
 
 See:

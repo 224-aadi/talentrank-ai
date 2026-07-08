@@ -33,18 +33,30 @@ export function integrationStatus() {
     {
       key: "storage",
       label: "Resume Storage",
-      status: runtime.storage === "external" && has("TALENTRANK_STORAGE_UPLOAD_URL") && has("TALENTRANK_STORAGE_DOWNLOAD_URL")
+      status: runtime.storage === "s3" && has("S3_ENDPOINT") && (has("S3_BUCKET") || has("TALENTRANK_STORAGE_BUCKET"))
+        ? "ready"
+        : runtime.storage === "external" && has("TALENTRANK_STORAGE_UPLOAD_URL") && has("TALENTRANK_STORAGE_DOWNLOAD_URL")
         ? "ready"
         : runtime.storage === "local-encrypted"
           ? "warning"
           : "missing",
-      detail: runtime.storage === "external" ? "External upload/download gateway configured." : "Use encrypted local storage for beta; external storage is needed for multi-instance production.",
+      detail: runtime.storage === "s3"
+        ? "S3-compatible object storage is configured."
+        : runtime.storage === "external"
+          ? "External upload/download gateway configured."
+          : "Use encrypted local storage for beta; external storage is needed for multi-instance production.",
     },
     {
       key: "malware",
       label: "Malware Scanning",
-      status: has("TALENTRANK_MALWARE_SCAN_URL") ? "ready" : "missing",
-      detail: "Resume uploads should be scanned before parsing and storage.",
+      status: process.env.TALENTRANK_MALWARE_PROVIDER === "virustotal" && has("VIRUSTOTAL_API_KEY")
+        ? "ready"
+        : has("TALENTRANK_MALWARE_SCAN_URL")
+          ? "ready"
+          : "missing",
+      detail: process.env.TALENTRANK_MALWARE_PROVIDER === "virustotal"
+        ? "VirusTotal scanner provider configured."
+        : "Resume uploads should be scanned before parsing and storage.",
     },
     {
       key: "ocr",
@@ -65,6 +77,12 @@ export function integrationStatus() {
       label: "Observability",
       status: has("TALENTRANK_LOG_DRAIN_URL") || has("SENTRY_DSN") ? "ready" : "warning",
       detail: "Structured logs exist; connect a log drain or error monitor before public launch.",
+    },
+    {
+      key: "oidc",
+      label: "Enterprise SSO",
+      status: has("OIDC_ISSUER_URL") && has("OIDC_CLIENT_ID") && has("OIDC_CLIENT_SECRET") ? "ready" : "optional",
+      detail: "Configure OIDC for Google, Microsoft Entra ID, Okta, or another enterprise identity provider.",
     },
     {
       key: "backups",

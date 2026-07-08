@@ -88,7 +88,16 @@ Admins can open:
 /admin
 ```
 
-This page reports integration readiness and links to backup export, health, and metrics endpoints.
+This page reports integration readiness, links to backup export/health/metrics endpoints, and exposes live provider diagnostics. The diagnostics can test database connectivity, object-storage writes, malware scanner credentials, OCR provider reachability, OpenAI embeddings, OIDC discovery, and log-drain ingestion from the same runtime that will serve customers.
+
+The diagnostics API is admin-only:
+
+```text
+POST /api/admin/integrations/test
+POST /api/admin/integrations/test {"key":"storage"}
+```
+
+Use the diagnostics in staging after secrets are configured and before routing real HR users to the workspace.
 
 Operational scripts:
 
@@ -99,7 +108,7 @@ npm run ops:retention
 
 ## Upload Safety
 
-Production deploy checks require `TALENTRANK_MALWARE_SCAN_URL`. The app also enforces file extension/MIME allowlists, PDF/DOCX magic-byte checks, batch-size limits, and route-level rate limits for login, screening, and resume downloads.
+Production deploy checks require either `TALENTRANK_MALWARE_SCAN_URL` or `TALENTRANK_MALWARE_PROVIDER=virustotal` with `VIRUSTOTAL_API_KEY`. The app also enforces file extension/MIME allowlists, PDF/DOCX magic-byte checks, batch-size limits, and route-level rate limits for login, screening, and resume downloads.
 
 ## Observability
 
@@ -184,7 +193,6 @@ The mock service is for deployment rehearsal only; it does not perform real OCR,
 
 ## Remaining Production Hardening
 
-- Connect hosted SSO/OIDC for enterprise customers.
-- Replace the mock external storage gateway with S3/R2/GCS and signed URLs for multi-instance production.
-- Connect managed log/error monitoring and alerts.
+- Validate hosted SSO/OIDC, S3/R2/GCS, OCR, malware scanning, embeddings, and log drain in staging with real provider credentials.
+- Connect alerting rules for provider failures and auth/security events.
 - Add backup and retention policies.
