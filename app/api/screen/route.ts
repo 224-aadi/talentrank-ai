@@ -3,7 +3,10 @@ import { z } from "zod";
 import { requireRole, type AuthUser } from "@/lib/auth";
 import { parseCandidateName, scoreCandidate } from "@/lib/matching";
 import { extractStructuredProfile, parseResumeFile, type ParsedResumeFile } from "@/lib/parsing";
+import { clientKey, checkRateLimit } from "@/lib/rate-limit";
 import { storeUploadedResumeFile } from "@/lib/secure-storage";
+import { incrementMetric, logEvent } from "@/lib/observability";
+import { validateBatchSize, validateResumeUpload } from "@/lib/upload-security";
 import {
   createCandidateWithResume,
   createEvaluation,
@@ -47,12 +50,18 @@ type StoredResumeInput = {
 export async function POST(request: Request) {
   try {
     const user = await requireRole("recruiter");
+    incrementMetric("screen.request");
+    const rateLimit = checkRateLimit(await clientKey("screen"), 20, 60_000);
+    if (!rateLimit.ok) {
+      return NextResponse.json({ error: "Too many screening requests. Try again shortly." }, { status: 429 });
+    }
     const contentType = request.headers.get("content-type") || "";
     if (contentType.includes("multipart/form-data")) {
       const formData = await request.formData();
       const jobPayload = JSON.parse(String(formData.get("job") || "{}"));
       const job = jobSchema.parse(jobPayload);
       const files = formData.getAll("resumes").filter((item): item is File => item instanceof File);
+      validateBatchSize(files);
       const resumeIds = [
         ...formData.getAll("resumeIds").map(String),
         ...JSON.parse(String(formData.get("savedResumeIds") || "[]")),
@@ -61,25 +70,31 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "Upload resumes or select saved candidates." }, { status: 400 });
       }
       const resumes = await Promise.all(files.map(async (file) => {
+        const validated = await validateResumeUpload(file);
         const [parsedFile, storedFile] = await Promise.all([parseResumeFile(file), storeUploadedResumeFile(file)]);
+        incrementMetric("storage.write");
         return {
           ...parsedFile,
           storageKey: storedFile.storageKey,
           warnings: [
             ...parsedFile.warnings,
             storedFile.encrypted ? "Original resume file stored encrypted" : "Original resume file stored without encryption key configured",
+            `Upload scanner: ${validated.scanner}`,
+            `Storage provider: ${storedFile.provider}`,
           ],
         };
       }));
       const storedResumes = resumeIds.length ? await getCandidatePoolByResumeIds(resumeIds) : [];
-      return await screen(job, resumes, storedResumes, user);
+      const response = await screen(job, resumes, storedResumes, user);
+      incrementMetric("screen.success");
+      return response;
     }
 
     const parsed = screenSchema.safeParse(await request.json());
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
     }
-    return await screen(
+    const response = await screen(
       parsed.data.job,
       parsed.data.resumes.map((resume) => ({
         ...resume,
@@ -91,8 +106,12 @@ export async function POST(request: Request) {
       parsed.data.resumeIds.length ? await getCandidatePoolByResumeIds(parsed.data.resumeIds) : [],
       user,
     );
+    incrementMetric("screen.success");
+    return response;
   } catch (error) {
     const message = error instanceof Error ? error.message : "Screening failed";
+    incrementMetric("screen.failure");
+    logEvent("screen.failure", { message });
     return NextResponse.json({ error: message }, { status: 400 });
   }
 }

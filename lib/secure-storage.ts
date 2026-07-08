@@ -6,6 +6,7 @@ export type StoredFile = {
   storageKey: string;
   encrypted: boolean;
   bytes: number;
+  provider: "local" | "external";
 };
 
 const storageRoot = path.join(process.cwd(), ".data", "secure-files");
@@ -56,8 +57,33 @@ export function storageConfiguredForProduction() {
   return Boolean(process.env.TALENTRANK_STORAGE_KEY || process.env.TALENTRANK_STORAGE_PROVIDER);
 }
 
+async function storeExternally(file: File, raw: Buffer): Promise<StoredFile | null> {
+  const endpoint = process.env.TALENTRANK_STORAGE_UPLOAD_URL;
+  if (!process.env.TALENTRANK_STORAGE_PROVIDER || !endpoint) return null;
+  const id = crypto.randomBytes(12).toString("hex");
+  const storageKey = `external/resumes/${new Date().toISOString().slice(0, 10)}/${id}-${safeName(file.name)}`;
+  const formData = new FormData();
+  formData.append("key", storageKey);
+  formData.append("file", new Blob([new Uint8Array(raw)], { type: file.type || "application/octet-stream" }), file.name);
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: process.env.TALENTRANK_STORAGE_TOKEN ? { authorization: `Bearer ${process.env.TALENTRANK_STORAGE_TOKEN}` } : undefined,
+    body: formData,
+  });
+  if (!response.ok) throw new Error(`External storage provider returned HTTP ${response.status}.`);
+  const payload = await response.json().catch(() => ({}));
+  return {
+    storageKey: typeof payload.storageKey === "string" ? payload.storageKey : storageKey,
+    encrypted: Boolean(payload.encrypted),
+    bytes: raw.length,
+    provider: "external",
+  };
+}
+
 export async function storeUploadedResumeFile(file: File): Promise<StoredFile> {
   const raw = Buffer.from(await file.arrayBuffer());
+  const external = await storeExternally(file, raw);
+  if (external) return external;
   const timestamp = new Date().toISOString().slice(0, 10);
   const id = crypto.randomBytes(12).toString("hex");
   const storageKey = `secure/resumes/${timestamp}/${id}-${safeName(file.name)}`;
@@ -76,10 +102,14 @@ export async function storeUploadedResumeFile(file: File): Promise<StoredFile> {
     storageKey,
     encrypted: payload.encrypted,
     bytes: raw.length,
+    provider: "local",
   };
 }
 
 export async function readStoredFile(storageKey: string) {
+  if (storageKey.startsWith("external/")) {
+    throw new Error("External storage downloads must be served by the configured object-storage gateway.");
+  }
   const target = localPathFor(storageKey);
   const buffer = await fs.readFile(target);
   return decrypt(buffer);

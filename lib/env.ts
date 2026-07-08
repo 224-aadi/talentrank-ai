@@ -37,6 +37,12 @@ export function runtimeMode(): RuntimeMode {
   if (process.env.NODE_ENV === "production" && storage === "local-unencrypted") {
     warnings.push("Production resume storage should set TALENTRANK_STORAGE_KEY or use an external storage provider.");
   }
+  if (storage === "external" && !process.env.TALENTRANK_STORAGE_UPLOAD_URL) {
+    warnings.push("TALENTRANK_STORAGE_PROVIDER requires TALENTRANK_STORAGE_UPLOAD_URL.");
+  }
+  if (process.env.NODE_ENV === "production" && !process.env.TALENTRANK_MALWARE_SCAN_URL) {
+    warnings.push("Production uploads should configure TALENTRANK_MALWARE_SCAN_URL.");
+  }
 
   return {
     persistence,

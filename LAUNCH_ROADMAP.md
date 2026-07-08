@@ -36,6 +36,7 @@ TalentRank should compete as an explainable candidate intelligence layer, not as
 - Header-based auth context with organization and role enforcement on write APIs.
 - Dockerfile, Docker Compose, CI workflow, deployment guide, and health readiness endpoint.
 - Trust Center with protected-class guardrails, retention reporting, audit export, adverse-impact report endpoint, candidate deletion controls, and match explainability exports.
+- Upload security checks, optional malware scanning, rate limiting, structured logs, and admin ops metrics.
 - Recruiter Boolean search syntax:
   - `python AND sql`
   - `"sensor data"`
@@ -92,7 +93,7 @@ TalentRank should compete as an explainable candidate intelligence layer, not as
    - Avoid protected-class inference. Implemented guardrail reports explicitly refuse demographic inference.
    - Make scoring explainable and auditable. Explainability export endpoint is implemented.
    - Log model version, input files, score components, hard-rule outcomes, and reviewer decisions.
-   - Header-based org/user/role context is implemented as the auth boundary for deployment middleware.
+   - Session auth is implemented with optional trusted-header mode for deployment middleware.
    - Bias and adverse-impact monitoring endpoint is implemented for lawfully collected audit groups.
    - Retention report, audit export, and candidate deletion controls are implemented.
 
@@ -115,5 +116,5 @@ TalentRank should compete as an explainable candidate intelligence layer, not as
 5. Expand the skill taxonomy into a larger licensed/imported skill graph.
 6. Add recall@50, segment calibration, and benchmark dataset import/export.
 7. Replace header auth with SSO/login, account management, and secure file storage.
-8. Add observability, rate limiting, virus scanning, backups, and retention automation.
+8. Connect managed observability, backups, and retention automation.
 9. Run benchmark tests on a larger labeled resume/JD dataset before selling.

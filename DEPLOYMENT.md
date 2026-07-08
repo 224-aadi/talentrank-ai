@@ -17,6 +17,7 @@ TALENTRANK_AUTH_SECRET=generate_a_long_random_secret
 TALENTRANK_BOOTSTRAP_EMAIL=admin@yourcompany.com
 TALENTRANK_BOOTSTRAP_PASSWORD=temporary_first_admin_password
 TALENTRANK_STORAGE_KEY=generate_a_long_random_file_encryption_secret
+TALENTRANK_MALWARE_SCAN_URL=https://your-scanner.example.com/scan
 ```
 
 ## Optional Environment
@@ -28,7 +29,10 @@ OPENAI_EMBEDDING_DIMENSIONS=256
 OCR_API_URL=https://your-ocr-provider/extract
 OCR_API_KEY=your_ocr_key
 TALENTRANK_AUTH_MODE=headers
-TALENTRANK_STORAGE_PROVIDER=s3
+TALENTRANK_STORAGE_PROVIDER=external
+TALENTRANK_STORAGE_UPLOAD_URL=https://your-storage-gateway.example.com/upload
+TALENTRANK_STORAGE_TOKEN=optional_bearer_token
+TALENTRANK_MAX_BATCH_FILES=50
 ```
 
 ## Auth
@@ -50,6 +54,20 @@ Remove or rotate `TALENTRANK_BOOTSTRAP_PASSWORD` after the first real admin acco
 ## Secure Storage
 
 Local secure storage writes original resumes under `.data/secure-files`. With `TALENTRANK_STORAGE_KEY`, files are encrypted with AES-256-GCM. For multi-instance deployments, replace local disk with shared object storage before serving customers.
+
+External storage uses an HTTP upload gateway. The gateway should accept multipart form data with `key` and `file`, persist to S3/R2/GCS or equivalent, and return `{ "storageKey": "...", "encrypted": true }`.
+
+## Upload Safety
+
+Production deploy checks require `TALENTRANK_MALWARE_SCAN_URL`. The app also enforces file extension/MIME allowlists, PDF/DOCX magic-byte checks, batch-size limits, and route-level rate limits for login, screening, and resume downloads.
+
+## Observability
+
+The app emits structured JSON logs for auth, screening, upload rejection, rate-limit blocks, storage writes, and resume downloads. Admins can inspect in-process counters at:
+
+```text
+GET /api/ops/metrics
+```
 
 ## Release Commands
 
@@ -103,6 +121,5 @@ The endpoint returns `200` when deployment-critical runtime settings are ready a
 
 - Connect hosted SSO/OIDC for enterprise customers.
 - Move resume file storage to S3/R2/GCS with signed URLs for multi-instance production.
-- Add rate limiting and file virus scanning.
-- Add structured logs and error monitoring.
+- Connect managed log/error monitoring and alerts.
 - Add backup and retention policies.

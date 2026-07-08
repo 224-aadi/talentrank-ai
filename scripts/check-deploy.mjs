@@ -41,6 +41,14 @@ if (mode.nodeEnv === "production" && mode.storage === "local-unencrypted") {
   failures.push("TALENTRANK_STORAGE_KEY or TALENTRANK_STORAGE_PROVIDER is required for production resume storage.");
 }
 
+if (mode.storage === "external" && !process.env.TALENTRANK_STORAGE_UPLOAD_URL) {
+  failures.push("TALENTRANK_STORAGE_UPLOAD_URL is required when TALENTRANK_STORAGE_PROVIDER is set.");
+}
+
+if (mode.nodeEnv === "production" && !process.env.TALENTRANK_MALWARE_SCAN_URL) {
+  failures.push("TALENTRANK_MALWARE_SCAN_URL is required for production resume uploads.");
+}
+
 console.log(JSON.stringify({ ok: failures.length === 0, mode, warnings, failures }, null, 2));
 
 if (failures.length) process.exit(1);

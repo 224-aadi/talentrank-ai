@@ -82,6 +82,7 @@ This repo now includes:
 - Compliance Trust Center with protected-class guardrails, audit export, retention report, candidate deletion controls, and explainability report endpoints
 - Session auth with signed HttpOnly cookies, PBKDF2 password hashes, admin user creation API, and optional trusted-header SSO mode
 - Secure resume file storage with encrypted local storage when `TALENTRANK_STORAGE_KEY` is configured
+- Upload security checks, batch limits, optional malware scanning, rate limiting, structured logs, and admin ops metrics
 - Docker, CI, deploy checks, and production health reporting
 - Launch architecture docs
 - Compliance checklist
@@ -128,6 +129,7 @@ TALENTRANK_AUTH_SECRET=long_random_session_secret
 TALENTRANK_BOOTSTRAP_EMAIL=founder@company.com
 TALENTRANK_BOOTSTRAP_PASSWORD=temporary_first_admin_password
 TALENTRANK_STORAGE_KEY=long_random_file_encryption_secret
+TALENTRANK_MALWARE_SCAN_URL=https://your-scanner.example.com/scan
 ```
 
 Admin-only user management:
@@ -170,6 +172,31 @@ Compliance endpoints:
 - `GET /api/compliance/explainability?matchRunId=...` exports score, evidence, gaps, hard rules, decision, and guardrail context.
 - `DELETE /api/candidates/:candidateId` deletes a candidate and related artifacts; admin role required.
 - `GET /api/resumes/:resumeId/download` downloads the original stored resume; recruiter role required.
+- `GET /api/ops/metrics` returns runtime mode and in-process operational counters; admin role required.
+
+## Upload Security And Storage
+
+Resume uploads enforce allowed extensions/MIME hints, PDF/DOCX magic-byte checks, max batch size, and optional malware scanning. Configure:
+
+```bash
+TALENTRANK_MAX_BATCH_FILES=50
+TALENTRANK_MALWARE_SCAN_URL=https://your-scanner.example.com/scan
+TALENTRANK_MALWARE_SCAN_KEY=optional_bearer_token
+```
+
+For external object storage, set:
+
+```bash
+TALENTRANK_STORAGE_PROVIDER=external
+TALENTRANK_STORAGE_UPLOAD_URL=https://your-storage-gateway.example.com/upload
+TALENTRANK_STORAGE_TOKEN=optional_bearer_token
+```
+
+The upload gateway should accept multipart form data with `key` and `file`, then return JSON like:
+
+```json
+{ "storageKey": "external/resumes/2026-07-08/file.pdf", "encrypted": true }
+```
 
 ## Deployment
 
@@ -185,7 +212,7 @@ This is still an MVP:
 - Managed vector database storage is not deployed yet.
 - No production skill taxonomy yet.
 - No independent third-party bias audit yet.
-- Enterprise file storage providers, malware scanning, and rate limiting are not connected yet.
+- External object-storage gateway, hosted SSO, and enterprise observability integrations still need provider-specific wiring.
 
 See:
 

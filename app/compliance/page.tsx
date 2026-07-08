@@ -75,6 +75,7 @@ export default async function CompliancePage() {
           <div className="endpoint-list">
             <a href="/api/compliance/retention">Retention report</a>
             <a href="/api/compliance/audit-export">Audit export</a>
+            <a href="/api/ops/metrics">Ops metrics</a>
             <a href="/api/health">Runtime health</a>
           </div>
           <p>
