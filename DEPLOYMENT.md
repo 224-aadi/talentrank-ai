@@ -73,11 +73,12 @@ GET /api/ops/metrics
 
 ```bash
 npm ci
-npx prisma generate
-npx prisma migrate deploy
+npm run deploy:release
 npm run build
 npm run start
 ```
+
+`npm run deploy:release` runs deployment readiness checks, Prisma client generation, and `prisma migrate deploy`.
 
 ## Docker
 
@@ -85,10 +86,12 @@ npm run start
 docker compose up --build
 ```
 
-For production containers, run migrations as a release step before starting the web process:
+The compose stack includes Postgres plus a local mock integration service for malware scan and OCR endpoints. The `web` service sets `TALENTRANK_RUN_MIGRATIONS=true`, so the container runs release checks and migrations before starting.
+
+For hosted production containers, prefer running release as a one-off job:
 
 ```bash
-npx prisma migrate deploy
+npm run deploy:release
 ```
 
 ## Health Check
@@ -108,18 +111,38 @@ The endpoint returns `200` when deployment-critical runtime settings are ready a
 - Build command: `npm run build`
 - Install command: `npm ci`
 - Add Postgres integration or set `DATABASE_URL`
-- Add a migration release step through your deployment workflow
+- Add a migration release step: `npm run deploy:release`
+- Set all required production secrets from `.env.production.example`
 
 ### Render/Fly/Railway
 
 - Use the Dockerfile or Node runtime
 - Set `DATABASE_URL`
 - Set `TALENTRANK_USE_PRISMA=true`
-- Run `npx prisma migrate deploy` before `npm run start`
+- Run `npm run deploy:release` before `npm run start`, or set `TALENTRANK_RUN_MIGRATIONS=true` for a single-instance deployment
+
+## Local Provider Rehearsal
+
+Start mock OCR, storage, and malware-scan providers:
+
+```bash
+npm run mock:integrations
+```
+
+Then point the app at:
+
+```bash
+TALENTRANK_MALWARE_SCAN_URL=http://127.0.0.1:3060/scan
+OCR_API_URL=http://127.0.0.1:3060/ocr
+TALENTRANK_STORAGE_PROVIDER=external
+TALENTRANK_STORAGE_UPLOAD_URL=http://127.0.0.1:3060/upload
+```
+
+The mock service is for deployment rehearsal only; it does not perform real OCR, malware detection, or encryption.
 
 ## Remaining Production Hardening
 
 - Connect hosted SSO/OIDC for enterprise customers.
-- Move resume file storage to S3/R2/GCS with signed URLs for multi-instance production.
+- Replace the mock external storage gateway with S3/R2/GCS and signed URLs for multi-instance production.
 - Connect managed log/error monitoring and alerts.
 - Add backup and retention policies.

@@ -23,10 +23,28 @@ services:
     environment:
       DATABASE_URL: postgresql://talentrank:talentrank_dev_password@db:5432/talentrank
       TALENTRANK_USE_PRISMA: "true"
+      TALENTRANK_RUN_MIGRATIONS: "true"
+      TALENTRANK_AUTH_SECRET: docker-dev-auth-secret-change-me
+      TALENTRANK_BOOTSTRAP_EMAIL: admin@talentrank.local
+      TALENTRANK_BOOTSTRAP_PASSWORD: talentrank-admin
+      TALENTRANK_STORAGE_KEY: docker-dev-storage-secret-change-me
+      TALENTRANK_MALWARE_SCAN_URL: http://mock-integrations:3060/scan
+      OCR_API_URL: http://mock-integrations:3060/ocr
       OPENAI_EMBEDDING_MODEL: text-embedding-3-small
       OPENAI_EMBEDDING_DIMENSIONS: "256"
     ports:
       - "3000:3000"
 
+  mock-integrations:
+    image: node:22-bookworm-slim
+    working_dir: /app
+    command: ["node", "scripts/mock-integrations.mjs"]
+    volumes:
+      - .:/app
+      - mock-object-storage:/app/.data/mock-object-storage
+    ports:
+      - "3060:3060"
+
 volumes:
   postgres-data:
+  mock-object-storage:

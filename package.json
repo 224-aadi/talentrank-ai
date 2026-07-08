@@ -11,6 +11,8 @@
     "start:legacy": "node server.js",
     "check": "node --check app.js && node --check server.js",
     "deploy:check": "node scripts/check-deploy.mjs",
+    "deploy:release": "node scripts/release.mjs",
+    "mock:integrations": "node scripts/mock-integrations.mjs",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy"

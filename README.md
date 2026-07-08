@@ -212,6 +212,13 @@ The upload gateway should accept multipart form data with `key` and `file`, then
 
 See [DEPLOYMENT.md](./DEPLOYMENT.md) for Docker, CI, Postgres migration, health check, and platform setup.
 
+Production helpers:
+
+- `.env.production.example` documents required secrets.
+- `npm run deploy:release` runs readiness checks, Prisma generation, and migrations.
+- `npm run mock:integrations` starts local mock OCR, storage, and malware-scan providers.
+- Docker Compose starts Postgres, the web app, and mock integrations for deployment rehearsal.
+
 ## Current Limitations
 
 This is still an MVP:

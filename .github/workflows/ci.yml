@@ -10,6 +10,9 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DATABASE_URL: postgresql://user:pass@localhost:5432/talentrank
+      TALENTRANK_AUTH_SECRET: ci-auth-secret
+      TALENTRANK_STORAGE_KEY: ci-storage-secret
+      TALENTRANK_MALWARE_SCAN_URL: https://scanner.example.test/scan
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -18,6 +21,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run deploy:check
+      - run: NODE_ENV=production TALENTRANK_USE_PRISMA=true npm run deploy:check
       - run: npx prisma generate
       - run: npx prisma validate
       - run: npm run build

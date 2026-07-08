@@ -15,6 +15,11 @@ const mode = {
 const warnings = [];
 const failures = [];
 
+function weakSecret(name) {
+  const value = process.env[name] || "";
+  return value.length < 24 || /change|replace|dummy|secret|password/i.test(value);
+}
+
 if (mode.nodeEnv === "production" && mode.persistence === "json") {
   warnings.push("Production is configured for JSON persistence. Use TALENTRANK_USE_PRISMA=true for customer deployment.");
 }
@@ -33,12 +38,20 @@ if (mode.nodeEnv === "production" && mode.auth === "session" && !process.env.TAL
   failures.push("TALENTRANK_AUTH_SECRET is required for production session auth.");
 }
 
+if (mode.nodeEnv === "production" && mode.auth === "session" && weakSecret("TALENTRANK_AUTH_SECRET")) {
+  failures.push("TALENTRANK_AUTH_SECRET must be a strong random value, not a placeholder.");
+}
+
 if (mode.nodeEnv === "production" && mode.auth === "session" && !process.env.TALENTRANK_BOOTSTRAP_PASSWORD) {
   warnings.push("Set TALENTRANK_BOOTSTRAP_PASSWORD only for first deploy, then rotate/remove it after creating real admins.");
 }
 
 if (mode.nodeEnv === "production" && mode.storage === "local-unencrypted") {
   failures.push("TALENTRANK_STORAGE_KEY or TALENTRANK_STORAGE_PROVIDER is required for production resume storage.");
+}
+
+if (mode.nodeEnv === "production" && process.env.TALENTRANK_STORAGE_KEY && weakSecret("TALENTRANK_STORAGE_KEY")) {
+  failures.push("TALENTRANK_STORAGE_KEY must be a strong random value, not a placeholder.");
 }
 
 if (mode.storage === "external" && !process.env.TALENTRANK_STORAGE_UPLOAD_URL) {
