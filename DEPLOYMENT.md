@@ -37,9 +37,21 @@ TALENTRANK_STORAGE_PROVIDER=external
 TALENTRANK_STORAGE_UPLOAD_URL=https://your-storage-gateway.example.com/upload
 TALENTRANK_STORAGE_DOWNLOAD_URL=https://your-storage-gateway.example.com/signed-download
 TALENTRANK_STORAGE_TOKEN=optional_bearer_token
+# Or S3/R2/GCS-compatible:
+# TALENTRANK_STORAGE_PROVIDER=s3
+# S3_ENDPOINT=https://s3.amazonaws.com
+# S3_BUCKET=talentrank-resumes
+# S3_ACCESS_KEY_ID=...
+# S3_SECRET_ACCESS_KEY=...
 TALENTRANK_MAX_BATCH_FILES=50
 TALENTRANK_BACKUP_URL=https://your-backup-gateway.example.com/upload
 TALENTRANK_RETENTION_DAYS=365
+TALENTRANK_MALWARE_PROVIDER=virustotal
+VIRUSTOTAL_API_KEY=your_virustotal_key
+TALENTRANK_LOG_DRAIN_URL=https://logs.example.com/ingest
+OIDC_ISSUER_URL=https://accounts.google.com
+OIDC_CLIENT_ID=...
+OIDC_CLIENT_SECRET=...
 ```
 
 ## Auth
@@ -58,11 +70,15 @@ Allowed roles are `admin`, `recruiter`, and `reviewer`.
 
 Remove or rotate `TALENTRANK_BOOTSTRAP_PASSWORD` after the first real admin accounts are created through `POST /api/auth/users`.
 
+Generic OIDC login is available at `/api/auth/oidc/start`. Configure `OIDC_ISSUER_URL`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, and optional `OIDC_DEFAULT_ORG_ID` / `OIDC_DEFAULT_ROLE`.
+
 ## Secure Storage
 
 Local secure storage writes original resumes under `.data/secure-files`. With `TALENTRANK_STORAGE_KEY`, files are encrypted with AES-256-GCM. For multi-instance deployments, replace local disk with shared object storage before serving customers.
 
 External storage uses HTTP upload and signed-download gateways. The upload gateway should accept multipart form data with `key` and `file`, persist to S3/R2/GCS or equivalent, and return `{ "storageKey": "...", "encrypted": true }`. The download gateway should accept `{ "storageKey": "...", "fileName": "..." }` and return `{ "url": "https://signed-download-url" }`.
+
+For direct S3-compatible uploads, set `TALENTRANK_STORAGE_PROVIDER=s3`. This supports AWS S3 and S3-compatible endpoints such as Cloudflare R2 or GCS interoperability mode.
 
 ## Admin Operations
 

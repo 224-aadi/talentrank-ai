@@ -5,7 +5,7 @@ export type RuntimeMode = {
   auth: "header" | "session";
   embeddings: "local" | "openai";
   ocr: "generic" | "ocrspace" | "not-configured";
-  storage: "local-encrypted" | "local-unencrypted" | "external";
+  storage: "local-encrypted" | "local-unencrypted" | "external" | "s3";
   ready: boolean;
   warnings: string[];
 };
@@ -20,8 +20,10 @@ export function runtimeMode(): RuntimeMode {
     : process.env.OCR_API_URL
       ? "generic"
       : "not-configured";
-  const storage = process.env.TALENTRANK_STORAGE_PROVIDER
-    ? "external"
+  const storage = process.env.TALENTRANK_STORAGE_PROVIDER === "s3"
+    ? "s3"
+    : process.env.TALENTRANK_STORAGE_PROVIDER
+      ? "external"
     : process.env.TALENTRANK_STORAGE_KEY
       ? "local-encrypted"
       : "local-unencrypted";
@@ -57,11 +59,17 @@ export function runtimeMode(): RuntimeMode {
   if (storage === "external" && !process.env.TALENTRANK_STORAGE_DOWNLOAD_URL) {
     warnings.push("TALENTRANK_STORAGE_PROVIDER requires TALENTRANK_STORAGE_DOWNLOAD_URL for signed downloads.");
   }
-  if (process.env.NODE_ENV === "production" && !process.env.TALENTRANK_MALWARE_SCAN_URL) {
+  if (process.env.TALENTRANK_STORAGE_PROVIDER === "s3" && !(process.env.S3_ENDPOINT && (process.env.S3_BUCKET || process.env.TALENTRANK_STORAGE_BUCKET))) {
+    warnings.push("TALENTRANK_STORAGE_PROVIDER=s3 requires S3_ENDPOINT and S3_BUCKET or TALENTRANK_STORAGE_BUCKET.");
+  }
+  if (process.env.NODE_ENV === "production" && process.env.TALENTRANK_MALWARE_PROVIDER !== "virustotal" && !process.env.TALENTRANK_MALWARE_SCAN_URL) {
     warnings.push("Production uploads should configure TALENTRANK_MALWARE_SCAN_URL.");
   }
   if (process.env.OCR_PROVIDER === "ocrspace" && !process.env.OCR_SPACE_API_KEY) {
     warnings.push("OCR_PROVIDER=ocrspace requires OCR_SPACE_API_KEY.");
+  }
+  if (process.env.TALENTRANK_MALWARE_PROVIDER === "virustotal" && !process.env.VIRUSTOTAL_API_KEY) {
+    warnings.push("TALENTRANK_MALWARE_PROVIDER=virustotal requires VIRUSTOTAL_API_KEY.");
   }
 
   return {

@@ -51,6 +51,14 @@ function base64Url(input: string | Buffer) {
   return Buffer.from(input).toString("base64url");
 }
 
+function tokenHash(token: string) {
+  return crypto.createHash("sha256").update(token).digest("base64url");
+}
+
+function randomToken() {
+  return crypto.randomBytes(32).toString("base64url");
+}
+
 function sign(value: string) {
   return crypto.createHmac("sha256", sessionSecret()).update(value).digest("base64url");
 }
@@ -284,6 +292,188 @@ export async function createAuthUser(input: {
   db.users.unshift(user);
   await writeDb(db);
   return toAuthUser(user);
+}
+
+export async function inviteAuthUser(input: {
+  organizationId?: string;
+  email: string;
+  name: string;
+  role: AuthUser["role"];
+}) {
+  const token = randomToken();
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  if (prismaEnabled()) {
+    const client = prisma as any;
+    const organizationId = input.organizationId || "org_demo";
+    await client.organization.upsert({
+      where: { id: organizationId },
+      update: {},
+      create: { id: organizationId, name: organizationId },
+    });
+    const user = await client.user.upsert({
+      where: { email: input.email.trim().toLowerCase() },
+      update: {
+        name: input.name.trim(),
+        role: input.role.toUpperCase(),
+        inviteTokenHash: tokenHash(token),
+        inviteExpiresAt: expiresAt,
+      },
+      create: {
+        organizationId,
+        email: input.email.trim().toLowerCase(),
+        name: input.name.trim(),
+        role: input.role.toUpperCase(),
+        inviteTokenHash: tokenHash(token),
+        inviteExpiresAt: expiresAt,
+      },
+    });
+    return { user: toAuthUserFromPrisma(user), token, inviteUrl: `/login?invite=${token}` };
+  }
+  const db = await readDb();
+  db.users ||= [];
+  const email = input.email.trim().toLowerCase();
+  let user = db.users.find((item) => item.email.toLowerCase() === email);
+  if (!user) {
+    const timestamp = now();
+    user = {
+      id: createId("user"),
+      organizationId: input.organizationId || "org_demo",
+      email,
+      name: input.name.trim(),
+      role: input.role,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    };
+    db.users.unshift(user);
+  }
+  user.name = input.name.trim();
+  user.role = input.role;
+  user.inviteTokenHash = tokenHash(token);
+  user.inviteExpiresAt = expiresAt.toISOString();
+  user.updatedAt = now();
+  await writeDb(db);
+  return { user: toAuthUser(user), token, inviteUrl: `/login?invite=${token}` };
+}
+
+export async function acceptInvite(token: string, password: string) {
+  const hash = tokenHash(token);
+  if (prismaEnabled()) {
+    const client = prisma as any;
+    const user = await client.user.findFirst({ where: { inviteTokenHash: hash } });
+    if (!user || (user.inviteExpiresAt && new Date(user.inviteExpiresAt).getTime() < Date.now())) return null;
+    const updated = await client.user.update({
+      where: { id: user.id },
+      data: {
+        passwordHash: await hashPassword(password),
+        inviteTokenHash: null,
+        inviteExpiresAt: null,
+      },
+    });
+    const authUser = toAuthUserFromPrisma(updated);
+    return { user: authUser, token: createSessionToken(authUser), maxAge: sessionTtlSeconds };
+  }
+  const db = await readDb();
+  const user = (db.users || []).find((item) => item.inviteTokenHash === hash);
+  if (!user || (user.inviteExpiresAt && new Date(user.inviteExpiresAt).getTime() < Date.now())) return null;
+  user.passwordHash = await hashPassword(password);
+  user.inviteTokenHash = undefined;
+  user.inviteExpiresAt = undefined;
+  user.updatedAt = now();
+  await writeDb(db);
+  const authUser = toAuthUser(user);
+  return { user: authUser, token: createSessionToken(authUser), maxAge: sessionTtlSeconds };
+}
+
+export async function createPasswordReset(email: string) {
+  const token = randomToken();
+  const hash = tokenHash(token);
+  const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+  if (prismaEnabled()) {
+    const client = prisma as any;
+    const user = await client.user.findUnique({ where: { email: email.trim().toLowerCase() } });
+    if (!user) return null;
+    await client.user.update({ where: { id: user.id }, data: { resetTokenHash: hash, resetExpiresAt: expiresAt } });
+    return { email: user.email, token, resetUrl: `/login?reset=${token}` };
+  }
+  const db = await readDb();
+  const user = (db.users || []).find((item) => item.email.toLowerCase() === email.trim().toLowerCase());
+  if (!user) return null;
+  user.resetTokenHash = hash;
+  user.resetExpiresAt = expiresAt.toISOString();
+  user.updatedAt = now();
+  await writeDb(db);
+  return { email: user.email, token, resetUrl: `/login?reset=${token}` };
+}
+
+export async function resetPassword(token: string, password: string) {
+  const hash = tokenHash(token);
+  if (prismaEnabled()) {
+    const client = prisma as any;
+    const user = await client.user.findFirst({ where: { resetTokenHash: hash } });
+    if (!user || (user.resetExpiresAt && new Date(user.resetExpiresAt).getTime() < Date.now())) return false;
+    await client.user.update({
+      where: { id: user.id },
+      data: { passwordHash: await hashPassword(password), resetTokenHash: null, resetExpiresAt: null },
+    });
+    return true;
+  }
+  const db = await readDb();
+  const user = (db.users || []).find((item) => item.resetTokenHash === hash);
+  if (!user || (user.resetExpiresAt && new Date(user.resetExpiresAt).getTime() < Date.now())) return false;
+  user.passwordHash = await hashPassword(password);
+  user.resetTokenHash = undefined;
+  user.resetExpiresAt = undefined;
+  user.updatedAt = now();
+  await writeDb(db);
+  return true;
+}
+
+export async function updateAuthUserRole(userId: string, role: AuthUser["role"]) {
+  if (prismaEnabled()) {
+    const user = await (prisma as any).user.update({ where: { id: userId }, data: { role: role.toUpperCase() } });
+    return toAuthUserFromPrisma(user);
+  }
+  const db = await readDb();
+  const user = (db.users || []).find((item) => item.id === userId);
+  if (!user) throw new Error("User not found.");
+  user.role = role;
+  user.updatedAt = now();
+  await writeDb(db);
+  return toAuthUser(user);
+}
+
+export async function loginWithTrustedIdentity(input: {
+  email: string;
+  name: string;
+  organizationId?: string;
+  role?: AuthUser["role"];
+}) {
+  const email = input.email.trim().toLowerCase();
+  if (prismaEnabled()) {
+    const client = prisma as any;
+    const organizationId = input.organizationId || "org_demo";
+    await client.organization.upsert({ where: { id: organizationId }, update: {}, create: { id: organizationId, name: organizationId } });
+    const user = await client.user.upsert({
+      where: { email },
+      update: { name: input.name, organizationId },
+      create: { email, name: input.name, organizationId, role: (input.role || "recruiter").toUpperCase() },
+    });
+    const authUser = toAuthUserFromPrisma(user);
+    return { user: authUser, token: createSessionToken(authUser), maxAge: sessionTtlSeconds };
+  }
+  const db = await readDb();
+  db.users ||= [];
+  let user = db.users.find((item) => item.email.toLowerCase() === email);
+  if (!user) {
+    const timestamp = now();
+    user = { id: createId("user"), organizationId: input.organizationId || "org_demo", email, name: input.name, role: input.role || "recruiter", createdAt: timestamp, updatedAt: timestamp };
+    db.users.unshift(user);
+  }
+  user.name = input.name;
+  user.updatedAt = now();
+  await writeDb(db);
+  const authUser = toAuthUser(user);
+  return { user: authUser, token: createSessionToken(authUser), maxAge: sessionTtlSeconds };
 }
 
 export async function currentUser(): Promise<AuthUser | null> {

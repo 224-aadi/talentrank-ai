@@ -42,6 +42,17 @@ export function logEvent(name: string, metadata: Record<string, unknown> = {}) {
     metadata: redact(metadata),
   };
   console.log(JSON.stringify(payload));
+  const drain = process.env.TALENTRANK_LOG_DRAIN_URL;
+  if (drain) {
+    fetch(drain, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        ...(process.env.TALENTRANK_LOG_DRAIN_TOKEN ? { authorization: `Bearer ${process.env.TALENTRANK_LOG_DRAIN_TOKEN}` } : {}),
+      },
+      body: JSON.stringify(payload),
+    }).catch(() => undefined);
+  }
 }
 
 export function metricsSnapshot() {

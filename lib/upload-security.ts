@@ -27,6 +27,20 @@ function mimeAllowed(mimeType: string) {
 }
 
 async function malwareScan(file: File) {
+  if (process.env.TALENTRANK_MALWARE_PROVIDER === "virustotal") {
+    const apiKey = process.env.VIRUSTOTAL_API_KEY;
+    if (!apiKey) throw new Error("VIRUSTOTAL_API_KEY is required when TALENTRANK_MALWARE_PROVIDER=virustotal.");
+    const body = new FormData();
+    body.append("file", file, file.name);
+    const response = await fetch("https://www.virustotal.com/api/v3/files", {
+      method: "POST",
+      headers: { "x-apikey": apiKey },
+      body,
+    });
+    if (!response.ok) throw new Error(`VirusTotal returned HTTP ${response.status}.`);
+    incrementMetric("upload.scanned");
+    return { status: "submitted" as const };
+  }
   const endpoint = process.env.TALENTRANK_MALWARE_SCAN_URL;
   if (!endpoint) return { status: "not-configured" as const };
   const formData = new FormData();

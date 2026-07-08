@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
-import { currentUser } from "@/lib/auth";
+import { currentUser, listAuthUsers } from "@/lib/auth";
 import { integrationStatus } from "@/lib/integrations";
+import { AdminUsersPanel } from "./admin-users-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -9,6 +10,7 @@ export default async function AdminPage() {
   if (!user) redirect("/login");
   if (user.role !== "admin") redirect("/");
   const status = integrationStatus();
+  const users = await listAuthUsers();
 
   return (
     <main className="workbench-shell">
@@ -71,6 +73,7 @@ export default async function AdminPage() {
           </p>
         </article>
       </section>
+      <AdminUsersPanel initialUsers={users} currentUserId={user.id} />
     </main>
   );
 }

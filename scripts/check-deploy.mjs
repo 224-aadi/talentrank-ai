@@ -5,8 +5,10 @@ const mode = {
   persistence: process.env.TALENTRANK_USE_PRISMA === "true" ? "prisma" : "json",
   auth: process.env.TALENTRANK_AUTH_MODE === "headers" ? "headers" : "session",
   embeddings: process.env.OPENAI_API_KEY ? "openai" : "local",
-  storage: process.env.TALENTRANK_STORAGE_PROVIDER
-    ? "external"
+  storage: process.env.TALENTRANK_STORAGE_PROVIDER === "s3"
+    ? "s3"
+    : process.env.TALENTRANK_STORAGE_PROVIDER
+      ? "external"
     : process.env.TALENTRANK_STORAGE_KEY
       ? "local-encrypted"
       : "local-unencrypted",
@@ -67,12 +69,20 @@ if (mode.storage === "external" && !process.env.TALENTRANK_STORAGE_DOWNLOAD_URL)
   failures.push("TALENTRANK_STORAGE_DOWNLOAD_URL is required when TALENTRANK_STORAGE_PROVIDER is set.");
 }
 
-if (mode.nodeEnv === "production" && !process.env.TALENTRANK_MALWARE_SCAN_URL) {
+if (process.env.TALENTRANK_STORAGE_PROVIDER === "s3" && !(process.env.S3_ENDPOINT && (process.env.S3_BUCKET || process.env.TALENTRANK_STORAGE_BUCKET) && (process.env.S3_ACCESS_KEY_ID || process.env.AWS_ACCESS_KEY_ID) && (process.env.S3_SECRET_ACCESS_KEY || process.env.AWS_SECRET_ACCESS_KEY))) {
+  failures.push("TALENTRANK_STORAGE_PROVIDER=s3 requires endpoint, bucket, access key, and secret key.");
+}
+
+if (mode.nodeEnv === "production" && process.env.TALENTRANK_MALWARE_PROVIDER !== "virustotal" && !process.env.TALENTRANK_MALWARE_SCAN_URL) {
   failures.push("TALENTRANK_MALWARE_SCAN_URL is required for production resume uploads.");
 }
 
 if (process.env.OCR_PROVIDER === "ocrspace" && !process.env.OCR_SPACE_API_KEY) {
   failures.push("OCR_SPACE_API_KEY is required when OCR_PROVIDER=ocrspace.");
+}
+
+if (process.env.TALENTRANK_MALWARE_PROVIDER === "virustotal" && !process.env.VIRUSTOTAL_API_KEY) {
+  failures.push("VIRUSTOTAL_API_KEY is required when TALENTRANK_MALWARE_PROVIDER=virustotal.");
 }
 
 console.log(JSON.stringify({ ok: failures.length === 0, mode, warnings, failures }, null, 2));

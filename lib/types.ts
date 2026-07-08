@@ -19,6 +19,10 @@ export interface AuthUserRecord {
   name: string;
   role: "admin" | "recruiter" | "reviewer";
   passwordHash?: string;
+  inviteTokenHash?: string;
+  inviteExpiresAt?: string;
+  resetTokenHash?: string;
+  resetExpiresAt?: string;
   createdAt: string;
   updatedAt: string;
   lastLoginAt?: string;

@@ -25,6 +25,10 @@ model User {
   name           String
   role           UserRole     @default(RECRUITER)
   passwordHash   String?
+  inviteTokenHash String?
+  inviteExpiresAt DateTime?
+  resetTokenHash  String?
+  resetExpiresAt  DateTime?
   lastLoginAt    DateTime?
   createdAt      DateTime     @default(now())
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)

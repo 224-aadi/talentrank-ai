@@ -137,6 +137,11 @@ Admin-only user management:
 
 - `GET /api/auth/users`
 - `POST /api/auth/users` with `email`, `name`, `role`, and `password`
+- `POST /api/auth/invites` creates invite links for new users.
+- `POST /api/auth/invites/accept` accepts an invite and sets a password.
+- `POST /api/auth/password-reset` creates reset tokens.
+- `POST /api/auth/password-reset/confirm` sets a new password from a reset token.
+- `PATCH /api/auth/users/:userId` updates a user's role.
 
 For enterprise SSO/proxy deployments, set `TALENTRANK_AUTH_MODE=headers` and forward:
 
@@ -145,6 +150,8 @@ For enterprise SSO/proxy deployments, set `TALENTRANK_AUTH_MODE=headers` and for
 - `x-talentrank-email`
 - `x-talentrank-name`
 - `x-talentrank-role`
+
+For OIDC login, configure `OIDC_ISSUER_URL`, `OIDC_CLIENT_ID`, and `OIDC_CLIENT_SECRET`, then send users to `/api/auth/oidc/start`.
 
 Set `TALENTRANK_USE_PRISMA=true` with `DATABASE_URL` to route the repository layer through Prisma instead of JSON.
 
@@ -202,6 +209,9 @@ Resume uploads enforce allowed extensions/MIME hints, PDF/DOCX magic-byte checks
 TALENTRANK_MAX_BATCH_FILES=50
 TALENTRANK_MALWARE_SCAN_URL=https://your-scanner.example.com/scan
 TALENTRANK_MALWARE_SCAN_KEY=optional_bearer_token
+# Or:
+TALENTRANK_MALWARE_PROVIDER=virustotal
+VIRUSTOTAL_API_KEY=your_virustotal_key
 ```
 
 For external object storage, set:
@@ -209,8 +219,11 @@ For external object storage, set:
 ```bash
 TALENTRANK_STORAGE_PROVIDER=external
 TALENTRANK_STORAGE_UPLOAD_URL=https://your-storage-gateway.example.com/upload
+TALENTRANK_STORAGE_DOWNLOAD_URL=https://your-storage-gateway.example.com/signed-download
 TALENTRANK_STORAGE_TOKEN=optional_bearer_token
 ```
+
+For S3/R2/GCS-compatible storage, use `TALENTRANK_STORAGE_PROVIDER=s3` with `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, and `S3_SECRET_ACCESS_KEY`.
 
 The upload gateway should accept multipart form data with `key` and `file`, then return JSON like:
 
@@ -236,8 +249,8 @@ Production helpers:
 
 This is still an MVP:
 
-- OCR requires an external provider configured with `OCR_API_URL`.
-- Native session login is implemented; external SSO is still via trusted-header mode.
+- OCR requires an external provider configured with `OCR_API_URL` or `OCR_PROVIDER=ocrspace`.
+- Native session login, invite/reset flow, trusted-header mode, and generic OIDC login are implemented.
 - Prisma adapter is opt-in and requires a live Postgres database.
 - Managed vector database storage is not deployed yet.
 - No production skill taxonomy yet.

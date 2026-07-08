@@ -36,6 +36,13 @@ npx prisma migrate dev --name add_benchmark_quality_tables
 
 The schema includes organizations, users, jobs, candidates, resumes, vector records, match runs, recruiter decisions, benchmark labels, benchmark cases, benchmark runs, audit events, and evaluation snapshots. Users include `passwordHash` and `lastLoginAt` for native session auth.
 
+Enterprise account workflows also use:
+
+- `inviteTokenHash`
+- `inviteExpiresAt`
+- `resetTokenHash`
+- `resetExpiresAt`
+
 ## Next Adapter Step
 
 The runtime store uses JSON by default for local development. When `DATABASE_URL` and `TALENTRANK_USE_PRISMA=true` are set, `lib/store.ts` routes repository calls to the Prisma adapter in `lib/prisma-store.ts`.

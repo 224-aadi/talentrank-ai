@@ -41,6 +41,59 @@ function encrypt(buffer: Buffer) {
   };
 }
 
+function hmac(key: Buffer | string, value: string) {
+  return crypto.createHmac("sha256", key).update(value).digest();
+}
+
+function hexHmac(key: Buffer | string, value: string) {
+  return crypto.createHmac("sha256", key).update(value).digest("hex");
+}
+
+function sha256Hex(buffer: Buffer | string) {
+  return crypto.createHash("sha256").update(buffer).digest("hex");
+}
+
+function awsDate(date = new Date()) {
+  return date.toISOString().replace(/[:-]|\.\d{3}/g, "");
+}
+
+async function storeS3Compatible(file: File, raw: Buffer): Promise<StoredFile | null> {
+  if (process.env.TALENTRANK_STORAGE_PROVIDER !== "s3") return null;
+  const accessKey = process.env.S3_ACCESS_KEY_ID || process.env.AWS_ACCESS_KEY_ID;
+  const secretKey = process.env.S3_SECRET_ACCESS_KEY || process.env.AWS_SECRET_ACCESS_KEY;
+  const bucket = process.env.S3_BUCKET || process.env.TALENTRANK_STORAGE_BUCKET;
+  const endpoint = (process.env.S3_ENDPOINT || process.env.TALENTRANK_STORAGE_S3_ENDPOINT || "").replace(/\/$/, "");
+  const region = process.env.S3_REGION || process.env.AWS_REGION || "auto";
+  if (!accessKey || !secretKey || !bucket || !endpoint) return null;
+
+  const id = crypto.randomBytes(12).toString("hex");
+  const objectKey = `resumes/${new Date().toISOString().slice(0, 10)}/${id}-${safeName(file.name)}`;
+  const host = new URL(endpoint).host;
+  const url = `${endpoint}/${bucket}/${objectKey}`;
+  const amzDate = awsDate();
+  const dateStamp = amzDate.slice(0, 8);
+  const payloadHash = sha256Hex(raw);
+  const canonicalHeaders = `host:${host}\nx-amz-content-sha256:${payloadHash}\nx-amz-date:${amzDate}\n`;
+  const signedHeaders = "host;x-amz-content-sha256;x-amz-date";
+  const canonicalRequest = `PUT\n/${bucket}/${objectKey}\n\n${canonicalHeaders}\n${signedHeaders}\n${payloadHash}`;
+  const scope = `${dateStamp}/${region}/s3/aws4_request`;
+  const stringToSign = `AWS4-HMAC-SHA256\n${amzDate}\n${scope}\n${sha256Hex(canonicalRequest)}`;
+  const signingKey = hmac(hmac(hmac(hmac(`AWS4${secretKey}`, dateStamp), region), "s3"), "aws4_request");
+  const signature = hexHmac(signingKey, stringToSign);
+  const response = await fetch(url, {
+    method: "PUT",
+    headers: {
+      "content-type": file.type || "application/octet-stream",
+      "x-amz-content-sha256": payloadHash,
+      "x-amz-date": amzDate,
+      authorization: `AWS4-HMAC-SHA256 Credential=${accessKey}/${scope}, SignedHeaders=${signedHeaders}, Signature=${signature}`,
+    },
+    body: new Uint8Array(raw),
+  });
+  if (!response.ok) throw new Error(`S3-compatible storage returned HTTP ${response.status}.`);
+  return { storageKey: `external/${bucket}/${objectKey}`, encrypted: false, bytes: raw.length, provider: "external" };
+}
+
 function decrypt(buffer: Buffer) {
   if (!buffer.subarray(0, 6).equals(Buffer.from("TRGCM1"))) return buffer;
   const key = encryptionKey();
@@ -82,6 +135,8 @@ async function storeExternally(file: File, raw: Buffer): Promise<StoredFile | nu
 
 export async function storeUploadedResumeFile(file: File): Promise<StoredFile> {
   const raw = Buffer.from(await file.arrayBuffer());
+  const s3 = await storeS3Compatible(file, raw);
+  if (s3) return s3;
   const external = await storeExternally(file, raw);
   if (external) return external;
   const timestamp = new Date().toISOString().slice(0, 10);
