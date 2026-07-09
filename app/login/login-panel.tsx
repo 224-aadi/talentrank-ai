@@ -42,7 +42,13 @@ export function LoginPanel({
   async function requestReset(formData: FormData) {
     const payload = await submitJson("/api/auth/password-reset", { email: formData.get("email") || "" });
     if (!payload) return;
-    setMessage(payload.resetUrl ? `Reset link created: ${payload.resetUrl}` : "If the email exists, a reset link has been issued.");
+    setMessage(
+      payload.email?.delivered
+        ? "Password reset email sent."
+        : payload.resetUrl
+          ? `Reset link created: ${payload.resetUrl}`
+          : "If the email exists, a reset link has been issued.",
+    );
   }
 
   async function confirmReset(formData: FormData) {

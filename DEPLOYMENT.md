@@ -13,11 +13,15 @@
 DATABASE_URL=postgresql://user:password@host:5432/talentrank
 TALENTRANK_USE_PRISMA=true
 NODE_ENV=production
+TALENTRANK_APP_URL=https://app.yourcompany.com
 TALENTRANK_AUTH_SECRET=generate_a_long_random_secret
 TALENTRANK_BOOTSTRAP_EMAIL=admin@yourcompany.com
 TALENTRANK_BOOTSTRAP_PASSWORD=temporary_first_admin_password
 TALENTRANK_STORAGE_KEY=generate_a_long_random_file_encryption_secret
 TALENTRANK_MALWARE_SCAN_URL=https://your-scanner.example.com/scan
+TALENTRANK_EMAIL_PROVIDER=resend
+TALENTRANK_EMAIL_FROM="TalentRank AI <noreply@yourcompany.com>"
+RESEND_API_KEY=your_resend_key
 ```
 
 ## Optional Environment
@@ -52,6 +56,15 @@ TALENTRANK_LOG_DRAIN_URL=https://logs.example.com/ingest
 OIDC_ISSUER_URL=https://accounts.google.com
 OIDC_CLIENT_ID=...
 OIDC_CLIENT_SECRET=...
+TALENTRANK_EMAIL_TEST_TO=ops@yourcompany.com
+# Email alternatives:
+# TALENTRANK_EMAIL_PROVIDER=postmark
+# POSTMARK_SERVER_TOKEN=...
+# TALENTRANK_EMAIL_PROVIDER=sendgrid
+# SENDGRID_API_KEY=...
+# TALENTRANK_EMAIL_PROVIDER=webhook
+# TALENTRANK_EMAIL_WEBHOOK_URL=https://your-email-gateway.example.com/send
+# TALENTRANK_EMAIL_WEBHOOK_TOKEN=optional_bearer_token
 ```
 
 ## Auth
@@ -72,6 +85,25 @@ Remove or rotate `TALENTRANK_BOOTSTRAP_PASSWORD` after the first real admin acco
 
 Generic OIDC login is available at `/api/auth/oidc/start`. Configure `OIDC_ISSUER_URL`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, and optional `OIDC_DEFAULT_ORG_ID` / `OIDC_DEFAULT_ROLE`.
 
+## Transactional Email
+
+Production requires transactional email for teammate invites and password resets. Supported providers:
+
+- Resend: `TALENTRANK_EMAIL_PROVIDER=resend`, `RESEND_API_KEY`
+- Postmark: `TALENTRANK_EMAIL_PROVIDER=postmark`, `POSTMARK_SERVER_TOKEN`
+- SendGrid: `TALENTRANK_EMAIL_PROVIDER=sendgrid`, `SENDGRID_API_KEY`
+- Custom gateway: `TALENTRANK_EMAIL_PROVIDER=webhook`, `TALENTRANK_EMAIL_WEBHOOK_URL`
+
+Always set:
+
+```bash
+TALENTRANK_APP_URL=https://your-public-app-url
+TALENTRANK_EMAIL_FROM="TalentRank AI <noreply@yourdomain.com>"
+TALENTRANK_EMAIL_TEST_TO=ops@yourdomain.com
+```
+
+In staging, open `/admin`, run the Email Delivery diagnostic, then create a test invite and password reset. Production API responses do not expose invite/reset tokens; delivery must work before onboarding users.
+
 ## Secure Storage
 
 Local secure storage writes original resumes under `.data/secure-files`. With `TALENTRANK_STORAGE_KEY`, files are encrypted with AES-256-GCM. For multi-instance deployments, replace local disk with shared object storage before serving customers.
@@ -88,7 +120,7 @@ Admins can open:
 /admin
 ```
 
-This page reports integration readiness, links to backup export/health/metrics endpoints, and exposes live provider diagnostics. The diagnostics can test database connectivity, object-storage writes, malware scanner credentials, OCR provider reachability, OpenAI embeddings, OIDC discovery, and log-drain ingestion from the same runtime that will serve customers.
+This page reports integration readiness, links to backup export/health/metrics endpoints, and exposes live provider diagnostics. The diagnostics can test database connectivity, object-storage writes, malware scanner credentials, OCR provider reachability, OpenAI embeddings, OIDC discovery, email delivery, and log-drain ingestion from the same runtime that will serve customers.
 
 The diagnostics API is admin-only:
 
@@ -193,6 +225,7 @@ The mock service is for deployment rehearsal only; it does not perform real OCR,
 
 ## Remaining Production Hardening
 
-- Validate hosted SSO/OIDC, S3/R2/GCS, OCR, malware scanning, embeddings, and log drain in staging with real provider credentials.
+- Validate hosted SSO/OIDC, S3/R2/GCS, OCR, malware scanning, embeddings, email delivery, and log drain in staging with real provider credentials.
+- Validate invite acceptance and password reset from the deployed staging domain.
 - Connect alerting rules for provider failures and auth/security events.
 - Add backup and retention policies.

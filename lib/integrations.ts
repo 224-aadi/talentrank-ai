@@ -79,6 +79,23 @@ export function integrationStatus() {
       detail: "Structured logs exist; connect a log drain or error monitor before public launch.",
     },
     {
+      key: "email",
+      label: "Email Delivery",
+      status:
+        has("TALENTRANK_EMAIL_FROM") &&
+        ((process.env.TALENTRANK_EMAIL_PROVIDER === "resend" && has("RESEND_API_KEY")) ||
+          (process.env.TALENTRANK_EMAIL_PROVIDER === "postmark" && has("POSTMARK_SERVER_TOKEN")) ||
+          (process.env.TALENTRANK_EMAIL_PROVIDER === "sendgrid" && has("SENDGRID_API_KEY")) ||
+          (process.env.TALENTRANK_EMAIL_PROVIDER === "webhook" && has("TALENTRANK_EMAIL_WEBHOOK_URL")) ||
+          has("RESEND_API_KEY") ||
+          has("POSTMARK_SERVER_TOKEN") ||
+          has("SENDGRID_API_KEY") ||
+          has("TALENTRANK_EMAIL_WEBHOOK_URL"))
+          ? "ready"
+          : "missing",
+      detail: "Transactional email is required for teammate invites and password resets in staging and production.",
+    },
+    {
       key: "oidc",
       label: "Enterprise SSO",
       status: has("OIDC_ISSUER_URL") && has("OIDC_CLIENT_ID") && has("OIDC_CLIENT_SECRET") ? "ready" : "optional",

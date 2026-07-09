@@ -33,7 +33,7 @@ export function AdminUsersPanel({ initialUsers, currentUserId }: { initialUsers:
       const withoutExisting = current.filter((user) => user.id !== payload.user.id);
       return [payload.user, ...withoutExisting];
     });
-    setMessage(`Invite created for ${payload.user.email}.`);
+    setMessage(payload.email?.delivered ? `Invite emailed to ${payload.user.email}.` : `Invite created for ${payload.user.email}.`);
   }
 
   async function updateRole(userId: string, role: AuthUser["role"]) {

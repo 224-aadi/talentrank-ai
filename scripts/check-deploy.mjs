@@ -17,6 +17,16 @@ const mode = {
     : process.env.OCR_API_URL
       ? "generic"
       : "not-configured",
+  email: process.env.TALENTRANK_EMAIL_PROVIDER ||
+    (process.env.RESEND_API_KEY
+      ? "resend"
+      : process.env.POSTMARK_SERVER_TOKEN
+        ? "postmark"
+        : process.env.SENDGRID_API_KEY
+          ? "sendgrid"
+          : process.env.TALENTRANK_EMAIL_WEBHOOK_URL
+            ? "webhook"
+            : "not-configured"),
 };
 
 const warnings = [];
@@ -83,6 +93,34 @@ if (process.env.OCR_PROVIDER === "ocrspace" && !process.env.OCR_SPACE_API_KEY) {
 
 if (process.env.TALENTRANK_MALWARE_PROVIDER === "virustotal" && !process.env.VIRUSTOTAL_API_KEY) {
   failures.push("VIRUSTOTAL_API_KEY is required when TALENTRANK_MALWARE_PROVIDER=virustotal.");
+}
+
+if (mode.nodeEnv === "production" && mode.email === "not-configured") {
+  failures.push("Transactional email is required in production for invites and password resets.");
+}
+
+if (mode.nodeEnv === "production" && !process.env.TALENTRANK_APP_URL) {
+  failures.push("TALENTRANK_APP_URL is required in production so invite and password reset links use the public URL.");
+}
+
+if (mode.email !== "not-configured" && !process.env.TALENTRANK_EMAIL_FROM) {
+  failures.push("TALENTRANK_EMAIL_FROM is required when transactional email is configured.");
+}
+
+if (process.env.TALENTRANK_EMAIL_PROVIDER === "resend" && !process.env.RESEND_API_KEY) {
+  failures.push("RESEND_API_KEY is required when TALENTRANK_EMAIL_PROVIDER=resend.");
+}
+
+if (process.env.TALENTRANK_EMAIL_PROVIDER === "postmark" && !process.env.POSTMARK_SERVER_TOKEN) {
+  failures.push("POSTMARK_SERVER_TOKEN is required when TALENTRANK_EMAIL_PROVIDER=postmark.");
+}
+
+if (process.env.TALENTRANK_EMAIL_PROVIDER === "sendgrid" && !process.env.SENDGRID_API_KEY) {
+  failures.push("SENDGRID_API_KEY is required when TALENTRANK_EMAIL_PROVIDER=sendgrid.");
+}
+
+if (process.env.TALENTRANK_EMAIL_PROVIDER === "webhook" && !process.env.TALENTRANK_EMAIL_WEBHOOK_URL) {
+  failures.push("TALENTRANK_EMAIL_WEBHOOK_URL is required when TALENTRANK_EMAIL_PROVIDER=webhook.");
 }
 
 console.log(JSON.stringify({ ok: failures.length === 0, mode, warnings, failures }, null, 2));

@@ -4,8 +4,9 @@ import { integrationStatus } from "./integrations";
 import { runOcr } from "./ocr";
 import { storeUploadedResumeFile } from "./secure-storage";
 import { embeddingConfig } from "./semantic";
+import { emailConfig, sendTransactionalEmail } from "./email";
 
-export type DiagnosticKey = "database" | "storage" | "malware" | "ocr" | "embeddings" | "oidc" | "observability";
+export type DiagnosticKey = "database" | "storage" | "malware" | "ocr" | "embeddings" | "oidc" | "observability" | "email";
 
 export type DiagnosticResult = {
   key: DiagnosticKey;
@@ -173,6 +174,29 @@ async function testObservability() {
   });
 }
 
+async function testEmail() {
+  return timed("email", "Email Delivery", async () => {
+    const config = emailConfig();
+    if (!config.ready) {
+      return { status: "fail", detail: "Email provider is not fully configured." };
+    }
+    const to = process.env.TALENTRANK_EMAIL_TEST_TO || config.from;
+    const result = await sendTransactionalEmail({
+      to,
+      subject: "TalentRank AI email diagnostic",
+      template: "diagnostic",
+      text: "TalentRank AI email delivery diagnostic succeeded.",
+      html: "<p>TalentRank AI email delivery diagnostic succeeded.</p>",
+      metadata: { diagnostic: "true" },
+    });
+    return {
+      status: result.delivered ? "pass" : "fail",
+      detail: result.detail,
+      evidence: { provider: result.provider, to: redact(to), messageId: result.messageId },
+    };
+  });
+}
+
 export async function runProviderDiagnostic(key: DiagnosticKey) {
   const tests: Record<DiagnosticKey, () => Promise<DiagnosticResult>> = {
     database: testDatabase,
@@ -182,11 +206,12 @@ export async function runProviderDiagnostic(key: DiagnosticKey) {
     embeddings: testEmbeddings,
     oidc: testOidc,
     observability: testObservability,
+    email: testEmail,
   };
   return tests[key]();
 }
 
-export async function runProviderDiagnostics(keys: DiagnosticKey[] = ["database", "storage", "malware", "ocr", "embeddings", "oidc", "observability"]) {
+export async function runProviderDiagnostics(keys: DiagnosticKey[] = ["database", "storage", "malware", "ocr", "embeddings", "oidc", "observability", "email"]) {
   const results: DiagnosticResult[] = [];
   for (const key of keys) results.push(await runProviderDiagnostic(key));
   return {

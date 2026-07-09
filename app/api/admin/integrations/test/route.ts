@@ -3,7 +3,7 @@ import { z } from "zod";
 import { requireRole } from "@/lib/auth";
 import { runProviderDiagnostic, runProviderDiagnostics } from "@/lib/provider-diagnostics";
 
-const diagnosticKeys = ["database", "storage", "malware", "ocr", "embeddings", "oidc", "observability"] as const;
+const diagnosticKeys = ["database", "storage", "malware", "ocr", "embeddings", "oidc", "observability", "email"] as const;
 
 const schema = z.object({
   key: z.enum(diagnosticKeys).optional(),
