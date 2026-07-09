@@ -61,7 +61,7 @@ export function IntegrationDiagnosticsPanel({ items }: { items: IntegrationStatu
             <div key={item.key} className="diagnostic-row">
               <div>
                 <strong>{item.label}</strong>
-                <p>{result ? result.detail : item.detail}</p>
+                {result ? <p>{result.detail}</p> : null}
                 {result?.evidence ? <small>{evidenceText(result.evidence)}</small> : null}
               </div>
               <div className="diagnostic-actions">

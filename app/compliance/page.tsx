@@ -6,11 +6,11 @@ import { listAuditEvents, retentionReport } from "@/lib/store";
 export const dynamic = "force-dynamic";
 
 const controls = [
-  ["Protected-class inference", "Disabled", "The scorer does not infer demographics from names, schools, addresses, photos, or resume wording."],
-  ["Guardrail scan", "Available", "Jobs and resumes can be scanned for protected-class and appearance-related language before review."],
-  ["Adverse-impact monitor", "Available", "Four-fifths-rule monitoring is exposed for lawfully collected audit groups."],
-  ["Retention controls", "Available", "Admins can inspect stale records and delete candidates with related artifacts removed."],
-  ["Explainability reports", "Available", "Every match can be exported with score breakdown, hard rules, evidence, gaps, and compliance signals."],
+  ["Protected-class inference", "Disabled"],
+  ["Guardrail scan", "Available"],
+  ["Adverse-impact monitor", "Available"],
+  ["Retention controls", "Available"],
+  ["Explainability reports", "Available"],
 ];
 
 export default async function CompliancePage() {
@@ -28,10 +28,6 @@ export default async function CompliancePage() {
         <div>
           <p className="eyebrow">Compliance + trust</p>
           <h1>Trust Center</h1>
-          <p>
-            Operational controls for AI-assisted hiring: guardrails, explainability,
-            retention, audit exports, OCR readiness, and adverse-impact monitoring.
-          </p>
         </div>
         <a href="/">Home</a>
       </section>
@@ -59,11 +55,10 @@ export default async function CompliancePage() {
         <article>
           <h2>Controls</h2>
           <div className="control-list">
-            {controls.map(([label, status, detail]) => (
+            {controls.map(([label, status]) => (
               <div key={label} className="control-row">
                 <div>
                   <strong>{label}</strong>
-                  <p>{detail}</p>
                 </div>
                 <span>{status}</span>
               </div>
@@ -78,10 +73,6 @@ export default async function CompliancePage() {
             <a href="/api/ops/metrics">Ops metrics</a>
             <a href="/api/health">Runtime health</a>
           </div>
-          <p>
-            Explainability reports are available at <code>/api/compliance/explainability?matchRunId=...</code>.
-            Guardrail and adverse-impact reports are POST endpoints for product workflows and customer audit jobs.
-          </p>
         </article>
       </section>
 
@@ -98,19 +89,12 @@ export default async function CompliancePage() {
               ))}
             </div>
           ) : (
-            <p>No candidate records are past the 365-day retention threshold.</p>
+            <p>Nothing due.</p>
           )}
         </article>
         <article>
           <h2>OCR Readiness</h2>
-          <p>
-            Scanned PDFs are detected when embedded PDF text is sparse. Configure <code>OCR_API_URL</code>
-            and optional <code>OCR_API_KEY</code> to route those files through a production OCR service.
-          </p>
-          <p>
-            The parser now extracts bullets, dates, table-like layouts, work history timelines, parse confidence,
-            and layout warnings for downstream explainability.
-          </p>
+          <p>{runtime.ocr}</p>
         </article>
       </section>
     </main>

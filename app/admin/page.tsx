@@ -19,9 +19,6 @@ export default async function AdminPage() {
         <div>
           <p className="eyebrow">Operator console</p>
           <h1>Admin Operations</h1>
-          <p>
-            Deployment readiness, provider integrations, backup exports, and production operating controls.
-          </p>
         </div>
         <a href="/">Home</a>
       </section>
@@ -53,7 +50,6 @@ export default async function AdminPage() {
               <div key={item.key} className="control-row">
                 <div>
                   <strong>{item.label}</strong>
-                  <p>{item.detail}</p>
                 </div>
                 <span className={`status-${item.status}`}>{item.status}</span>
               </div>
@@ -68,10 +64,6 @@ export default async function AdminPage() {
             <a href="/api/ops/metrics">Ops metrics</a>
             <a href="/api/health">Health check</a>
           </div>
-          <p>
-            Use the backup export for JSON-mode snapshots and audit package review. In Prisma production,
-            pair this with database-native backups from your Postgres provider.
-          </p>
         </article>
       </section>
       <IntegrationDiagnosticsPanel items={status.items} />

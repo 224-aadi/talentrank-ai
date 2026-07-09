@@ -1,44 +1,45 @@
 import { currentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 
-const metrics = [
-  ["Hybrid search", "BM25 + Boolean + semantic"],
-  ["Workflow", "Jobs, candidates, decisions, audit"],
-  ["Quality", "Precision@10 + nDCG + overrides"],
-  ["Trust", "Guardrails + retention + audit"],
-];
-
-const milestones = [
-  "Swap JSON repository to Prisma with a live DATABASE_URL",
-  "Connect a production OCR provider through OCR_API_URL",
-  "Move vectors to Postgres/vector database infrastructure",
-  "Harden saved-pool retrieval with filters and benchmark tests",
-  "Add real SSO, org invites, and secure file storage",
-  "Import a larger labeled benchmark set",
+const primaryPaths = [
+  {
+    href: "/screen",
+    label: "Match workbench",
+    text: "Rank resumes",
+  },
+  {
+    href: "/calibration",
+    label: "Calibration",
+    text: "Measure quality",
+  },
+  {
+    href: "/compliance",
+    label: "Trust center",
+    text: "Review controls",
+  },
 ];
 
 export default async function HomePage() {
   const user = await currentUser();
   if (!user) redirect("/login");
+  const metrics = [
+    ["Today", "Ready to screen"],
+    ["Quality", "Calibration active"],
+    ["Trust", "Audit trail on"],
+    ["Team", `${user.role} workspace`],
+  ];
 
   return (
     <main className="shell">
       <section className="hero">
         <div>
-          <p className="eyebrow">Launch-track ATS intelligence</p>
+          <p className="eyebrow">Talent workspace</p>
           <h1>TalentRank AI</h1>
-          <p className="lede">
-            Explainable candidate matching with hard-rule screening, hybrid search,
-            recruiter decisions, audit events, and a production database model ready for the next build phase.
-          </p>
+          <p className="lede">Screen resumes with evidence.</p>
           <p className="auth-pill">{user.name} · {user.role} · {user.organizationId}</p>
           <div className="actions">
-            <a href="/screen">Open match workbench</a>
-            <a href="/calibration">Open calibration dashboard</a>
-            <a href="/compliance">Open trust center</a>
-            <a href="/admin">Open admin ops</a>
-            <a href="/scanner/index.html">Open scanner MVP</a>
-            <a href="/api/health">Check API</a>
+            <a href="/screen">Start screening</a>
+            <a href="/admin">Admin</a>
           </div>
           <form action="/api/auth/logout" method="post" className="logout-form">
             <button type="submit">Sign out</button>
@@ -56,20 +57,17 @@ export default async function HomePage() {
       </section>
 
       <section className="panel-grid">
-        <article>
-          <h2>What is now real</h2>
-          <p>
-            The repo now has a full-stack spine: Next.js app shell, typed API routes,
-            JSON persistence boundary, Prisma schema, audit/evaluation endpoints, saved-pool retrieval, managed embedding support, calibration metrics, and the original scanner preserved.
-          </p>
-        </article>
-        <article>
-          <h2>Next engineering milestones</h2>
-          <ul>
-            {milestones.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
+        {primaryPaths.map((path) => (
+          <article key={path.href} className="path-card">
+            <h2>{path.label}</h2>
+            <p>{path.text}</p>
+            <a href={path.href}>Open</a>
+          </article>
+        ))}
+        <article className="path-card subtle-card">
+          <h2>System health</h2>
+          <p>Setup and diagnostics</p>
+          <a href="/admin">Review setup</a>
         </article>
       </section>
     </main>

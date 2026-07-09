@@ -9,16 +9,6 @@ type MatchListRow = MatchRun & {
   latestDecision?: RecruiterDecisionRecord | null;
 };
 
-const metricHelp: Record<string, string> = {
-  precisionAt10: "Relevant labeled candidates in the top 10 ranked results.",
-  precisionAt5: "Relevant labeled candidates in the top 5 ranked results.",
-  recallAt50: "Share of all relevant labeled candidates found in the top 50.",
-  ndcgAt10: "Ranking quality with stronger labels weighted higher.",
-  falseKnockoutRate: "Auto-rejected candidates later labeled relevant.",
-  overrideRate: "Recruiter decisions that disagree with the score/verdict.",
-  scoreToInterviewCorrelation: "Correlation between score and interview outcome.",
-};
-
 export default async function CalibrationPage() {
   const user = await currentUser();
   if (!user) redirect("/login");
@@ -35,14 +25,14 @@ export default async function CalibrationPage() {
   const typedRuns = runs as BenchmarkRun[];
 
   const cards = [
-    ["Precision@5", `${metrics.precisionAt5 || 0}%`, metricHelp.precisionAt5],
-    ["Precision@10", `${metrics.precisionAt10}%`, metricHelp.precisionAt10],
-    ["Recall@50", `${metrics.recallAt50 || 0}%`, metricHelp.recallAt50],
-    ["nDCG@10", `${metrics.ndcgAt10}%`, metricHelp.ndcgAt10],
-    ["False Knockout", `${metrics.falseKnockoutRate}%`, metricHelp.falseKnockoutRate],
-    ["Override Rate", `${metrics.overrideRate}%`, metricHelp.overrideRate],
-    ["Score -> Interview", metrics.scoreToInterviewCorrelation.toFixed(2), metricHelp.scoreToInterviewCorrelation],
-    ["Labeled", String(metrics.labeledCount), "Candidates with benchmark labels or derived recruiter outcomes."],
+    ["Precision@5", `${metrics.precisionAt5 || 0}%`],
+    ["Precision@10", `${metrics.precisionAt10}%`],
+    ["Recall@50", `${metrics.recallAt50 || 0}%`],
+    ["nDCG@10", `${metrics.ndcgAt10}%`],
+    ["False Knockout", `${metrics.falseKnockoutRate}%`],
+    ["Override Rate", `${metrics.overrideRate}%`],
+    ["Score -> Interview", metrics.scoreToInterviewCorrelation.toFixed(2)],
+    ["Labeled", String(metrics.labeledCount)],
   ];
 
   return (
@@ -51,19 +41,15 @@ export default async function CalibrationPage() {
         <div>
           <p className="eyebrow">Quality measurement</p>
           <h1>Calibration dashboard</h1>
-          <p>
-            Track whether TalentRank ranking quality improves with labels, recruiter decisions, and benchmark outcomes.
-          </p>
         </div>
         <a href="/screen">Workbench</a>
       </section>
 
       <section className="calibration-grid">
-        {cards.map(([label, value, help]) => (
+        {cards.map(([label, value]) => (
           <article key={label}>
             <span>{label}</span>
             <strong>{value}</strong>
-            <p>{help}</p>
           </article>
         ))}
       </section>
@@ -79,7 +65,7 @@ export default async function CalibrationPage() {
                 <small>{label.notes || "No notes"} · {new Date(label.createdAt).toLocaleDateString()}</small>
               </div>
             ))}
-            {!typedLabels.length ? <p>No benchmark labels yet. Recruiter decisions still derive early calibration signals.</p> : null}
+            {!typedLabels.length ? <p>No labels yet.</p> : null}
           </div>
         </article>
 
@@ -93,7 +79,7 @@ export default async function CalibrationPage() {
                 <small>{run.caseCount} cases · {new Date(run.at).toLocaleDateString()} · nDCG {run.metrics.ndcgAt10}%</small>
               </div>
             ))}
-            {!typedRuns.length ? <p>No benchmark snapshots yet. POST to /api/benchmarks/runs after labeling a test set.</p> : null}
+            {!typedRuns.length ? <p>No snapshots yet.</p> : null}
           </div>
         </article>
 
@@ -107,7 +93,7 @@ export default async function CalibrationPage() {
                 <small>{match.verdict} · {match.latestDecision?.decision || "no decision"}</small>
               </div>
             ))}
-            {!typedMatches.length ? <p>No match runs yet. Run a screen to generate calibration inputs.</p> : null}
+            {!typedMatches.length ? <p>No matches yet.</p> : null}
           </div>
         </article>
 
@@ -121,7 +107,7 @@ export default async function CalibrationPage() {
                 <small>{item.labeledCount} labeled · avg score {item.avgScore} · interview {item.interviewRate}%</small>
               </div>
             ))}
-            {!metrics.segmentMetrics?.length ? <p>No segment metrics yet. Import benchmark cases with role family, seniority, location, or source.</p> : null}
+            {!metrics.segmentMetrics?.length ? <p>No segments yet.</p> : null}
           </div>
         </article>
 

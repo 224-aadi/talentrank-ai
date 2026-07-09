@@ -262,12 +262,8 @@ export default function ScreeningWorkbench({
     <main className="workbench-shell">
       <section className="workbench-header">
         <div>
-          <p className="eyebrow">Server-side screening</p>
+          <p className="eyebrow">Candidate screening</p>
           <h1>Match workbench</h1>
-          <p>
-            Persist jobs, candidates, resume documents, match runs, evaluations, and audit events through
-            the Next backend.
-          </p>
         </div>
         <a href="/">Dashboard</a>
       </section>
@@ -322,10 +318,7 @@ export default function ScreeningWorkbench({
             <button type="button" disabled={isSearching} onClick={searchPool}>
               {isSearching ? "Searching..." : "Search pool"}
             </button>
-            <p>
-              {poolSize ? `${poolSize} saved resumes indexed` : "Search saved resumes already parsed by TalentRank."}
-              {retrievalMode === "semantic" ? " Semantic mode uses the JD text when present." : ""}
-            </p>
+            {poolSize ? <p>{poolSize} saved resumes</p> : null}
           </div>
           {poolResults.length ? (
             <div className="pool-results">
@@ -348,7 +341,7 @@ export default function ScreeningWorkbench({
             </div>
           ) : null}
           <button disabled={isRunning || !description || (!resumeFiles.length && !selectedResumeIds.length)} onClick={runScreen}>
-            {isRunning ? "Screening..." : "Run server-side screen"}
+            {isRunning ? "Screening..." : "Rank candidates"}
           </button>
           {error ? <p className="form-error">{error}</p> : null}
         </form>
