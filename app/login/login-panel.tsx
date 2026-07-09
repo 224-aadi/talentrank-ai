@@ -90,7 +90,7 @@ export function LoginPanel({
 
   return (
     <>
-      <p>Sign in to screen candidates, review audit logs, and manage protected resume data.</p>
+      <p>Welcome back.</p>
       {message ? <div className="error-banner">{message}</div> : null}
       {mode === "reset-request" ? (
         <form action={requestReset} className="login-form">

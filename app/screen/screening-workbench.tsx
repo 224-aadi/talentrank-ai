@@ -271,25 +271,6 @@ export default function ScreeningWorkbench({
       <section className="workbench-grid">
         <form className="screen-form" onSubmit={(event) => event.preventDefault()}>
           <label>
-            <span>Job title</span>
-            <input value={title} onChange={(event) => setTitle(event.target.value)} />
-          </label>
-          <label>
-            <span>Role template</span>
-            <select value={roleTemplate} onChange={(event) => setRoleTemplate(event.target.value)}>
-              <option value="auto">Auto-detect</option>
-              <option value="data">Data / Analytics</option>
-              <option value="software">Software Engineering</option>
-              <option value="sales">Sales / GTM</option>
-              <option value="finance">Finance / Accounting</option>
-              <option value="operations">Operations</option>
-            </select>
-          </label>
-          <label>
-            <span>Hard rules</span>
-            <input value={hardRules} onChange={(event) => setHardRules(event.target.value)} placeholder="SQL, Python, CPA" />
-          </label>
-          <label>
             <span>Job description</span>
             <textarea value={description} onChange={(event) => setDescription(event.target.value)} />
           </label>
@@ -298,28 +279,52 @@ export default function ScreeningWorkbench({
             <input multiple type="file" accept=".pdf,.docx,.txt,.md,.csv" onChange={(event) => handleFiles(event.target.files)} />
             <strong>{resumeFiles.length ? `${resumeFiles.length} files ready` : "Upload PDF/DOCX/TXT/MD resumes"}</strong>
           </label>
-          <div className="pool-search">
+
+          <details className="advanced-panel">
+            <summary>Advanced</summary>
             <label>
-              <span>Saved candidate retrieval</span>
-              <input value={poolQuery} onChange={(event) => setPoolQuery(event.target.value)} placeholder={'python AND sql -"sales"'} />
+              <span>Job title</span>
+              <input value={title} onChange={(event) => setTitle(event.target.value)} />
             </label>
-            <div className="mode-toggle">
-              {(["hybrid", "lexical", "semantic"] as const).map((mode) => (
-                <button
-                  key={mode}
-                  type="button"
-                  className={retrievalMode === mode ? "active" : ""}
-                  onClick={() => setRetrievalMode(mode)}
-                >
-                  {mode}
-                </button>
-              ))}
+            <label>
+              <span>Required keywords</span>
+              <input value={hardRules} onChange={(event) => setHardRules(event.target.value)} placeholder="SQL, Python, CPA" />
+            </label>
+            <label>
+              <span>Role template</span>
+              <select value={roleTemplate} onChange={(event) => setRoleTemplate(event.target.value)}>
+                <option value="auto">Auto-detect</option>
+                <option value="data">Data / Analytics</option>
+                <option value="software">Software Engineering</option>
+                <option value="sales">Sales / GTM</option>
+                <option value="finance">Finance / Accounting</option>
+                <option value="operations">Operations</option>
+              </select>
+            </label>
+            <div className="pool-search">
+              <label>
+                <span>Search saved resumes</span>
+                <input value={poolQuery} onChange={(event) => setPoolQuery(event.target.value)} placeholder={'python AND sql -"sales"'} />
+              </label>
+              <div className="mode-toggle">
+                {(["hybrid", "lexical", "semantic"] as const).map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    className={retrievalMode === mode ? "active" : ""}
+                    onClick={() => setRetrievalMode(mode)}
+                  >
+                    {mode}
+                  </button>
+                ))}
+              </div>
+              <button type="button" disabled={isSearching} onClick={searchPool}>
+                {isSearching ? "Searching..." : "Search pool"}
+              </button>
+              {poolSize ? <p>{poolSize} saved resumes</p> : null}
             </div>
-            <button type="button" disabled={isSearching} onClick={searchPool}>
-              {isSearching ? "Searching..." : "Search pool"}
-            </button>
-            {poolSize ? <p>{poolSize} saved resumes</p> : null}
-          </div>
+          </details>
+
           {poolResults.length ? (
             <div className="pool-results">
               {poolResults.map((item) => (

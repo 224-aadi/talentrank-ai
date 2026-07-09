@@ -1,14 +1,15 @@
 :root {
   color-scheme: light;
-  --ink: #1d1d1f;
-  --muted: #6e6e73;
-  --soft: #8f8f94;
-  --line: #e5e5ea;
-  --page: #f5f5f7;
+  --ink: #17211d;
+  --muted: #66746f;
+  --soft: #87938f;
+  --line: #dfe8e3;
+  --page: #eef5f1;
   --panel: #ffffff;
-  --panel-soft: #fbfbfd;
-  --accent: #2563eb;
-  --accent-soft: #eff6ff;
+  --panel-soft: #f7fbf9;
+  --accent: #0f766e;
+  --accent-2: #2fbf8f;
+  --accent-soft: #e4f7ef;
   --success: #16794c;
   --warning: #9a5b13;
   --danger: #b42318;
@@ -16,8 +17,9 @@
   --forest: var(--ink);
   --mint: var(--accent-soft);
   --gold: var(--warning);
-  --radius: 12px;
-  --shadow: 0 12px 34px rgba(29, 29, 31, 0.06);
+  --radius: 24px;
+  --radius-sm: 16px;
+  --shadow: 0 22px 70px rgba(23, 33, 29, 0.1);
 }
 
 * {
@@ -28,9 +30,12 @@ body {
   margin: 0;
   color: var(--ink);
   font-family:
-    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    "Avenir Next", "SF Pro Rounded", "SF Pro Display", Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
-  background: var(--page);
+  background:
+    radial-gradient(circle at 18% 12%, rgba(47, 191, 143, 0.16), transparent 34%),
+    radial-gradient(circle at 82% 20%, rgba(15, 118, 110, 0.12), transparent 32%),
+    var(--page);
 }
 
 .shell {
@@ -40,15 +45,49 @@ body {
 }
 
 .hero {
+  position: relative;
+  overflow: hidden;
   display: grid;
-  min-height: 360px;
+  min-height: min(680px, calc(100vh - 56px));
   align-items: center;
   padding: clamp(28px, 5vw, 54px);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   color: var(--ink);
-  background: var(--panel);
+  background: rgba(255, 255, 255, 0.82);
   box-shadow: var(--shadow);
+  backdrop-filter: blur(18px);
+  animation: riseIn 560ms ease-out both;
+}
+
+.launch-hero::before {
+  position: absolute;
+  inset: auto -8% -12% auto;
+  content: "TalentRank";
+  color: rgba(15, 118, 110, 0.055);
+  font-size: clamp(5.4rem, 16vw, 15rem);
+  font-weight: 820;
+  line-height: 0.8;
+  pointer-events: none;
+  animation: glowFloat 7s ease-in-out infinite;
+}
+
+.launch-hero::after {
+  position: absolute;
+  width: min(420px, 54vw);
+  height: min(420px, 54vw);
+  right: 7%;
+  top: 14%;
+  border-radius: 999px;
+  content: "";
+  background: radial-gradient(circle, rgba(47, 191, 143, 0.2), transparent 68%);
+  filter: blur(8px);
+  pointer-events: none;
+}
+
+.hero-copy {
+  position: relative;
+  z-index: 1;
 }
 
 .eyebrow {
@@ -63,7 +102,7 @@ body {
 h1 {
   max-width: 780px;
   margin: 0;
-  font-size: clamp(2.6rem, 7vw, 5.5rem);
+  font-size: clamp(3rem, 8vw, 6.8rem);
   line-height: 0.98;
   letter-spacing: 0;
 }
@@ -103,9 +142,9 @@ h1 {
 .logout-form button,
 .login-form button {
   min-height: 44px;
-  padding: 0 16px;
+  padding: 0 18px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 999px;
   color: var(--ink);
   font: inherit;
   font-weight: 760;
@@ -114,21 +153,44 @@ h1 {
 }
 
 .actions a {
+  position: relative;
+  overflow: hidden;
   display: inline-flex;
   align-items: center;
-  min-height: 44px;
-  padding: 0 18px;
-  border-radius: 8px;
+  min-height: 48px;
+  padding: 0 22px;
+  border-radius: 999px;
   color: #fff;
   font-weight: 760;
   text-decoration: none;
-  background: var(--accent);
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  box-shadow: 0 12px 28px rgba(15, 118, 110, 0.24);
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+.actions a::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  background: linear-gradient(110deg, transparent, rgba(255, 255, 255, 0.28), transparent);
+  transform: translateX(-120%);
+  transition: transform 520ms ease;
+}
+
+.actions a:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 34px rgba(15, 118, 110, 0.28);
+}
+
+.actions a:hover::after {
+  transform: translateX(120%);
 }
 
 .actions a + a {
   border: 1px solid var(--line);
   color: var(--ink);
   background: #fff;
+  box-shadow: none;
 }
 
 .metrics,
@@ -147,8 +209,9 @@ h1 {
   padding: 18px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  background: var(--panel);
+  background: rgba(255, 255, 255, 0.86);
   box-shadow: var(--shadow);
+  backdrop-filter: blur(14px);
 }
 
 .metrics span {
@@ -283,24 +346,46 @@ code {
 }
 
 .login-panel {
+  position: relative;
+  overflow: hidden;
   width: min(460px, 100%);
-  padding: 28px;
+  padding: 30px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  background: var(--panel);
+  background: rgba(255, 255, 255, 0.86);
   box-shadow: var(--shadow);
+  backdrop-filter: blur(18px);
+  animation: riseIn 520ms ease-out both;
+}
+
+.login-panel::after {
+  position: absolute;
+  right: -12%;
+  bottom: -7%;
+  content: "TR";
+  color: rgba(15, 118, 110, 0.06);
+  font-size: 9rem;
+  font-weight: 820;
+  line-height: 1;
+  pointer-events: none;
 }
 
 .login-panel h1 {
-  font-size: clamp(2.4rem, 9vw, 4rem);
+  position: relative;
+  z-index: 1;
+  font-size: clamp(2.5rem, 9vw, 4.2rem);
 }
 
 .login-panel p {
+  position: relative;
+  z-index: 1;
   color: var(--muted);
   line-height: 1.5;
 }
 
 .login-form {
+  position: relative;
+  z-index: 1;
   display: grid;
   gap: 14px;
   margin-top: 20px;
@@ -316,9 +401,9 @@ code {
 
 .login-form input {
   min-height: 44px;
-  padding: 10px 12px;
+  padding: 10px 14px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 14px;
   color: var(--ink);
   background: var(--panel-soft);
   font: inherit;
@@ -326,7 +411,7 @@ code {
 
 .login-form button {
   color: #fff;
-  background: var(--accent);
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
 }
 
 .login-form .secondary-button {
@@ -341,11 +426,11 @@ code {
   justify-content: center;
   min-height: 44px;
   margin-top: 18px;
-  border-radius: 8px;
+  border-radius: 999px;
   color: #fff;
   font-weight: 760;
   text-decoration: none;
-  background: var(--accent);
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
 }
 
 .error-banner {
@@ -390,6 +475,8 @@ code {
 }
 
 .workbench-header {
+  position: relative;
+  overflow: hidden;
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
@@ -398,8 +485,21 @@ code {
   border: 1px solid var(--line);
   border-radius: var(--radius);
   color: var(--ink);
-  background: var(--panel);
+  background: rgba(255, 255, 255, 0.86);
   box-shadow: var(--shadow);
+  backdrop-filter: blur(14px);
+  animation: riseIn 500ms ease-out both;
+}
+
+.workbench-header::after {
+  position: absolute;
+  right: 28px;
+  bottom: -24px;
+  content: "TalentRank";
+  color: rgba(15, 118, 110, 0.045);
+  font-size: clamp(3rem, 10vw, 7rem);
+  font-weight: 820;
+  pointer-events: none;
 }
 
 .workbench-header h1 {
@@ -419,7 +519,7 @@ code {
   text-decoration: none;
   padding: 10px 14px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 999px;
   background: #fff;
 }
 
@@ -435,8 +535,9 @@ code {
 .match-card {
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  background: var(--panel);
+  background: rgba(255, 255, 255, 0.9);
   box-shadow: var(--shadow);
+  backdrop-filter: blur(14px);
 }
 
 .admin-user-grid {
@@ -462,7 +563,7 @@ code {
   min-height: 42px;
   padding: 10px 12px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 14px;
   color: var(--ink);
   background: var(--panel-soft);
   font: inherit;
@@ -471,7 +572,7 @@ code {
 .admin-form button {
   min-height: 44px;
   border: 0;
-  border-radius: 8px;
+  border-radius: 999px;
   color: #fff;
   background: var(--accent);
   font: inherit;
@@ -499,7 +600,7 @@ code {
   align-items: center;
   padding: 12px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: var(--panel-soft);
 }
 
@@ -512,7 +613,7 @@ code {
   padding: 18px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  background: var(--panel);
+  background: rgba(255, 255, 255, 0.88);
   box-shadow: var(--shadow);
 }
 
@@ -532,7 +633,7 @@ code {
 .diagnostic-actions button {
   min-height: 38px;
   border: 0;
-  border-radius: 8px;
+  border-radius: 999px;
   color: #fff;
   background: var(--accent);
   font: inherit;
@@ -556,7 +657,7 @@ code {
   align-items: center;
   padding: 12px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: var(--panel-soft);
 }
 
@@ -607,6 +708,49 @@ code {
   padding: 18px;
 }
 
+.advanced-panel {
+  display: grid;
+  gap: 12px;
+  padding: 4px;
+  border-radius: 20px;
+}
+
+.advanced-panel[open] {
+  padding: 14px;
+  border: 1px solid var(--line);
+  background: var(--panel-soft);
+}
+
+.advanced-panel summary {
+  width: fit-content;
+  min-height: 36px;
+  padding: 8px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  cursor: pointer;
+  list-style: none;
+  background: #fff;
+  font-size: 0.86rem;
+  font-weight: 760;
+}
+
+.advanced-panel summary::-webkit-details-marker {
+  display: none;
+}
+
+.advanced-panel[open] summary {
+  margin-bottom: 10px;
+  color: var(--accent);
+  border-color: rgba(15, 118, 110, 0.32);
+  background: var(--accent-soft);
+}
+
+.advanced-panel label + label,
+.advanced-panel label + .pool-search {
+  margin-top: 12px;
+}
+
 .screen-form label {
   display: grid;
   gap: 7px;
@@ -620,24 +764,24 @@ code {
 .screen-form textarea {
   width: 100%;
   min-height: 42px;
-  padding: 10px 12px;
+  padding: 12px 14px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 16px;
   color: var(--ink);
   background: var(--panel-soft);
   font: inherit;
 }
 
 .screen-form textarea {
-  min-height: 220px;
+  min-height: 260px;
   resize: vertical;
 }
 
 .file-drop {
   min-height: 94px;
-  padding: 14px;
+  padding: 18px;
   border: 1px dashed #b8c7e6;
-  border-radius: 8px;
+  border-radius: 20px;
   background: var(--accent-soft);
 }
 
@@ -651,11 +795,12 @@ code {
 .screen-form button {
   min-height: 46px;
   border: 0;
-  border-radius: 8px;
+  border-radius: 999px;
   color: #fff;
-  background: var(--accent);
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
   font: inherit;
   font-weight: 760;
+  box-shadow: 0 12px 28px rgba(15, 118, 110, 0.22);
 }
 
 .screen-form button:disabled {
@@ -668,7 +813,7 @@ code {
   gap: 10px;
   padding: 12px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 18px;
   background: var(--panel-soft);
 }
 
@@ -686,6 +831,7 @@ code {
 .mode-toggle button {
   min-height: 34px;
   border: 1px solid var(--line);
+  border-radius: 999px;
   color: var(--muted);
   background: #fff;
   text-transform: capitalize;
@@ -719,7 +865,7 @@ code {
   gap: 8px;
   padding: 10px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 16px;
   background: #fff;
 }
 
@@ -768,7 +914,7 @@ code {
 
 .metric-row article {
   padding: 12px;
-  border-radius: 8px;
+  border-radius: 18px;
   background: var(--panel-soft);
 }
 
@@ -1085,6 +1231,40 @@ code {
 .calibration-table small {
   grid-column: 2;
   color: var(--muted);
+}
+
+@keyframes riseIn {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.992);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes glowFloat {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0.72;
+  }
+  50% {
+    transform: translate3d(-18px, -8px, 0);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 1ms !important;
+  }
 }
 
 @media (max-width: 920px) {
