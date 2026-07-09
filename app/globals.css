@@ -861,7 +861,7 @@ code {
 .pool-results label {
   display: grid;
   grid-template-columns: 18px 1fr;
-  align-items: start;
+  align-items: flex-start;
   gap: 8px;
   padding: 10px;
   border: 1px solid var(--line);
@@ -906,6 +906,74 @@ code {
   padding: 16px;
 }
 
+.review-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--panel-soft);
+}
+
+.review-summary span,
+.review-summary small {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 760;
+}
+
+.review-summary strong {
+  display: block;
+  margin-top: 3px;
+  font-size: 1.1rem;
+}
+
+.review-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.review-tabs button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 46px;
+  padding: 8px 10px 8px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  background: #fff;
+  font: inherit;
+  font-weight: 760;
+}
+
+.review-tabs button.active {
+  color: #fff;
+  border-color: transparent;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  box-shadow: 0 12px 28px rgba(15, 118, 110, 0.18);
+}
+
+.review-tabs b {
+  display: grid;
+  place-items: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 7px;
+  border-radius: 999px;
+  color: var(--ink);
+  background: var(--accent-soft);
+}
+
+.review-tabs button.active b {
+  color: var(--accent);
+  background: rgba(255, 255, 255, 0.9);
+}
+
 .metric-row {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -939,11 +1007,41 @@ code {
 }
 
 .match-card {
-  display: grid;
-  grid-template-columns: 70px 1fr;
-  gap: 14px;
-  padding: 14px;
+  display: block;
+  padding: 16px;
   box-shadow: none;
+}
+
+.candidate-card {
+  border-left: 4px solid var(--line);
+  animation: riseIn 360ms ease-out both;
+}
+
+.candidate-card.recommended {
+  border-left-color: var(--accent-2);
+}
+
+.candidate-card.review {
+  border-left-color: #c49a2c;
+}
+
+.candidate-card.rejected {
+  border-left-color: #d15a4f;
+}
+
+.empty-review {
+  display: grid;
+  gap: 5px;
+  padding: 28px;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+  color: var(--muted);
+  background: var(--panel-soft);
+}
+
+.empty-review strong {
+  color: var(--ink);
+  font-size: 1.08rem;
 }
 
 .score {
@@ -960,6 +1058,7 @@ code {
 
 .match-head {
   display: flex;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
 }
@@ -971,9 +1070,9 @@ code {
 
 .match-head span {
   align-self: start;
-  padding: 4px 8px;
+  padding: 7px 10px;
   border-radius: 999px;
-  color: var(--ink);
+  color: var(--accent);
   font-size: 0.78rem;
   font-weight: 760;
   background: var(--accent-soft);
@@ -1006,6 +1105,44 @@ code {
 .decision-status small {
   color: var(--muted);
   font-weight: 750;
+}
+
+.candidate-evidence {
+  margin-top: 12px;
+  padding: 0;
+}
+
+.candidate-evidence summary,
+.benchmark-panel summary {
+  width: fit-content;
+  min-height: 34px;
+  padding: 7px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  cursor: pointer;
+  list-style: none;
+  background: #fff;
+  font-size: 0.82rem;
+  font-weight: 760;
+}
+
+.candidate-evidence summary::-webkit-details-marker,
+.benchmark-panel summary::-webkit-details-marker {
+  display: none;
+}
+
+.candidate-evidence[open] {
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--panel-soft);
+}
+
+.candidate-evidence[open] summary {
+  margin-bottom: 10px;
+  color: var(--accent);
+  background: var(--accent-soft);
 }
 
 .breakdown,
@@ -1095,16 +1232,21 @@ code {
   display: grid;
   gap: 8px;
   margin-top: 10px;
+  padding: 0;
+  border-radius: 18px;
+  background: transparent;
+}
+
+.benchmark-panel[open] {
   padding: 10px;
-  border-radius: 8px;
+  border: 1px solid var(--line);
   background: var(--panel-soft);
 }
 
-.benchmark-panel > span {
-  color: var(--muted);
-  font-size: 0.76rem;
-  font-weight: 760;
-  text-transform: uppercase;
+.benchmark-panel[open] summary {
+  margin-bottom: 8px;
+  color: var(--accent);
+  background: var(--accent-soft);
 }
 
 .decision-panel input {
@@ -1112,7 +1254,7 @@ code {
   min-height: 38px;
   padding: 8px 10px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 999px;
   color: var(--ink);
   background: #fff;
   font: inherit;
@@ -1133,7 +1275,7 @@ code {
 .benchmark-panel button {
   min-height: 36px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 999px;
   color: var(--ink);
   background: #fff;
   font: inherit;

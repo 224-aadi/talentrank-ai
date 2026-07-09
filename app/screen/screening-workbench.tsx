@@ -5,6 +5,7 @@ import type { Job } from "@/lib/types";
 
 type DecisionValue = "shortlist" | "hold" | "reject" | "interview";
 type BenchmarkValue = "good_match" | "bad_match" | "interviewed" | "offer" | "hired";
+type ReviewBucket = "recommended" | "review" | "rejected";
 
 type MatchRow = {
   id: string;
@@ -122,6 +123,7 @@ export default function ScreeningWorkbench({
   const [savingDecisionId, setSavingDecisionId] = useState("");
   const [savingLabelId, setSavingLabelId] = useState("");
   const [error, setError] = useState("");
+  const [activeBucket, setActiveBucket] = useState<ReviewBucket>("recommended");
 
   const metrics = useMemo(() => {
     const strong = matches.filter((match) => match.score >= 80).length;
@@ -131,6 +133,32 @@ export default function ScreeningWorkbench({
       : 0;
     return { strong, avg, confidence };
   }, [matches]);
+
+  function bucketFor(match: MatchRow): ReviewBucket {
+    if (match.latestDecision?.decision === "reject") return "rejected";
+    if (match.latestDecision?.decision === "shortlist" || match.latestDecision?.decision === "interview") return "recommended";
+    if (match.hardRuleOutcomes?.some((outcome) => !outcome.passed)) return "rejected";
+    if (match.score >= 78 && match.confidence >= 60) return "recommended";
+    if (match.score < 45) return "rejected";
+    return "review";
+  }
+
+  const buckets = useMemo(() => {
+    const grouped: Record<ReviewBucket, MatchRow[]> = {
+      recommended: [],
+      review: [],
+      rejected: [],
+    };
+    for (const match of matches) grouped[bucketFor(match)].push(match);
+    return grouped;
+  }, [matches]);
+
+  const visibleMatches = buckets[activeBucket];
+  const bucketLabels: Record<ReviewBucket, string> = {
+    recommended: "Recommended",
+    review: "Review",
+    rejected: "Rejected",
+  };
 
   function handleFiles(files: FileList | null) {
     if (!files) return;
@@ -352,22 +380,47 @@ export default function ScreeningWorkbench({
         </form>
 
         <section className="results-column">
-          <div className="metric-row">
-            <article><span>Jobs</span><b>{jobs.length}</b></article>
-            <article><span>Matches</span><b>{matches.length}</b></article>
-            <article><span>Strong</span><b>{metrics.strong}</b></article>
-            <article><span>Avg</span><b>{metrics.avg}</b></article>
-            <article><span>Confidence</span><b>{metrics.confidence}%</b></article>
+          <div className="review-summary">
+            <div>
+              <span>{matches.length ? `${matches.length} candidates` : "No candidates yet"}</span>
+              <strong>{matches.length ? `${metrics.avg} avg score` : "Upload resumes to begin"}</strong>
+            </div>
+            {matches.length ? <small>{metrics.confidence}% confidence</small> : null}
+          </div>
+
+          <div className="review-tabs">
+            {(["recommended", "review", "rejected"] as const).map((bucket) => (
+              <button
+                key={bucket}
+                type="button"
+                className={activeBucket === bucket ? "active" : ""}
+                onClick={() => setActiveBucket(bucket)}
+              >
+                <span>{bucketLabels[bucket]}</span>
+                <b>{buckets[bucket].length}</b>
+              </button>
+            ))}
           </div>
 
           <div className="match-list">
-            {matches.map((match, index) => (
-              <article key={match.id} className="match-card">
-                <div className="score">{match.score}</div>
+            {!matches.length ? (
+              <article className="empty-review">
+                <strong>Ready when you are.</strong>
+                <span>Add a JD and resumes, then rank candidates.</span>
+              </article>
+            ) : null}
+            {matches.length && !visibleMatches.length ? (
+              <article className="empty-review">
+                <strong>No candidates here.</strong>
+                <span>Try another review tab.</span>
+              </article>
+            ) : null}
+            {visibleMatches.map((match, index) => (
+              <article key={match.id} className={`match-card candidate-card ${bucketFor(match)}`}>
                 <div>
                   <div className="match-head">
                     <h2>{match.candidate?.name || `Candidate ${index + 1}`}</h2>
-                    <span>{match.verdict}</span>
+                    <span>{match.score}%</span>
                   </div>
                   {match.latestDecision ? (
                     <div className="decision-status">
@@ -375,12 +428,9 @@ export default function ScreeningWorkbench({
                       {match.latestDecision.notes ? <small>{match.latestDecision.notes}</small> : null}
                     </div>
                   ) : null}
-                  <p>{match.job?.title || title} · {match.roleFamily} · {match.confidence}% confidence</p>
+                  <p>{match.candidate?.email || match.resume?.fileName || "Resume uploaded"} · {match.confidence}% confidence</p>
                   {match.resume ? (
-                    <p>
-                      Parsed from {match.resume.fileName}
-                      {match.resume.parser ? ` via ${match.resume.parser}` : ""} · {match.resume.parseConfidence ?? "?"}% parse
-                    </p>
+                    <p>{match.resume.fileName}</p>
                   ) : null}
                   {match.resume?.parsedJson ? (
                     <div className="profile-strip">
@@ -392,39 +442,45 @@ export default function ScreeningWorkbench({
                       ) : null}
                     </div>
                   ) : null}
-                  <div className="breakdown">
-                    <span>JD {match.breakdown.match}</span>
-                    <span>Skills {match.breakdown.skills}</span>
-                    <span>Exp {match.breakdown.experience}</span>
-                    <span>Edu {match.breakdown.education}</span>
-                  </div>
-                  {match.hardRuleOutcomes?.length ? (
-                    <div className="rule-grid">
-                      {match.hardRuleOutcomes.map((outcome) => (
-                        <span key={outcome.rule} className={outcome.passed ? "pass" : "fail"}>
-                          {outcome.passed ? "Pass" : "Fail"} · {outcome.rule}
-                        </span>
-                      ))}
+
+                  <p><strong>Matched:</strong> {match.matchedSignals.slice(0, 4).join(", ") || "Limited evidence"}</p>
+                  {match.missingSignals.length && activeBucket !== "recommended" ? <p><strong>Gaps:</strong> {match.missingSignals.slice(0, 3).join(", ")}</p> : null}
+
+                  <details className="candidate-evidence">
+                    <summary>Evidence</summary>
+                    <div className="breakdown">
+                      <span>JD {match.breakdown.match}</span>
+                      <span>Skills {match.breakdown.skills}</span>
+                      <span>Exp {match.breakdown.experience}</span>
+                      <span>Edu {match.breakdown.education}</span>
                     </div>
-                  ) : null}
-                  <p><strong>Matched:</strong> {match.matchedSignals.slice(0, 8).join(", ") || "Limited evidence"}</p>
-                  {match.missingSignals.length ? <p><strong>Gaps:</strong> {match.missingSignals.slice(0, 6).join(", ")}</p> : null}
-                  {match.evidence?.length ? (
-                    <div className="evidence-panel">
-                      <strong>Evidence</strong>
-                      {match.evidence.slice(0, 5).map((item) => (
-                        <blockquote key={`${item.label}-${item.text}`}>
-                          <span>{item.requirement || item.label} · {item.strength || "exact"}</span>
-                          {item.text}
-                        </blockquote>
-                      ))}
-                    </div>
-                  ) : null}
-                  {match.resume?.parsedJson?.skills?.length ? (
-                    <p><strong>Extracted skills:</strong> {match.resume.parsedJson.skills.slice(0, 14).join(", ")}</p>
-                  ) : null}
-                  {match.resume?.warnings?.length ? <p><strong>Parser warnings:</strong> {match.resume.warnings.join(", ")}</p> : null}
-                  {match.riskFlags.length ? <div className="risk-row">{match.riskFlags.map((risk) => <span key={risk}>{risk}</span>)}</div> : null}
+                    {match.hardRuleOutcomes?.length ? (
+                      <div className="rule-grid">
+                        {match.hardRuleOutcomes.map((outcome) => (
+                          <span key={outcome.rule} className={outcome.passed ? "pass" : "fail"}>
+                            {outcome.passed ? "Pass" : "Fail"} · {outcome.rule}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
+                    {match.evidence?.length ? (
+                      <div className="evidence-panel">
+                        <strong>Why this match</strong>
+                        {match.evidence.slice(0, 5).map((item) => (
+                          <blockquote key={`${item.label}-${item.text}`}>
+                            <span>{item.requirement || item.label} · {item.strength || "exact"}</span>
+                            {item.text}
+                          </blockquote>
+                        ))}
+                      </div>
+                    ) : null}
+                    {match.resume?.parsedJson?.skills?.length ? (
+                      <p><strong>Extracted skills:</strong> {match.resume.parsedJson.skills.slice(0, 14).join(", ")}</p>
+                    ) : null}
+                    {match.resume?.warnings?.length ? <p><strong>Parser:</strong> {match.resume.warnings.join(", ")}</p> : null}
+                    {match.riskFlags.length ? <div className="risk-row">{match.riskFlags.map((risk) => <span key={risk}>{risk}</span>)}</div> : null}
+                  </details>
+
                   <div className="decision-panel">
                     <input
                       value={decisionNotes[match.id] || ""}
@@ -444,8 +500,8 @@ export default function ScreeningWorkbench({
                       ))}
                     </div>
                   </div>
-                  <div className="benchmark-panel">
-                    <span>Benchmark label</span>
+                  <details className="benchmark-panel">
+                    <summary>Benchmark label</summary>
                     <div>
                       {(["good_match", "bad_match", "interviewed", "offer", "hired"] as const).map((label) => (
                         <button
@@ -458,7 +514,7 @@ export default function ScreeningWorkbench({
                         </button>
                       ))}
                     </div>
-                  </div>
+                  </details>
                 </div>
               </article>
             ))}
