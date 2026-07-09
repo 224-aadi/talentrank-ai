@@ -373,7 +373,7 @@ code {
 .login-panel h1 {
   position: relative;
   z-index: 1;
-  font-size: clamp(2.5rem, 9vw, 4.2rem);
+  font-size: clamp(2.5rem, 8vw, 57px);
 }
 
 .login-panel p {

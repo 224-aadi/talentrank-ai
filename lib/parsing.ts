@@ -1,5 +1,4 @@
 import mammoth from "mammoth";
-import { PDFParse } from "pdf-parse";
 import { ocrConfigured, runOcr } from "./ocr";
 import { skillIds, termsFor } from "./skill-taxonomy";
 import type { ParsedResumeTable, StructuredResumeProfile, WorkTimelineItem } from "./types";
@@ -215,6 +214,7 @@ export function extractStructuredProfile(text: string): StructuredResumeProfile 
 }
 
 async function parsePdf(file: File) {
+  const { PDFParse } = await import("pdf-parse");
   const buffer = Buffer.from(await file.arrayBuffer());
   const parser = new PDFParse({ data: buffer });
   try {
