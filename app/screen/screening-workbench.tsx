@@ -124,6 +124,7 @@ export default function ScreeningWorkbench({
   const [savingLabelId, setSavingLabelId] = useState("");
   const [error, setError] = useState("");
   const [activeBucket, setActiveBucket] = useState<ReviewBucket>("recommended");
+  const [compareIds, setCompareIds] = useState<string[]>([]);
 
   const metrics = useMemo(() => {
     const strong = matches.filter((match) => match.score >= 80).length;
@@ -154,6 +155,10 @@ export default function ScreeningWorkbench({
   }, [matches]);
 
   const visibleMatches = buckets[activeBucket];
+  const comparedMatches = useMemo(
+    () => compareIds.map((id) => matches.find((match) => match.id === id)).filter((match): match is MatchRow => Boolean(match)),
+    [compareIds, matches],
+  );
   const bucketLabels: Record<ReviewBucket, string> = {
     recommended: "Recommended",
     review: "Review",
@@ -169,6 +174,13 @@ export default function ScreeningWorkbench({
     setSelectedResumeIds((current) =>
       current.includes(resumeId) ? current.filter((id) => id !== resumeId) : [...current, resumeId],
     );
+  }
+
+  function toggleCompare(matchId: string) {
+    setCompareIds((current) => {
+      if (current.includes(matchId)) return current.filter((id) => id !== matchId);
+      return [...current.slice(-2), matchId];
+    });
   }
 
   async function searchPool() {
@@ -402,6 +414,59 @@ export default function ScreeningWorkbench({
             ))}
           </div>
 
+          {matches.length ? (
+            <section className="compare-tray" aria-label="Candidate comparison">
+              <div>
+                <span>{compareIds.length ? `${compareIds.length}/3 selected` : "Compare candidates"}</span>
+                <strong>{compareIds.length >= 2 ? "Side-by-side review ready" : "Pick two or three results"}</strong>
+              </div>
+              {compareIds.length ? (
+                <button type="button" onClick={() => setCompareIds([])}>
+                  Clear
+                </button>
+              ) : null}
+            </section>
+          ) : null}
+
+          {comparedMatches.length >= 2 ? (
+            <section className="comparison-board">
+              {comparedMatches.map((match) => (
+                <article key={match.id}>
+                  <div className="comparison-head">
+                    <div>
+                      <span>{match.verdict}</span>
+                      <h3>{match.candidate?.name || match.resume?.fileName || "Candidate"}</h3>
+                    </div>
+                    <strong>{match.score}%</strong>
+                  </div>
+                  <div className="comparison-stats">
+                    <span>JD {match.breakdown.match}</span>
+                    <span>Skills {match.breakdown.skills}</span>
+                    <span>Exp {match.breakdown.experience}</span>
+                    <span>Conf {match.confidence}</span>
+                  </div>
+                  <p>{match.matchedSignals.slice(0, 3).join(", ") || "No strong matched signals yet."}</p>
+                  {match.missingSignals.length ? <p><b>Gaps:</b> {match.missingSignals.slice(0, 3).join(", ")}</p> : null}
+                  {match.hardRuleOutcomes?.length ? (
+                    <div className="comparison-rules">
+                      {match.hardRuleOutcomes.slice(0, 4).map((outcome) => (
+                        <span key={outcome.rule} className={outcome.passed ? "pass" : "fail"}>
+                          {outcome.passed ? "Pass" : "Fail"} · {outcome.rule}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
+                  {match.evidence?.[0] ? (
+                    <blockquote>
+                      <span>{match.evidence[0].requirement || match.evidence[0].label}</span>
+                      {match.evidence[0].text}
+                    </blockquote>
+                  ) : null}
+                </article>
+              ))}
+            </section>
+          ) : null}
+
           <div className="match-list">
             {!matches.length ? (
               <article className="empty-review">
@@ -420,7 +485,16 @@ export default function ScreeningWorkbench({
                 <div>
                   <div className="match-head">
                     <h2>{match.candidate?.name || `Candidate ${index + 1}`}</h2>
-                    <span>{match.score}%</span>
+                    <div className="match-actions">
+                      <button
+                        type="button"
+                        className={compareIds.includes(match.id) ? "active" : ""}
+                        onClick={() => toggleCompare(match.id)}
+                      >
+                        {compareIds.includes(match.id) ? "Selected" : "Compare"}
+                      </button>
+                      <span>{match.score}%</span>
+                    </div>
                   </div>
                   {match.latestDecision ? (
                     <div className="decision-status">
