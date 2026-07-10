@@ -8,7 +8,8 @@ type MetricName =
   | "screen.failure"
   | "storage.write"
   | "upload.rejected"
-  | "upload.scanned";
+  | "upload.scanned"
+  | "upload.scan_unavailable";
 
 type MetricRecord = {
   count: number;

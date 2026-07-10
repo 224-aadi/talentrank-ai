@@ -26,7 +26,13 @@ function mimeAllowed(mimeType: string) {
   return allowedMimeHints.some((hint) => hint.endsWith("/") ? mimeType.startsWith(hint) : mimeType === hint);
 }
 
-async function malwareScan(file: File) {
+const scanTimeoutMs = 20_000;
+
+class UploadRejectedError extends Error {}
+
+type ScanResult = { status: "submitted" | "clean" | "known" | "not-configured" | "unavailable" };
+
+async function runMalwareScan(file: File): Promise<ScanResult> {
   if (process.env.TALENTRANK_MALWARE_PROVIDER === "virustotal") {
     const apiKey = process.env.VIRUSTOTAL_API_KEY;
     if (!apiKey) throw new Error("VIRUSTOTAL_API_KEY is required when TALENTRANK_MALWARE_PROVIDER=virustotal.");
@@ -34,27 +40,47 @@ async function malwareScan(file: File) {
     body.append("file", file, file.name);
     const response = await fetch("https://www.virustotal.com/api/v3/files", {
       method: "POST",
+      signal: AbortSignal.timeout(scanTimeoutMs),
       headers: { "x-apikey": apiKey },
       body,
     });
+    // 409 means VirusTotal already knows this file hash — that's a successful scan, not a failure.
+    if (response.status === 409) {
+      incrementMetric("upload.scanned");
+      return { status: "known" };
+    }
     if (!response.ok) throw new Error(`VirusTotal returned HTTP ${response.status}.`);
     incrementMetric("upload.scanned");
-    return { status: "submitted" as const };
+    return { status: "submitted" };
   }
   const endpoint = process.env.TALENTRANK_MALWARE_SCAN_URL;
-  if (!endpoint) return { status: "not-configured" as const };
+  if (!endpoint) return { status: "not-configured" };
   const formData = new FormData();
   formData.append("file", file, file.name);
   const response = await fetch(endpoint, {
     method: "POST",
+    signal: AbortSignal.timeout(scanTimeoutMs),
     headers: process.env.TALENTRANK_MALWARE_SCAN_KEY ? { authorization: `Bearer ${process.env.TALENTRANK_MALWARE_SCAN_KEY}` } : undefined,
     body: formData,
   });
   if (!response.ok) throw new Error(`Malware scanner returned HTTP ${response.status}.`);
   const payload = await response.json().catch(() => ({}));
   incrementMetric("upload.scanned");
-  if (payload.status === "clean" || payload.clean === true) return { status: "clean" as const };
-  throw new Error("Upload rejected by malware scanner.");
+  if (payload.status === "clean" || payload.clean === true) return { status: "clean" };
+  throw new UploadRejectedError("Upload rejected by malware scanner.");
+}
+
+async function malwareScan(file: File): Promise<ScanResult> {
+  try {
+    return await runMalwareScan(file);
+  } catch (error) {
+    // A positive malware verdict must still block the upload; scanner outages must not.
+    if (error instanceof UploadRejectedError) throw error;
+    const message = error instanceof Error ? error.message : "unknown error";
+    incrementMetric("upload.scan_unavailable");
+    logEvent("upload.scan_unavailable", { fileName: file.name, message });
+    return { status: "unavailable" };
+  }
 }
 
 export async function validateResumeUpload(file: File) {
