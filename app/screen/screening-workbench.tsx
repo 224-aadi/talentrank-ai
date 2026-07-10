@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import type { Job } from "@/lib/types";
 
 type DecisionValue = "shortlist" | "hold" | "reject" | "interview";
@@ -165,6 +165,20 @@ export default function ScreeningWorkbench({
     rejected: "Rejected",
   };
 
+  function ringClass(score: number) {
+    if (score >= 78) return "ring-strong";
+    if (score >= 45) return "ring-mid";
+    return "ring-low";
+  }
+
+  function verdictClass(verdict: string) {
+    if (verdict === "Strong match") return "verdict-strong";
+    if (verdict === "Recruiter review") return "verdict-review";
+    if (verdict === "Needs evidence") return "verdict-needs";
+    if (verdict === "Auto-reject") return "verdict-reject";
+    return "verdict-low";
+  }
+
   function handleFiles(files: FileList | null) {
     if (!files) return;
     setResumeFiles([...files]);
@@ -301,9 +315,12 @@ export default function ScreeningWorkbench({
   return (
     <main className="workbench-shell">
       <section className="workbench-header">
-        <div>
-          <p className="eyebrow">Candidate screening</p>
-          <h1>Match workbench</h1>
+        <div className="workbench-brand">
+          <span className="brand-mark">TR</span>
+          <div>
+            <p className="eyebrow">Candidate screening</p>
+            <h1>Match workbench</h1>
+          </div>
         </div>
         <a href="/">Dashboard</a>
       </section>
@@ -314,10 +331,10 @@ export default function ScreeningWorkbench({
             <span>Job description</span>
             <textarea value={description} onChange={(event) => setDescription(event.target.value)} />
           </label>
-          <label className="file-drop">
+          <label className={`file-drop${resumeFiles.length ? " has-files" : ""}`}>
             <span>Resume batch</span>
             <input multiple type="file" accept=".pdf,.docx,.txt,.md,.csv" onChange={(event) => handleFiles(event.target.files)} />
-            <strong>{resumeFiles.length ? `${resumeFiles.length} files ready` : "Upload PDF/DOCX/TXT/MD resumes"}</strong>
+            <strong>{resumeFiles.length ? `${resumeFiles.length} file${resumeFiles.length === 1 ? "" : "s"} ready` : "Drop resumes here or click to browse"}</strong>
           </label>
 
           <details className="advanced-panel">
@@ -484,8 +501,19 @@ export default function ScreeningWorkbench({
               <article key={match.id} className={`match-card candidate-card ${bucketFor(match)}`}>
                 <div>
                   <div className="match-head">
-                    <h2>{match.candidate?.name || `Candidate ${index + 1}`}</h2>
+                    <div className="match-identity">
+                      <div className={`score-ring ${ringClass(match.score)}`} style={{ "--val": match.score } as CSSProperties}>
+                        <b>{match.score}</b>
+                      </div>
+                      <div>
+                        <h2>{match.candidate?.name || `Candidate ${index + 1}`}</h2>
+                        <p className="match-meta">
+                          {match.candidate?.email || match.resume?.fileName || "Resume uploaded"} · {match.confidence}% confidence
+                        </p>
+                      </div>
+                    </div>
                     <div className="match-actions">
+                      <span className={`verdict-badge ${verdictClass(match.verdict)}`}>{match.verdict}</span>
                       <button
                         type="button"
                         className={compareIds.includes(match.id) ? "active" : ""}
@@ -493,7 +521,6 @@ export default function ScreeningWorkbench({
                       >
                         {compareIds.includes(match.id) ? "Selected" : "Compare"}
                       </button>
-                      <span>{match.score}%</span>
                     </div>
                   </div>
                   {match.latestDecision ? (
@@ -502,31 +529,34 @@ export default function ScreeningWorkbench({
                       {match.latestDecision.notes ? <small>{match.latestDecision.notes}</small> : null}
                     </div>
                   ) : null}
-                  <p>{match.candidate?.email || match.resume?.fileName || "Resume uploaded"} · {match.confidence}% confidence</p>
-                  {match.resume ? (
-                    <p>{match.resume.fileName}</p>
-                  ) : null}
-                  {match.resume?.parsedJson ? (
-                    <div className="profile-strip">
-                      <span>{match.resume.parsedJson.skills?.length || 0} skills</span>
-                      <span>{match.resume.parsedJson.experience?.length || 0} experience lines</span>
-                      <span>{match.resume.parsedJson.quantifiedEvidence?.length || 0} quantified proofs</span>
-                      {match.candidate?.email || match.resume.parsedJson.contact?.email ? (
-                        <span>{match.candidate?.email || match.resume.parsedJson.contact?.email}</span>
-                      ) : null}
-                    </div>
-                  ) : null}
 
-                  <p><strong>Matched:</strong> {match.matchedSignals.slice(0, 4).join(", ") || "Limited evidence"}</p>
-                  {match.missingSignals.length && activeBucket !== "recommended" ? <p><strong>Gaps:</strong> {match.missingSignals.slice(0, 3).join(", ")}</p> : null}
+                  <div className="signal-strip">
+                    {match.matchedSignals.slice(0, 6).map((signal) => (
+                      <span key={signal} className="signal-hit">{signal}</span>
+                    ))}
+                    {activeBucket !== "recommended"
+                      ? match.missingSignals.slice(0, 3).map((signal) => (
+                          <span key={signal} className="signal-gap">Missing: {signal}</span>
+                        ))
+                      : null}
+                    {!match.matchedSignals.length ? <span>Limited evidence</span> : null}
+                  </div>
 
                   <details className="candidate-evidence">
-                    <summary>Evidence</summary>
-                    <div className="breakdown">
-                      <span>JD {match.breakdown.match}</span>
-                      <span>Skills {match.breakdown.skills}</span>
-                      <span>Exp {match.breakdown.experience}</span>
-                      <span>Edu {match.breakdown.education}</span>
+                    <summary>Evidence &amp; breakdown</summary>
+                    <div className="breakdown-bars">
+                      {([
+                        ["JD fit", match.breakdown.match],
+                        ["Skills", match.breakdown.skills],
+                        ["Experience", match.breakdown.experience],
+                        ["Education", match.breakdown.education],
+                      ] as const).map(([label, value]) => (
+                        <div key={label} className="bar-row">
+                          <span>{label}</span>
+                          <div className="bar"><i style={{ width: `${Math.min(100, Math.max(0, value))}%` }} /></div>
+                          <b>{value}</b>
+                        </div>
+                      ))}
                     </div>
                     {match.hardRuleOutcomes?.length ? (
                       <div className="rule-grid">

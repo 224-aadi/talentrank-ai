@@ -1,0 +1,1083 @@
+/* Screening workbench redesign — scoped to /screen only.
+   Every rule is anchored to .workbench-shell so the rest of the app keeps the original theme. */
+
+body:has(.workbench-shell) {
+  background: #f4f6f8;
+}
+
+.workbench-shell {
+  --ink: #101828;
+  --muted: #475467;
+  --soft: #98a2b3;
+  --line: #e4e7ec;
+  --line-strong: #d0d5dd;
+  --panel: #ffffff;
+  --panel-soft: #f9fafb;
+  --accent: #0e7a6e;
+  --accent-strong: #0b5f56;
+  --accent-2: #14b8a6;
+  --accent-soft: #e6f5f2;
+  --accent-ring: rgba(14, 122, 110, 0.16);
+  --success: #067647;
+  --success-soft: #ecfdf3;
+  --warning: #b54708;
+  --warning-soft: #fffaeb;
+  --danger: #b42318;
+  --danger-soft: #fef3f2;
+  --radius: 16px;
+  --radius-sm: 10px;
+  --shadow: 0 1px 2px rgba(16, 24, 40, 0.05), 0 1px 3px rgba(16, 24, 40, 0.04);
+  --shadow-lift: 0 4px 8px -2px rgba(16, 24, 40, 0.08), 0 12px 24px -6px rgba(16, 24, 40, 0.1);
+
+  width: min(1360px, calc(100% - 36px));
+  margin: 0 auto;
+  padding: 20px 0 48px;
+  color: var(--ink);
+  font-family: "Inter", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, ui-sans-serif, system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+.workbench-shell h1,
+.workbench-shell h2,
+.workbench-shell h3 {
+  letter-spacing: -0.02em;
+  font-weight: 700;
+}
+
+.workbench-shell b,
+.workbench-shell strong {
+  font-weight: 650;
+}
+
+.workbench-shell button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.workbench-shell :is(button, a, input, select, textarea, summary):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* ---------- Header ---------- */
+
+.workbench-shell .workbench-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 14px 20px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  backdrop-filter: none;
+}
+
+.workbench-shell .workbench-header::after {
+  content: none;
+}
+
+.workbench-shell .workbench-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.workbench-shell .brand-mark {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  color: #fff;
+  font-size: 0.86rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  background: linear-gradient(150deg, var(--accent-2), var(--accent));
+  box-shadow: 0 3px 8px rgba(14, 122, 110, 0.28);
+}
+
+.workbench-shell .workbench-header .eyebrow {
+  margin: 0;
+  color: var(--soft);
+  font-size: 0.68rem;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+}
+
+.workbench-shell .workbench-header h1 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.workbench-shell .workbench-header a {
+  padding: 9px 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+  font-size: 0.88rem;
+  font-weight: 600;
+  text-decoration: none;
+  background: var(--panel);
+  transition: background 140ms ease;
+}
+
+.workbench-shell .workbench-header a:hover {
+  background: var(--panel-soft);
+}
+
+/* ---------- Layout ---------- */
+
+.workbench-shell .workbench-grid {
+  display: grid;
+  grid-template-columns: minmax(330px, 400px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+  margin-top: 16px;
+}
+
+.workbench-shell .screen-form,
+.workbench-shell .results-column {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  backdrop-filter: none;
+}
+
+/* ---------- Form ---------- */
+
+.workbench-shell .screen-form {
+  position: sticky;
+  top: 16px;
+  display: grid;
+  gap: 16px;
+  padding: 20px;
+}
+
+.workbench-shell .screen-form label {
+  display: grid;
+  gap: 6px;
+  color: var(--ink);
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.workbench-shell .screen-form input,
+.workbench-shell .screen-form select,
+.workbench-shell .screen-form textarea {
+  width: 100%;
+  min-height: 42px;
+  padding: 10px 13px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+  background: var(--panel);
+  font: inherit;
+  font-weight: 450;
+  transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+
+.workbench-shell .screen-form input:focus,
+.workbench-shell .screen-form select:focus,
+.workbench-shell .screen-form textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-ring);
+}
+
+.workbench-shell .screen-form textarea {
+  min-height: 190px;
+  resize: vertical;
+  line-height: 1.55;
+}
+
+.workbench-shell .file-drop {
+  position: relative;
+  display: grid;
+  gap: 4px;
+  min-height: 88px;
+  padding: 16px;
+  border: 1.5px dashed var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--panel-soft);
+  text-align: center;
+  transition: border-color 140ms ease, background 140ms ease;
+}
+
+.workbench-shell .file-drop:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.workbench-shell .file-drop input {
+  position: absolute;
+  inset: 0;
+  min-height: auto;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.workbench-shell .file-drop span {
+  color: var(--soft);
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.workbench-shell .file-drop strong {
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 550;
+}
+
+.workbench-shell .file-drop.has-files {
+  border-style: solid;
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.workbench-shell .file-drop.has-files strong {
+  color: var(--accent-strong);
+  font-weight: 650;
+}
+
+.workbench-shell .screen-form > button {
+  min-height: 46px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: #fff;
+  background: var(--accent);
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 650;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 1px 2px rgba(16, 24, 40, 0.2);
+  transition: background 140ms ease;
+}
+
+.workbench-shell .screen-form > button:hover:not(:disabled) {
+  background: var(--accent-strong);
+}
+
+.workbench-shell .screen-form button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.workbench-shell .advanced-panel {
+  display: grid;
+  gap: 12px;
+  padding: 0;
+  border-radius: var(--radius-sm);
+}
+
+.workbench-shell .advanced-panel[open] {
+  padding: 14px;
+  border: 1px solid var(--line);
+  background: var(--panel-soft);
+}
+
+.workbench-shell .advanced-panel summary,
+.workbench-shell .candidate-evidence summary,
+.workbench-shell .benchmark-panel summary {
+  width: fit-content;
+  min-height: auto;
+  padding: 7px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  color: var(--muted);
+  cursor: pointer;
+  list-style: none;
+  background: var(--panel);
+  font-size: 0.8rem;
+  font-weight: 600;
+  transition: border-color 140ms ease, color 140ms ease;
+  user-select: none;
+}
+
+.workbench-shell .advanced-panel summary::before,
+.workbench-shell .candidate-evidence summary::before,
+.workbench-shell .benchmark-panel summary::before {
+  content: "▸";
+  display: inline-block;
+  margin-right: 6px;
+  transition: transform 160ms ease;
+}
+
+.workbench-shell .advanced-panel[open] summary::before,
+.workbench-shell .candidate-evidence[open] summary::before,
+.workbench-shell .benchmark-panel[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.workbench-shell .advanced-panel summary:hover,
+.workbench-shell .candidate-evidence summary:hover,
+.workbench-shell .benchmark-panel summary:hover {
+  border-color: var(--accent);
+  color: var(--accent-strong);
+}
+
+.workbench-shell .advanced-panel[open] summary {
+  margin-bottom: 2px;
+  color: var(--accent-strong);
+  border-color: rgba(14, 122, 110, 0.3);
+  background: var(--accent-soft);
+}
+
+.workbench-shell .pool-search {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+}
+
+.workbench-shell .pool-search button {
+  min-height: 38px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+  font-weight: 600;
+  background: var(--panel);
+  box-shadow: none;
+}
+
+.workbench-shell .pool-search button:hover:not(:disabled) {
+  background: var(--panel-soft);
+}
+
+.workbench-shell .mode-toggle {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--panel-soft);
+}
+
+.workbench-shell .mode-toggle button {
+  min-height: 30px;
+  border: 0;
+  border-radius: 7px;
+  color: var(--muted);
+  background: transparent;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.workbench-shell .mode-toggle button.active {
+  color: var(--ink);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.workbench-shell .pool-search p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.workbench-shell .pool-results {
+  display: grid;
+  gap: 8px;
+  max-height: 270px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.workbench-shell .pool-results label {
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+  cursor: pointer;
+  transition: border-color 140ms ease, background 140ms ease;
+}
+
+.workbench-shell .pool-results label:hover {
+  border-color: var(--line-strong);
+}
+
+.workbench-shell .pool-results label.selected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.workbench-shell .pool-results input {
+  min-height: auto;
+  margin-top: 2px;
+  accent-color: var(--accent);
+}
+
+.workbench-shell .pool-results strong {
+  color: var(--ink);
+  font-size: 0.88rem;
+}
+
+.workbench-shell .pool-results small {
+  margin-top: 3px;
+  color: var(--soft);
+  font-size: 0.76rem;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.workbench-shell .form-error {
+  margin: 0;
+  padding: 10px 13px;
+  border: 1px solid #fecdca;
+  border-radius: var(--radius-sm);
+  color: var(--danger);
+  font-size: 0.85rem;
+  font-weight: 600;
+  background: var(--danger-soft);
+}
+
+/* ---------- Results column ---------- */
+
+.workbench-shell .results-column {
+  padding: 16px;
+}
+
+.workbench-shell .review-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--panel-soft);
+}
+
+.workbench-shell .review-summary span,
+.workbench-shell .review-summary small {
+  color: var(--soft);
+  font-size: 0.74rem;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.workbench-shell .review-summary strong {
+  display: block;
+  margin-top: 3px;
+  font-size: 1.15rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.workbench-shell .review-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  margin-top: 12px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--panel-soft);
+}
+
+.workbench-shell .review-tabs button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 8px;
+  color: var(--muted);
+  background: transparent;
+  box-shadow: none;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  transition: color 140ms ease, background 140ms ease;
+}
+
+.workbench-shell .review-tabs button:hover {
+  color: var(--ink);
+}
+
+.workbench-shell .review-tabs button.active {
+  color: var(--ink);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.workbench-shell .review-tabs b {
+  display: grid;
+  place-items: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 7px;
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  background: var(--line);
+}
+
+.workbench-shell .review-tabs button.active b {
+  color: #fff;
+  background: var(--accent);
+}
+
+.workbench-shell .compare-tray {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 12px 16px;
+  border: 1px solid rgba(14, 122, 110, 0.22);
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+}
+
+.workbench-shell .compare-tray span,
+.workbench-shell .comparison-head span {
+  color: var(--accent-strong);
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.workbench-shell .compare-tray strong {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.92rem;
+}
+
+.workbench-shell .compare-tray button,
+.workbench-shell .match-actions button {
+  min-height: 32px;
+  padding: 0 13px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  color: var(--ink);
+  background: var(--panel);
+  font: inherit;
+  font-size: 0.79rem;
+  font-weight: 600;
+  transition: border-color 140ms ease, background 140ms ease;
+}
+
+.workbench-shell .compare-tray button:hover,
+.workbench-shell .match-actions button:hover {
+  border-color: var(--accent);
+}
+
+.workbench-shell .match-actions button.active {
+  color: #fff;
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+/* ---------- Comparison board ---------- */
+
+.workbench-shell .comparison-board {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.workbench-shell .comparison-board article {
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.workbench-shell .comparison-head strong {
+  display: grid;
+  place-items: center;
+  min-width: 50px;
+  height: 40px;
+  border-radius: var(--radius-sm);
+  color: var(--accent-strong);
+  background: var(--accent-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+.workbench-shell .comparison-stats span,
+.workbench-shell .comparison-rules span {
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  background: var(--panel-soft);
+  font-size: 0.73rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.workbench-shell .comparison-rules .pass {
+  border-color: rgba(6, 118, 71, 0.25);
+  color: var(--success);
+  background: var(--success-soft);
+}
+
+.workbench-shell .comparison-rules .fail {
+  border-color: rgba(180, 35, 24, 0.25);
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.workbench-shell .metric-row article {
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--panel-soft);
+}
+
+/* ---------- Match cards ---------- */
+
+.workbench-shell .match-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.workbench-shell .match-card {
+  display: block;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+  backdrop-filter: none;
+  box-shadow: none;
+}
+
+.workbench-shell .candidate-card {
+  position: relative;
+  border-left: 1px solid var(--line);
+  transition: box-shadow 160ms ease, border-color 160ms ease;
+}
+
+.workbench-shell .candidate-card:hover {
+  border-color: var(--line-strong);
+  box-shadow: var(--shadow-lift);
+}
+
+.workbench-shell .candidate-card::before {
+  content: "";
+  position: absolute;
+  inset: 14px auto 14px 0;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--line-strong);
+}
+
+.workbench-shell .candidate-card.recommended {
+  border-left-color: var(--line);
+}
+
+.workbench-shell .candidate-card.review {
+  border-left-color: var(--line);
+}
+
+.workbench-shell .candidate-card.rejected {
+  border-left-color: var(--line);
+}
+
+.workbench-shell .candidate-card.recommended::before {
+  background: var(--accent-2);
+}
+
+.workbench-shell .candidate-card.review::before {
+  background: #eaaa08;
+}
+
+.workbench-shell .candidate-card.rejected::before {
+  background: #f04438;
+}
+
+.workbench-shell .empty-review {
+  display: grid;
+  gap: 6px;
+  place-items: center;
+  padding: 44px 28px;
+  border: 1.5px dashed var(--line-strong);
+  border-radius: var(--radius);
+  color: var(--muted);
+  text-align: center;
+  background: var(--panel-soft);
+}
+
+.workbench-shell .empty-review strong {
+  color: var(--ink);
+  font-size: 1.05rem;
+}
+
+.workbench-shell .match-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.workbench-shell .match-identity {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.workbench-shell .match-head h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  line-height: 1.25;
+}
+
+.workbench-shell .match-meta {
+  margin: 2px 0 0;
+  color: var(--soft);
+  font-size: 0.82rem;
+}
+
+/* Score ring */
+
+.workbench-shell .score-ring {
+  --val: 0;
+  --ring: var(--accent);
+  position: relative;
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background:
+    radial-gradient(closest-side, var(--panel) 76%, transparent 77% 100%),
+    conic-gradient(var(--ring) calc(var(--val) * 1%), var(--line) 0);
+}
+
+.workbench-shell .score-ring b {
+  font-size: 1.02rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.workbench-shell .score-ring.ring-strong {
+  --ring: #12b76a;
+}
+
+.workbench-shell .score-ring.ring-mid {
+  --ring: #eaaa08;
+}
+
+.workbench-shell .score-ring.ring-low {
+  --ring: #f04438;
+}
+
+/* Verdict badges */
+
+.workbench-shell .match-head .verdict-badge {
+  align-self: center;
+  padding: 5px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 650;
+  white-space: nowrap;
+  background: var(--panel-soft);
+}
+
+.workbench-shell .match-head .verdict-badge.verdict-strong {
+  border-color: rgba(6, 118, 71, 0.25);
+  color: var(--success);
+  background: var(--success-soft);
+}
+
+.workbench-shell .match-head .verdict-badge.verdict-review {
+  border-color: rgba(14, 122, 110, 0.25);
+  color: var(--accent-strong);
+  background: var(--accent-soft);
+}
+
+.workbench-shell .match-head .verdict-badge.verdict-needs {
+  border-color: rgba(181, 71, 8, 0.25);
+  color: var(--warning);
+  background: var(--warning-soft);
+}
+
+.workbench-shell .match-head .verdict-badge.verdict-low,
+.workbench-shell .match-head .verdict-badge.verdict-reject {
+  border-color: rgba(180, 35, 24, 0.25);
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.workbench-shell .match-card > div > p {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.workbench-shell .decision-status span {
+  padding: 4px 9px;
+  border-radius: 999px;
+  color: #fff;
+  background: var(--ink);
+  font-size: 0.74rem;
+  font-weight: 650;
+  text-transform: capitalize;
+}
+
+/* Signal chips */
+
+.workbench-shell .signal-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.workbench-shell .signal-strip span {
+  padding: 4px 9px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
+  background: var(--panel-soft);
+}
+
+.workbench-shell .signal-strip .signal-hit {
+  border-color: rgba(14, 122, 110, 0.25);
+  color: var(--accent-strong);
+  background: var(--accent-soft);
+}
+
+.workbench-shell .signal-strip .signal-gap {
+  border-color: rgba(181, 71, 8, 0.25);
+  color: var(--warning);
+  background: var(--warning-soft);
+}
+
+.workbench-shell .rule-grid span {
+  border: 1px solid rgba(6, 118, 71, 0.25);
+  color: var(--success);
+  background: var(--success-soft);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.workbench-shell .rule-grid .fail {
+  border-color: rgba(180, 35, 24, 0.25);
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.workbench-shell .risk-row span {
+  border: 1px solid rgba(181, 71, 8, 0.2);
+  color: var(--warning);
+  background: var(--warning-soft);
+  font-size: 0.75rem;
+  font-weight: 550;
+}
+
+.workbench-shell .profile-strip span {
+  border: 1px solid var(--line);
+  color: var(--muted);
+  background: var(--panel-soft);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+/* Evidence + breakdown */
+
+.workbench-shell .candidate-evidence {
+  margin-top: 14px;
+}
+
+.workbench-shell .candidate-evidence[open] {
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--panel-soft);
+}
+
+.workbench-shell .candidate-evidence[open] summary {
+  margin-bottom: 12px;
+  color: var(--accent-strong);
+  background: var(--accent-soft);
+  border-color: rgba(14, 122, 110, 0.3);
+}
+
+.workbench-shell .breakdown-bars {
+  display: grid;
+  gap: 8px;
+}
+
+.workbench-shell .breakdown-bars .bar-row {
+  display: grid;
+  grid-template-columns: 74px 1fr 34px;
+  gap: 10px;
+  align-items: center;
+}
+
+.workbench-shell .breakdown-bars .bar-row > span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.workbench-shell .breakdown-bars .bar {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.workbench-shell .breakdown-bars .bar i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  transition: width 400ms ease;
+}
+
+.workbench-shell .breakdown-bars .bar-row > b {
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.workbench-shell .evidence-panel {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+}
+
+.workbench-shell .evidence-panel > strong {
+  color: var(--soft);
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.workbench-shell .evidence-panel blockquote {
+  margin: 0;
+  padding: 0 0 0 12px;
+  border-left: 2px solid var(--line-strong);
+  color: var(--ink);
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.workbench-shell .evidence-panel blockquote span {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--soft);
+  font-size: 0.7rem;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* Decisions */
+
+.workbench-shell .decision-panel {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.workbench-shell .decision-panel input {
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+  background: var(--panel);
+  font: inherit;
+  font-size: 0.88rem;
+}
+
+.workbench-shell .decision-panel input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-ring);
+}
+
+.workbench-shell .decision-panel button,
+.workbench-shell .benchmark-panel button {
+  min-height: 36px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+  background: var(--panel);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: capitalize;
+  transition: border-color 140ms ease, background 140ms ease, color 140ms ease;
+}
+
+.workbench-shell .decision-panel button:hover:not(:disabled),
+.workbench-shell .benchmark-panel button:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent-strong);
+  background: var(--accent-soft);
+}
+
+.workbench-shell .benchmark-panel[open] {
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--panel-soft);
+}
+
+.workbench-shell .benchmark-panel[open] summary {
+  margin-bottom: 8px;
+  color: var(--accent-strong);
+  background: var(--accent-soft);
+  border-color: rgba(14, 122, 110, 0.3);
+}
+
+/* ---------- Responsive ---------- */
+
+@media (max-width: 920px) {
+  .workbench-shell .screen-form {
+    position: static;
+  }
+
+  .workbench-shell .match-head {
+    flex-wrap: wrap;
+  }
+
+  .workbench-shell .review-tabs button {
+    font-size: 0.8rem;
+  }
+}
