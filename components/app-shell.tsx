@@ -16,6 +16,8 @@ export function AppShell({
   children: React.ReactNode;
   wide?: boolean;
 }) {
+  const items = user.role === "admin" ? [...navItems, { href: "/admin", label: "Admin" }] : navItems;
+
   return (
     <div className="app-shell min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur">
@@ -24,7 +26,7 @@ export function AppShell({
             TalentRank<span className="text-primary">AI</span>
           </Link>
           <div className="hidden items-center gap-1 md:flex">
-            {navItems.map((item) => (
+            {items.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
@@ -35,11 +37,6 @@ export function AppShell({
             ))}
           </div>
           <div className="flex items-center gap-3">
-            <span className="hidden text-sm text-muted-foreground sm:inline">
-              {user.name}
-              <span className="text-border"> · </span>
-              {user.role}
-            </span>
             <form action="/api/auth/logout" method="post">
               <button
                 type="submit"

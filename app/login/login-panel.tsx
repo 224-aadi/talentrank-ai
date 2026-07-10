@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 
 export function LoginPanel({
@@ -13,17 +14,27 @@ export function LoginPanel({
   hasOidc: boolean;
   error?: string;
 }) {
-  const [mode, setMode] = useState<"login" | "reset-request">(inviteToken || resetToken ? "login" : "login");
+  const [mode, setMode] = useState<"login" | "reset-request">("login");
   const [message, setMessage] = useState(error ? "Invalid email or password." : "");
+  const [loading, setLoading] = useState(false);
+
+  const inputClass =
+    "rounded-md border border-border bg-background px-3 py-2.5 outline-none ring-primary focus:ring-2";
+  const primaryButtonClass =
+    "rounded-md bg-foreground px-4 py-2.5 text-sm font-medium text-background transition-opacity hover:opacity-90 disabled:opacity-60";
+  const secondaryButtonClass =
+    "rounded-md border border-border bg-card px-4 py-2.5 text-sm font-medium transition-colors hover:bg-muted";
 
   async function submitJson(path: string, body: Record<string, FormDataEntryValue | string | undefined>) {
     setMessage("");
+    setLoading(true);
     const response = await fetch(path, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(body),
     });
     const payload = await response.json().catch(() => ({}));
+    setLoading(false);
     if (!response.ok) {
       setMessage(payload.error || "Request failed.");
       return null;
@@ -31,16 +42,20 @@ export function LoginPanel({
     return payload;
   }
 
-  async function acceptInvite(formData: FormData) {
+  async function acceptInvite(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
     const payload = await submitJson("/api/auth/invites/accept", {
       token: inviteToken,
-      password: formData.get("password") || "",
+      password: form.get("password") || "",
     });
-    if (payload) window.location.href = "/";
+    if (payload) window.location.href = "/screen";
   }
 
-  async function requestReset(formData: FormData) {
-    const payload = await submitJson("/api/auth/password-reset", { email: formData.get("email") || "" });
+  async function requestReset(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const payload = await submitJson("/api/auth/password-reset", { email: form.get("email") || "" });
     if (!payload) return;
     setMessage(
       payload.email?.delivered
@@ -51,18 +66,12 @@ export function LoginPanel({
     );
   }
 
-  async function signIn(formData: FormData) {
-    const payload = await submitJson("/api/auth/login", {
-      email: formData.get("email") || "",
-      password: formData.get("password") || "",
-    });
-    if (payload) window.location.href = "/";
-  }
-
-  async function confirmReset(formData: FormData) {
+  async function confirmReset(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
     const payload = await submitJson("/api/auth/password-reset/confirm", {
       token: resetToken,
-      password: formData.get("password") || "",
+      password: form.get("password") || "",
     });
     if (payload) {
       setMessage("Password reset. You can sign in now.");
@@ -70,18 +79,42 @@ export function LoginPanel({
     }
   }
 
+  async function handleLogin(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setLoading(true);
+    setMessage("");
+    const form = new FormData(event.currentTarget);
+    const response = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        email: form.get("email"),
+        password: form.get("password"),
+      }),
+    });
+    const payload = await response.json().catch(() => ({}));
+    setLoading(false);
+    if (!response.ok) {
+      setMessage(payload.error || "Invalid email or password.");
+      return;
+    }
+    window.location.href = "/screen";
+  }
+
   if (inviteToken) {
     return (
       <>
-        <p>Accept your workspace invite and create a password for secure access.</p>
-        <form action={acceptInvite} className="login-form">
-          <label>
-            New password
-            <input name="password" type="password" autoComplete="new-password" minLength={10} required />
+        <p className="text-sm text-muted-foreground">Accept your workspace invite and create a password for secure access.</p>
+        {message ? <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{message}</div> : null}
+        <form onSubmit={acceptInvite} className="mt-6 grid gap-4">
+          <label className="grid gap-2 text-sm">
+            <span className="font-medium">New password</span>
+            <input name="password" type="password" autoComplete="new-password" minLength={10} required className={inputClass} />
           </label>
-          <button type="submit">Accept invite</button>
+          <button type="submit" disabled={loading} className={primaryButtonClass}>
+            Accept invite
+          </button>
         </form>
-        {message ? <div className="error-banner">{message}</div> : null}
       </>
     );
   }
@@ -89,57 +122,76 @@ export function LoginPanel({
   if (resetToken) {
     return (
       <>
-        <p>Create a new password for your TalentRank AI account.</p>
-        <form action={confirmReset} className="login-form">
-          <label>
-            New password
-            <input name="password" type="password" autoComplete="new-password" minLength={10} required />
+        <p className="text-sm text-muted-foreground">Create a new password for your TalentRankAI account.</p>
+        {message ? <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{message}</div> : null}
+        <form onSubmit={confirmReset} className="mt-6 grid gap-4">
+          <label className="grid gap-2 text-sm">
+            <span className="font-medium">New password</span>
+            <input name="password" type="password" autoComplete="new-password" minLength={10} required className={inputClass} />
           </label>
-          <button type="submit">Reset password</button>
+          <button type="submit" disabled={loading} className={primaryButtonClass}>
+            Reset password
+          </button>
         </form>
-        {message ? <div className="error-banner">{message}</div> : null}
       </>
     );
   }
 
   return (
     <>
-      <p>Welcome back.</p>
-      {message ? <div className="error-banner">{message}</div> : null}
+      {message ? <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{message}</div> : null}
       {mode === "reset-request" ? (
-        <form action={requestReset} className="login-form">
-          <label>
-            Email
-            <input name="email" type="email" autoComplete="email" required />
+        <form onSubmit={requestReset} className="grid gap-4">
+          <label className="grid gap-2 text-sm">
+            <span className="font-medium">Email</span>
+            <input name="email" type="email" autoComplete="email" required className={inputClass} />
           </label>
-          <button type="submit">Send reset link</button>
-          <button type="button" className="secondary-button" onClick={() => setMode("login")}>
+          <button type="submit" disabled={loading} className={primaryButtonClass}>
+            Send reset link
+          </button>
+          <button type="button" className={secondaryButtonClass} onClick={() => setMode("login")}>
             Back to sign in
           </button>
         </form>
       ) : (
         <>
           {hasOidc ? (
-            <a className="oidc-button" href="/api/auth/oidc/start">
+            <a
+              href="/api/auth/oidc/start"
+              className="mb-4 flex items-center justify-center rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+            >
               Continue with SSO
             </a>
           ) : null}
-          <form action={signIn} className="login-form">
-            <label>
-              Email
-              <input name="email" type="email" autoComplete="email" defaultValue="admin@talentrank.local" required />
+          <form onSubmit={handleLogin} className="grid gap-4">
+            <label className="grid gap-2 text-sm">
+              <span className="font-medium">Email</span>
+              <input name="email" type="email" autoComplete="email" required className={inputClass} />
             </label>
-            <label>
-              Password
-              <input name="password" type="password" autoComplete="current-password" required />
+            <label className="grid gap-2 text-sm">
+              <span className="font-medium">Password</span>
+              <input name="password" type="password" autoComplete="current-password" required className={inputClass} />
             </label>
-            <button type="submit">Sign in</button>
-            <button type="button" className="secondary-button" onClick={() => setMode("reset-request")}>
+            <button type="submit" disabled={loading} className={primaryButtonClass}>
+              {loading ? "Signing in…" : "Sign in"}
+            </button>
+            <button type="button" className={secondaryButtonClass} onClick={() => setMode("reset-request")}>
               Reset password
             </button>
           </form>
         </>
       )}
+    </>
+  );
+}
+
+export function LoginFooter() {
+  return (
+    <>
+      Don&apos;t have an account?{" "}
+      <Link href="/signup" className="font-medium text-foreground underline-offset-4 hover:underline">
+        Sign up
+      </Link>
     </>
   );
 }

@@ -210,7 +210,7 @@ function toMatchRun(input: RankCandidateInput, assessment: LlmAssessment, lexica
       ...(rejected ? ["Failed knockout rule"] : []),
       ...contestedRules.map((rule) => `Rule "${rule}" passed on literal text only; semantic review judged it unmet — possible keyword stuffing`),
       ...assessment.riskFlags.map((flag) => flag.slice(0, 160)).slice(0, 6),
-      ...(assessment.summary ? [`LLM rationale: ${assessment.summary.slice(0, 300)}`] : []),
+      ...(assessment.summary ? [`LLM rationale: ${assessment.summary.slice(0, 1200)}`] : []),
       ...(divergence > 30 ? [`Diverges ${divergence} points from lexical baseline (${lexical.score}) — worth a manual look`] : []),
     ],
   };

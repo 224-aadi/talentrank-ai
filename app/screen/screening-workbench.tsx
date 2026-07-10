@@ -35,6 +35,7 @@ type MatchRow = {
   }>;
   riskFlags: string[];
   resume?: {
+    id?: string;
     fileName: string;
     parser?: string;
     warnings?: string[];
@@ -98,6 +99,47 @@ type RetrievalRow = {
   };
 };
 
+async function readApiJson<T>(response: Response, fallback: string): Promise<T> {
+  const text = await response.text();
+  let payload: unknown = null;
+  if (text) {
+    try {
+      payload = JSON.parse(text);
+    } catch {
+      payload = { error: text.slice(0, 240) };
+    }
+  }
+
+  if (!response.ok) {
+    const errorPayload = payload && typeof payload === "object" && "error" in payload ? (payload as { error?: unknown }).error : null;
+    const detail =
+      typeof errorPayload === "string"
+        ? errorPayload
+        : errorPayload
+          ? JSON.stringify(errorPayload)
+          : text.slice(0, 240);
+    throw new Error(detail || `${fallback} (${response.status})`);
+  }
+
+  return payload as T;
+}
+
+function csvCell(value: unknown) {
+  return `"${String(value ?? "").replaceAll('"', '""')}"`;
+}
+
+function csvFormula(value: string) {
+  return `"${value.replaceAll('"', '""')}"`;
+}
+
+function csvList(values?: string[]) {
+  return values?.filter(Boolean).join("; ") || "";
+}
+
+function resumeDownloadUrl(match: MatchRow) {
+  return match.resume?.id ? `${window.location.origin}/api/resumes/${match.resume.id}/download` : "";
+}
+
 export default function ScreeningWorkbench({
   initialJobs,
   initialMatches,
@@ -123,6 +165,7 @@ export default function ScreeningWorkbench({
   const [savingDecisionId, setSavingDecisionId] = useState("");
   const [savingLabelId, setSavingLabelId] = useState("");
   const [error, setError] = useState("");
+  const [exportStatus, setExportStatus] = useState<"idle" | "exporting" | "exported">("idle");
   const [activeBucket, setActiveBucket] = useState<ReviewBucket>("recommended");
   const [compareIds, setCompareIds] = useState<string[]>([]);
 
@@ -179,6 +222,72 @@ export default function ScreeningWorkbench({
     return "verdict-low";
   }
 
+  function rationaleFor(match: MatchRow) {
+    return match.riskFlags.find((risk) => risk.toLowerCase().startsWith("llm rationale:"))?.replace(/^LLM rationale:\s*/i, "");
+  }
+
+  function recruiterRisks(match: MatchRow) {
+    return match.riskFlags.filter((risk) => !risk.toLowerCase().startsWith("llm rationale:"));
+  }
+
+  function exportCurrentCsv() {
+    if (!matches.length) return;
+    setExportStatus("exporting");
+    const headers = [
+      "Rank",
+      "Candidate",
+      "Email",
+      "Resume file",
+      "Open resume",
+      "Resume URL",
+      "Job",
+      "Score",
+      "Confidence",
+      "Verdict",
+      "Decision",
+      "Matched signals",
+      "Missing signals",
+      "Required keyword outcomes",
+      "Skills extracted",
+      "LLM rationale",
+      "Parser warnings",
+    ];
+    const rows = matches.map((match, index) => {
+      const resumeUrl = resumeDownloadUrl(match);
+      return [
+        csvCell(index + 1),
+        csvCell(match.candidate?.name || ""),
+        csvCell(match.candidate?.email || match.resume?.parsedJson?.contact?.email || ""),
+        csvCell(match.resume?.fileName || ""),
+        resumeUrl ? csvFormula(`=HYPERLINK("${resumeUrl}", "Open resume")`) : csvCell(""),
+        csvCell(resumeUrl),
+        csvCell(match.job?.title || title),
+        csvCell(match.score),
+        csvCell(match.confidence),
+        csvCell(match.verdict),
+        csvCell(match.latestDecision?.decision || ""),
+        csvCell(csvList(match.matchedSignals)),
+        csvCell(csvList(match.missingSignals)),
+        csvCell(match.hardRuleOutcomes?.map((outcome) => `${outcome.passed ? "pass" : "fail"}: ${outcome.rule}`).join("; ") || ""),
+        csvCell(csvList(match.resume?.parsedJson?.skills)),
+        csvCell(rationaleFor(match) || ""),
+        csvCell(csvList(match.resume?.warnings)),
+      ];
+    });
+    const csv = [headers.map(csvCell).join(","), ...rows.map((row) => row.join(","))].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `talentrank-screening-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    setExportStatus("exported");
+    window.setTimeout(() => setExportStatus("idle"), 2200);
+  }
+
   function handleFiles(files: FileList | null) {
     if (!files) return;
     setResumeFiles([...files]);
@@ -203,8 +312,7 @@ export default function ScreeningWorkbench({
     try {
       const queryText = retrievalMode === "semantic" && description ? description : poolQuery;
       const response = await fetch(`/api/candidates/search?q=${encodeURIComponent(queryText)}&mode=${retrievalMode}&limit=12`);
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error || "Candidate search failed");
+      const payload = await readApiJson<{ results: RetrievalRow[]; poolSize: number }>(response, "Candidate search failed");
       setPoolResults(payload.results);
       setPoolSize(payload.poolSize);
     } catch (searchError) {
@@ -237,10 +345,12 @@ export default function ScreeningWorkbench({
         method: "POST",
         body: formData,
       });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error ? JSON.stringify(payload.error) : "Screening failed");
+      const payload = await readApiJson<{
+        job: Job;
+        results: Array<{ matchRun: MatchRow; candidate: MatchRow["candidate"]; resume: MatchRow["resume"] }>;
+      }>(response, "Screening failed");
       setJobs([payload.job, ...jobs]);
-      setMatches(payload.results.map((item: { matchRun: MatchRow; candidate: MatchRow["candidate"]; resume: MatchRow["resume"] }) => ({
+      setMatches(payload.results.map((item) => ({
         ...item.matchRun,
         candidate: item.candidate,
         resume: item.resume,
@@ -268,8 +378,7 @@ export default function ScreeningWorkbench({
           notes: decisionNotes[match.id]?.trim() || undefined,
         }),
       });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error ? JSON.stringify(payload.error) : "Decision failed");
+      const payload = await readApiJson<{ candidate?: MatchRow["candidate"]; decision: MatchRow["latestDecision"] }>(response, "Decision failed");
       setMatches((current) =>
         current.map((item) =>
           item.id === match.id
@@ -303,8 +412,7 @@ export default function ScreeningWorkbench({
           notes: decisionNotes[match.id]?.trim() || undefined,
         }),
       });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error ? JSON.stringify(payload.error) : "Label failed");
+      await readApiJson(response, "Label failed");
     } catch (labelError) {
       setError(labelError instanceof Error ? labelError.message : "Label failed");
     } finally {
@@ -314,15 +422,10 @@ export default function ScreeningWorkbench({
 
   return (
     <main className="workbench-shell">
-      <section className="workbench-header">
-        <div className="workbench-brand">
-          <span className="brand-mark">TR</span>
-          <div>
-            <p className="eyebrow">Candidate screening</p>
-            <h1>Match workbench</h1>
-          </div>
-        </div>
-        <a href="/">Dashboard</a>
+      <section className="workbench-intro">
+        <p className="workbench-eyebrow">Candidate screening</p>
+        <h1>Match workbench</h1>
+        <p className="workbench-lede">Upload a job description, add resumes, and review explainable rankings.</p>
       </section>
 
       <section className="workbench-grid">
@@ -403,7 +506,11 @@ export default function ScreeningWorkbench({
             </div>
           ) : null}
           <button disabled={isRunning || !description || (!resumeFiles.length && !selectedResumeIds.length)} onClick={runScreen}>
-            {isRunning ? "Screening..." : "Rank candidates"}
+            {isRunning ? (
+              <span className="loading-label">
+                Screening<span className="loading-dots" aria-hidden="true"><i /><i /><i /></span>
+              </span>
+            ) : "Rank candidates"}
           </button>
           {error ? <p className="form-error">{error}</p> : null}
         </form>
@@ -414,7 +521,18 @@ export default function ScreeningWorkbench({
               <span>{matches.length ? `${matches.length} candidates` : "No candidates yet"}</span>
               <strong>{matches.length ? `${metrics.avg} avg score` : "Upload resumes to begin"}</strong>
             </div>
-            {matches.length ? <small>{metrics.confidence}% confidence</small> : null}
+            {matches.length ? (
+              <div className="review-actions">
+                <small>{metrics.confidence}% confidence</small>
+                <button type="button" onClick={exportCurrentCsv} disabled={exportStatus === "exporting"}>
+                  {exportStatus === "exporting" ? (
+                    <span className="loading-label">
+                      Exporting<span className="loading-dots" aria-hidden="true"><i /><i /><i /></span>
+                    </span>
+                  ) : exportStatus === "exported" ? "Exported" : "Export CSV"}
+                </button>
+              </div>
+            ) : null}
           </div>
 
           <div className="review-tabs">
@@ -582,7 +700,18 @@ export default function ScreeningWorkbench({
                       <p><strong>Extracted skills:</strong> {match.resume.parsedJson.skills.slice(0, 14).join(", ")}</p>
                     ) : null}
                     {match.resume?.warnings?.length ? <p><strong>Parser:</strong> {match.resume.warnings.join(", ")}</p> : null}
-                    {match.riskFlags.length ? <div className="risk-row">{match.riskFlags.map((risk) => <span key={risk}>{risk}</span>)}</div> : null}
+                    {match.resume?.id ? (
+                      <p className="resume-link-row">
+                        <a href={`/api/resumes/${match.resume.id}/download`}>Open original resume PDF</a>
+                      </p>
+                    ) : null}
+                    {rationaleFor(match) ? (
+                      <div className="rationale-panel">
+                        <strong>LLM rationale</strong>
+                        <p>{rationaleFor(match)}</p>
+                      </div>
+                    ) : null}
+                    {recruiterRisks(match).length ? <div className="risk-row">{recruiterRisks(match).map((risk) => <span key={risk}>{risk}</span>)}</div> : null}
                   </details>
 
                   <div className="decision-panel">

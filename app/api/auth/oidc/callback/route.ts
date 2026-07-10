@@ -48,7 +48,7 @@ export async function GET(request: Request) {
       organizationId: process.env.OIDC_DEFAULT_ORG_ID || "org_demo",
       role,
     });
-    const response = NextResponse.redirect(new URL("/", request.url));
+    const response = NextResponse.redirect(new URL("/screen", request.url));
     const cookie = authCookie(result.token, result.maxAge);
     response.cookies.set(cookie.name, cookie.value, cookie.options);
     response.cookies.set("tr_oidc_state", "", { path: "/", maxAge: 0 });

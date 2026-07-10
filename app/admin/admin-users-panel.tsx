@@ -86,7 +86,12 @@ export function AdminUsersPanel({ initialUsers, currentUserId }: { initialUsers:
       </article>
 
       <article>
-        <h2>Roles</h2>
+        <div className="section-heading">
+          <h2>Roles</h2>
+          <a href="/api/admin/users/export" className="export-link">
+            Export CSV
+          </a>
+        </div>
         <div className="user-role-list">
           {sortedUsers.map((user) => (
             <div key={user.id} className="user-role-row">

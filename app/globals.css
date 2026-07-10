@@ -1,3 +1,72 @@
+@import "./screen/screen.css";
+
+@import "tailwindcss";
+@source "./**/*.{ts,tsx}";
+@source "../components/**/*.{ts,tsx}";
+
+@theme inline {
+  --font-display: "Space Grotesk", sans-serif;
+  --font-sans: "DM Sans", sans-serif;
+  --color-background: var(--tr-background);
+  --color-foreground: var(--tr-foreground);
+  --color-card: var(--tr-card);
+  --color-card-foreground: var(--tr-card-foreground);
+  --color-primary: var(--tr-primary);
+  --color-primary-foreground: var(--tr-primary-foreground);
+  --color-muted: var(--tr-muted);
+  --color-muted-foreground: var(--tr-muted-foreground);
+  --color-border: var(--tr-border);
+  --radius-md: var(--tr-radius);
+}
+
+:root {
+  --tr-radius: 0.625rem;
+  --tr-background: oklch(0.985 0.005 90);
+  --tr-surface: oklch(0.97 0.008 90);
+  --tr-foreground: oklch(0.22 0.02 160);
+  --tr-card: oklch(1 0 0);
+  --tr-card-foreground: oklch(0.22 0.02 160);
+  --tr-primary: oklch(0.42 0.08 165);
+  --tr-primary-foreground: oklch(0.985 0.005 90);
+  --tr-muted: oklch(0.95 0.008 90);
+  --tr-muted-foreground: oklch(0.48 0.015 160);
+  --tr-border: oklch(0.9 0.008 90);
+}
+
+@utility font-display {
+  font-family: var(--font-display);
+}
+
+@utility bg-surface {
+  background-color: var(--tr-surface);
+}
+
+.landing-page,
+.auth-page,
+.app-shell {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  scroll-behavior: smooth;
+}
+
+body:has(.app-shell) {
+  margin: 0;
+  background: var(--tr-background);
+}
+
+.landing-page h1,
+.landing-page h2,
+.landing-page h3,
+.landing-page h4,
+.auth-page h1,
+.auth-page h2,
+.app-shell h1,
+.app-shell h2,
+.app-shell h3 {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+}
+
 :root {
   color-scheme: light;
   --ink: #17211d;
@@ -191,6 +260,438 @@ h1 {
   color: var(--ink);
   background: #fff;
   box-shadow: none;
+}
+
+.app-shell .metrics,
+.app-shell .panel-grid {
+  display: grid;
+  gap: 12px;
+  margin-top: 0;
+}
+
+.app-shell .metrics {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.app-shell .metrics article,
+.app-shell .panel-grid article {
+  padding: 18px;
+  border: 1px solid var(--tr-border);
+  border-radius: var(--tr-radius);
+  background: var(--tr-card);
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.app-shell .metrics span {
+  display: block;
+  color: var(--tr-muted-foreground);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.app-shell .metrics strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 1.15rem;
+  font-family: var(--font-display);
+  font-variant-numeric: tabular-nums;
+}
+
+.app-shell .panel-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 16px;
+}
+
+.app-shell .panel-grid h2 {
+  margin: 0 0 10px;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.app-shell .panel-grid p,
+.app-shell .panel-grid li {
+  color: var(--tr-muted-foreground);
+  line-height: 1.55;
+}
+
+.app-shell .workbench-shell {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+.app-shell .workbench-intro {
+  margin-bottom: 20px;
+}
+
+.app-shell .workbench-eyebrow {
+  margin: 0 0 8px;
+  color: var(--tr-muted-foreground);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.app-shell .workbench-intro h1 {
+  margin: 0;
+  font-size: clamp(1.75rem, 4vw, 2.5rem);
+  line-height: 1.1;
+}
+
+.app-shell .workbench-lede {
+  margin: 10px 0 0;
+  max-width: 42rem;
+  color: var(--tr-muted-foreground);
+  font-size: 0.95rem;
+  line-height: 1.55;
+}
+
+.app-shell .calibration-grid,
+.app-shell .calibration-panels {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.app-shell .calibration-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.app-shell .calibration-panels {
+  grid-template-columns: 1fr 1fr;
+}
+
+.app-shell .calibration-grid article,
+.app-shell .calibration-panels article {
+  padding: 18px;
+  border: 1px solid var(--tr-border);
+  border-radius: var(--tr-radius);
+  background: var(--tr-card);
+  box-shadow: none;
+}
+
+.app-shell .calibration-grid span {
+  display: block;
+  color: var(--tr-muted-foreground);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.app-shell .calibration-grid strong {
+  display: block;
+  margin-top: 6px;
+  font-size: 1.75rem;
+  font-family: var(--font-display);
+  font-variant-numeric: tabular-nums;
+}
+
+.app-shell .calibration-panels h2 {
+  margin: 0 0 12px;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.app-shell .calibration-table div {
+  background: var(--tr-surface);
+  border: 1px solid var(--tr-border);
+  border-radius: var(--tr-radius);
+}
+
+.app-shell .calibration-table span {
+  color: var(--tr-primary);
+  font-weight: 600;
+}
+
+.app-shell .calibration-table small {
+  color: var(--tr-muted-foreground);
+}
+
+.app-shell .control-row,
+.app-shell .endpoint-list a,
+.app-shell .compact-table div {
+  border-color: var(--tr-border);
+}
+
+.app-shell .endpoint-list a {
+  border-radius: var(--tr-radius);
+  background: var(--tr-surface);
+  color: var(--tr-foreground);
+  font-weight: 600;
+}
+
+.app-shell .endpoint-list a:hover {
+  background: var(--tr-muted);
+}
+
+.app-shell .admin-action-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.app-shell .selected-jd-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 14px;
+  padding: 14px 16px;
+  border: 1px solid color-mix(in oklch, var(--tr-primary) 24%, var(--tr-border));
+  border-radius: var(--tr-radius);
+  background: color-mix(in oklch, var(--tr-primary) 8%, var(--tr-card));
+}
+
+.app-shell .selected-jd-banner span {
+  display: block;
+  color: var(--tr-muted-foreground);
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.app-shell .selected-jd-banner strong {
+  display: block;
+  margin-top: 3px;
+}
+
+.app-shell .admin-action-bar a,
+.app-shell .admin-card-head a,
+.app-shell .candidate-ledger-row a,
+.app-shell .selected-jd-banner a,
+.app-shell .jd-select-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 0 13px;
+  border: 1px solid var(--tr-border);
+  border-radius: var(--tr-radius);
+  color: var(--tr-foreground);
+  background: var(--tr-card);
+  font-size: 0.82rem;
+  font-weight: 650;
+  text-decoration: none;
+  transition: border-color 140ms ease, background 140ms ease, color 140ms ease;
+}
+
+.app-shell .admin-action-bar a:first-child,
+.app-shell .candidate-ledger-row a {
+  color: var(--tr-primary-foreground);
+  border-color: var(--tr-primary);
+  background: var(--tr-primary);
+}
+
+.app-shell .admin-action-bar a:hover,
+.app-shell .admin-card-head a:hover,
+.app-shell .candidate-ledger-row a:hover,
+.app-shell .selected-jd-banner a:hover,
+.app-shell .jd-select-link:hover {
+  border-color: var(--tr-primary);
+  color: var(--tr-primary);
+  background: var(--tr-surface);
+}
+
+.app-shell .admin-overview-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.75fr);
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.app-shell .admin-table-card {
+  padding: 18px;
+  border: 1px solid var(--tr-border);
+  border-radius: var(--tr-radius);
+  background: var(--tr-card);
+}
+
+.app-shell .admin-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.app-shell .admin-card-head span {
+  display: block;
+  color: var(--tr-muted-foreground);
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.app-shell .admin-card-head h2 {
+  margin: 4px 0 0;
+  font-size: 1.02rem;
+}
+
+.app-shell .admin-table,
+.app-shell .admin-list,
+.app-shell .candidate-ledger {
+  display: grid;
+  gap: 8px;
+}
+
+.app-shell .admin-row,
+.app-shell .candidate-ledger-row,
+.app-shell .admin-list details,
+.app-shell .admin-list.compact div {
+  border: 1px solid var(--tr-border);
+  border-radius: var(--tr-radius);
+  background: var(--tr-surface);
+}
+
+.app-shell .admin-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 70px 120px;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+}
+
+.app-shell .admin-row span {
+  color: var(--tr-primary);
+  font-weight: 750;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.app-shell .admin-row small,
+.app-shell .candidate-ledger-row small,
+.app-shell .admin-list small {
+  display: block;
+  margin-top: 3px;
+  color: var(--tr-muted-foreground);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.app-shell .admin-list details {
+  padding: 12px;
+}
+
+.app-shell .admin-list summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.app-shell .admin-list summary::-webkit-details-marker {
+  display: none;
+}
+
+.app-shell .admin-list p {
+  margin: 10px 0 0;
+  color: var(--tr-muted-foreground);
+  font-size: 0.86rem;
+  line-height: 1.55;
+}
+
+.app-shell .jd-select-link {
+  width: fit-content;
+  margin-top: 10px;
+}
+
+.app-shell .candidate-ledger-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(220px, 1.2fr) 110px auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+}
+
+.app-shell .candidate-ledger-row span {
+  font-weight: 650;
+}
+
+.app-shell .admin-list.compact div {
+  padding: 11px 12px;
+}
+
+.app-shell .admin-runtime-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.app-shell .admin-runtime-grid span {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 11px 12px;
+  border: 1px solid var(--tr-border);
+  border-radius: var(--tr-radius);
+  color: var(--tr-muted-foreground);
+  background: var(--tr-surface);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.app-shell .admin-runtime-grid b {
+  color: var(--tr-foreground);
+  font-weight: 700;
+}
+
+.app-shell .admin-form label {
+  color: var(--tr-muted-foreground);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.app-shell .admin-form input,
+.app-shell .admin-form select,
+.app-shell .user-role-row select {
+  border: 1px solid var(--tr-border);
+  border-radius: var(--tr-radius);
+  color: var(--tr-foreground);
+  background: var(--tr-background);
+}
+
+.app-shell .admin-form button,
+.app-shell .diagnostic-actions button,
+.app-shell .section-heading button {
+  border: 0;
+  border-radius: var(--tr-radius);
+  color: var(--tr-primary-foreground);
+  background: var(--tr-primary);
+  font-weight: 600;
+}
+
+.app-shell .user-role-row {
+  border: 1px solid var(--tr-border);
+  border-radius: var(--tr-radius);
+  background: var(--tr-surface);
+}
+
+.app-shell .user-role-row p {
+  color: var(--tr-muted-foreground);
+}
+
+.app-shell .diagnostics-panel {
+  border: 1px solid var(--tr-border);
+  border-radius: var(--tr-radius);
+  background: var(--tr-card);
+  box-shadow: none;
+}
+
+.app-shell .diagnostic-row {
+  border: 1px solid var(--tr-border);
+  border-radius: var(--tr-radius);
+  background: var(--tr-surface);
+}
+
+.app-shell .control-row {
+  border-color: var(--tr-border);
 }
 
 .metrics,
@@ -449,6 +950,16 @@ code {
     grid-template-columns: 1fr;
   }
 
+  .app-shell .admin-overview-grid,
+  .app-shell .candidate-ledger-row,
+  .app-shell .admin-row {
+    grid-template-columns: 1fr;
+  }
+
+  .app-shell .admin-row span {
+    text-align: left;
+  }
+
   .hero {
     padding: 28px;
   }
@@ -630,6 +1141,7 @@ code {
 }
 
 .section-heading button,
+.section-heading .export-link,
 .diagnostic-actions button {
   min-height: 38px;
   border: 0;
@@ -638,6 +1150,13 @@ code {
   background: var(--accent);
   font: inherit;
   font-weight: 760;
+}
+
+.section-heading .export-link {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 14px;
+  text-decoration: none;
 }
 
 .section-heading button {

@@ -226,6 +226,65 @@ function parseSessionToken(token?: string) {
   } satisfies AuthUser;
 }
 
+export async function signupUser(input: {
+  email: string;
+  name: string;
+  password: string;
+  organizationName?: string;
+}) {
+  const email = input.email.trim().toLowerCase();
+  const name = input.name.trim();
+  if (!name) throw new Error("Name is required.");
+  const existing = await findUserByEmail(email);
+  if (existing) throw new Error("A user with this email already exists.");
+
+  const organizationId = createId("org");
+  const organizationName = input.organizationName?.trim() || `${name}'s workspace`;
+
+  if (prismaEnabled()) {
+    const client = prisma as any;
+    await client.organization.create({
+      data: { id: organizationId, name: organizationName },
+    });
+    const user = await client.user.create({
+      data: {
+        organizationId,
+        email,
+        name,
+        role: "RECRUITER",
+        passwordHash: await hashPassword(input.password),
+      },
+    });
+    const authUser = toAuthUserFromPrisma(user);
+    await touchLastLogin(authUser.id);
+    return { user: authUser, token: createSessionToken(authUser), maxAge: sessionTtlSeconds };
+  }
+
+  const db = await readDb();
+  db.organizations ||= [];
+  db.users ||= [];
+  const timestamp = now();
+  db.organizations.unshift({
+    id: organizationId,
+    name: organizationName,
+    createdAt: timestamp,
+  });
+  const user: AuthUserRecord = {
+    id: createId("user"),
+    organizationId,
+    email,
+    name,
+    role: "recruiter",
+    passwordHash: await hashPassword(input.password),
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+  db.users.unshift(user);
+  await writeDb(db);
+  const authUser = toAuthUser(user);
+  return { user: authUser, token: createSessionToken(authUser), maxAge: sessionTtlSeconds };
+}
+
 export async function loginWithPassword(email: string, password: string) {
   const user = await findUserByEmail(email.trim().toLowerCase());
   const passwordOk = await verifyPassword(password, user?.passwordHash);
