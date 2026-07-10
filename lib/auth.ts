@@ -37,6 +37,10 @@ function authMode() {
   return process.env.TALENTRANK_AUTH_MODE === "headers" ? "headers" : "session";
 }
 
+function frontendOnlyMode() {
+  return Boolean(process.env.TALENTRANK_BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL) && process.env.TALENTRANK_FRONTEND_ONLY !== "false";
+}
+
 function sessionSecret() {
   return process.env.TALENTRANK_AUTH_SECRET || "dev-only-talentrank-session-secret-change-before-deploy";
 }
@@ -484,6 +488,7 @@ export async function currentUser(): Promise<AuthUser | null> {
   const cookieStore = await cookies();
   const session = parseSessionToken(cookieStore.get(sessionCookieName)?.value);
   if (!session) return null;
+  if (frontendOnlyMode()) return session;
   const user = await findUserById(session.id);
   if (!user) return null;
   return prismaEnabled() ? toAuthUserFromPrisma(user) : toAuthUser(user);

@@ -51,6 +51,14 @@ export function LoginPanel({
     );
   }
 
+  async function signIn(formData: FormData) {
+    const payload = await submitJson("/api/auth/login", {
+      email: formData.get("email") || "",
+      password: formData.get("password") || "",
+    });
+    if (payload) window.location.href = "/";
+  }
+
   async function confirmReset(formData: FormData) {
     const payload = await submitJson("/api/auth/password-reset/confirm", {
       token: resetToken,
@@ -116,7 +124,7 @@ export function LoginPanel({
               Continue with SSO
             </a>
           ) : null}
-          <form action="/api/auth/login" method="post" className="login-form">
+          <form action={signIn} className="login-form">
             <label>
               Email
               <input name="email" type="email" autoComplete="email" defaultValue="admin@talentrank.local" required />

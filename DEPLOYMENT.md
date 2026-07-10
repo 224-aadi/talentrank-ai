@@ -248,6 +248,29 @@ Then add the same storage, malware, email, auth, and optional OCR/OIDC secrets l
 
 Vercel can host the app, but for backend-heavy staging with PDF parsing, file upload, provider diagnostics, and migration entrypoints, a Docker web service such as Render/Railway/Fly is the cleaner first deployment target.
 
+### Vercel Frontend + Render Backend
+
+If Render is the deployed backend and Vercel should only serve the frontend shell, set these on Vercel:
+
+```bash
+TALENTRANK_APP_URL=https://your-vercel-app.vercel.app
+NEXT_PUBLIC_APP_URL=https://your-vercel-app.vercel.app
+TALENTRANK_BACKEND_URL=https://talentrank-ai-1xh1.onrender.com
+NEXT_PUBLIC_BACKEND_URL=https://talentrank-ai-1xh1.onrender.com
+TALENTRANK_FRONTEND_ONLY=true
+TALENTRANK_AUTH_SECRET=the_same_value_as_render
+```
+
+With `TALENTRANK_BACKEND_URL` set, Vercel rewrites `/api/*` to Render. Vercel does not need Supabase, S3, malware scanner, OCR, or email secrets in this mode; those stay on Render. `TALENTRANK_AUTH_SECRET` must match Render so Vercel can read the signed session cookie while Render owns login, uploads, scoring, and persistence.
+
+For local frontend-only development, use the same backend URL values in `.env.local`, then run:
+
+```bash
+npm run dev
+```
+
+Do not run a separate local backend. The local browser will hit `localhost` for pages and Render for `/api/*`.
+
 ### Render/Fly/Railway
 
 - Use the Dockerfile or Node runtime

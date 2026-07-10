@@ -1,5 +1,6 @@
 import { currentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { LogoutButton } from "./logout-button";
 
 export default async function HomePage() {
   const user = await currentUser();
@@ -18,7 +19,7 @@ export default async function HomePage() {
             {user.role === "admin" ? <a href="/admin">Admin</a> : null}
           </div>
           <form action="/api/auth/logout" method="post" className="logout-form">
-            <button type="submit">Sign out</button>
+            <LogoutButton />
           </form>
         </div>
       </section>
