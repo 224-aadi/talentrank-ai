@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireRole, type AuthUser } from "@/lib/auth";
-import { parseCandidateName, scoreCandidate } from "@/lib/matching";
+import { parseCandidateName } from "@/lib/matching";
+import { rankCandidates, rankingModel, llmRankingEnabled } from "@/lib/llm-ranking";
 import { extractStructuredProfile, parseResumeFile, type ParsedResumeFile } from "@/lib/parsing";
 import { clientKey, checkRateLimit } from "@/lib/rate-limit";
 import { storeUploadedResumeFile } from "@/lib/secure-storage";
@@ -118,8 +119,8 @@ export async function POST(request: Request) {
 
 async function screen(jobInput: z.infer<typeof jobSchema>, resumes: ParsedResumeFile[], storedResumes: StoredResumeInput[] = [], user?: AuthUser) {
   const job = await createJob({ ...jobInput, organizationId: user?.organizationId });
-  const results = [];
 
+  const pending = [];
   for (const resumeInput of resumes) {
     const candidateName = parseCandidateName(resumeInput.fileName, resumeInput.text);
     const { candidate, resume } = await createCandidateWithResume({
@@ -134,45 +135,32 @@ async function screen(jobInput: z.infer<typeof jobSchema>, resumes: ParsedResume
       parsedJson: resumeInput.parsedJson,
       parseConfidence: resumeInput.parseConfidence,
     });
-    const scored = scoreCandidate({
-      jobId: job.id,
-      candidateId: candidate.id,
-      jobText: job.description,
-      resumeText: resume.rawText || "",
-      hardRules: job.hardRules,
-      roleTemplate: job.roleTemplate,
-    });
-    const matchRun = await createMatchRun(scored);
-    results.push({
+    pending.push({
       candidate,
-      resume: {
-        ...resume,
-        parser: resumeInput.parser,
-        warnings: resumeInput.warnings,
-      },
-      matchRun,
+      resume: { ...resume, parser: resumeInput.parser, warnings: resumeInput.warnings },
+    });
+  }
+  for (const item of storedResumes) {
+    pending.push({
+      candidate: item.candidate,
+      resume: { ...item.resume, parser: "saved-pool", warnings: [] as string[] },
     });
   }
 
-  for (const item of storedResumes) {
-    const scored = scoreCandidate({
-      jobId: job.id,
-      candidateId: item.candidate.id,
-      jobText: job.description,
-      resumeText: item.resume.rawText || "",
-      hardRules: job.hardRules,
-      roleTemplate: job.roleTemplate,
-    });
-    const matchRun = await createMatchRun(scored);
-    results.push({
-      candidate: item.candidate,
-      resume: {
-        ...item.resume,
-        parser: "saved-pool",
-        warnings: [],
-      },
-      matchRun,
-    });
+  const scoredRuns = await rankCandidates(pending.map((item) => ({
+    jobId: job.id,
+    candidateId: item.candidate.id,
+    jobTitle: job.title,
+    jobText: job.description,
+    resumeText: item.resume.rawText || "",
+    hardRules: job.hardRules,
+    roleTemplate: job.roleTemplate,
+  })));
+
+  const results = [];
+  for (const [index, item] of pending.entries()) {
+    const matchRun = await createMatchRun(scoredRuns[index]);
+    results.push({ ...item, matchRun });
   }
 
   results.sort((a, b) => b.matchRun.score - a.matchRun.score);
@@ -181,7 +169,7 @@ async function screen(jobInput: z.infer<typeof jobSchema>, resumes: ParsedResume
 
   await createEvaluation({
     jobId: job.id,
-    model: "TalentRank hybrid-v0.6",
+    model: llmRankingEnabled() ? `TalentRank llm-v1 (${rankingModel()})` : "TalentRank hybrid-v0.7-taxonomy",
     candidateCount: results.length,
     shortlistCount: passed.length,
     strongMatchCount: strong.length,

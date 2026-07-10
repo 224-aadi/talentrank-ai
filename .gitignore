@@ -8,3 +8,7 @@ node_modules/
 .env
 .env.*
 !.env*.example
+
+# Local tooling
+tsconfig.tsbuildinfo
+.claude/
