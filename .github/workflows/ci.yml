@@ -10,9 +10,13 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DATABASE_URL: postgresql://user:pass@localhost:5432/talentrank
+      TALENTRANK_APP_URL: https://talentrank.example.test
       TALENTRANK_AUTH_SECRET: 7zQ4nW9pL2sX8cV5bN1mK6rT3yH0aDqF
       TALENTRANK_STORAGE_KEY: Lp82Qr57Nm14Xs93Vt60Ha31Kc49Wd26
       TALENTRANK_MALWARE_SCAN_URL: https://scanner.example.test/scan
+      TALENTRANK_EMAIL_PROVIDER: webhook
+      TALENTRANK_EMAIL_FROM: TalentRank AI <noreply@example.test>
+      TALENTRANK_EMAIL_WEBHOOK_URL: https://email.example.test/send
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

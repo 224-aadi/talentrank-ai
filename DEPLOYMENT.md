@@ -187,6 +187,55 @@ The endpoint returns `200` when deployment-critical runtime settings are ready a
 
 ## Deployment Targets
 
+### Recommended Backend Staging: Render
+
+This repo includes `render.yaml` for a Docker-backed web service plus managed Postgres. Use Render when you want the simplest backend staging path with:
+
+- A long-running Node container.
+- Managed Postgres.
+- Health checks at `/api/health`.
+- Automatic deploys from GitHub `main`.
+- Runtime migrations through `TALENTRANK_RUN_MIGRATIONS=true`.
+
+Steps:
+
+1. Connect `https://github.com/224-aadi/talentrank-ai` to Render.
+2. Create a Blueprint from `render.yaml`.
+3. Set `TALENTRANK_APP_URL` to the Render service URL after the first deploy.
+4. Add required production secrets from `.env.production.example`.
+5. Keep `TALENTRANK_BOOTSTRAP_PASSWORD` only for first admin setup, then rotate/remove it.
+6. Open `/admin` and run all provider diagnostics.
+
+Minimum staging secrets:
+
+```bash
+TALENTRANK_APP_URL=https://your-render-service.onrender.com
+TALENTRANK_BOOTSTRAP_EMAIL=admin@yourcompany.com
+TALENTRANK_BOOTSTRAP_PASSWORD=temporary_first_admin_password
+TALENTRANK_STORAGE_PROVIDER=s3
+S3_ENDPOINT=...
+S3_BUCKET=...
+S3_ACCESS_KEY_ID=...
+S3_SECRET_ACCESS_KEY=...
+TALENTRANK_MALWARE_SCAN_URL=...
+TALENTRANK_EMAIL_PROVIDER=resend
+TALENTRANK_EMAIL_FROM="TalentRank AI <noreply@yourdomain.com>"
+RESEND_API_KEY=...
+```
+
+### Railway
+
+This repo includes `railway.json` for Docker deployment. Add a Railway Postgres plugin and set:
+
+```bash
+NODE_ENV=production
+TALENTRANK_RUN_MIGRATIONS=true
+TALENTRANK_USE_PRISMA=true
+DATABASE_URL=${{Postgres.DATABASE_URL}}
+```
+
+Then add the same storage, malware, email, auth, and optional OCR/OIDC secrets listed above.
+
 ### Vercel
 
 - Build command: `npm run build`
@@ -194,6 +243,8 @@ The endpoint returns `200` when deployment-critical runtime settings are ready a
 - Add Postgres integration or set `DATABASE_URL`
 - Add a migration release step: `npm run deploy:release`
 - Set all required production secrets from `.env.production.example`
+
+Vercel can host the app, but for backend-heavy staging with PDF parsing, file upload, provider diagnostics, and migration entrypoints, a Docker web service such as Render/Railway/Fly is the cleaner first deployment target.
 
 ### Render/Fly/Railway
 

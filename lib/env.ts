@@ -6,6 +6,7 @@ export type RuntimeMode = {
   embeddings: "local" | "openai";
   ocr: "generic" | "ocrspace" | "not-configured";
   storage: "local-encrypted" | "local-unencrypted" | "external" | "s3";
+  email: "resend" | "postmark" | "sendgrid" | "webhook" | "not-configured";
   ready: boolean;
   warnings: string[];
 };
@@ -24,9 +25,18 @@ export function runtimeMode(): RuntimeMode {
     ? "s3"
     : process.env.TALENTRANK_STORAGE_PROVIDER
       ? "external"
-    : process.env.TALENTRANK_STORAGE_KEY
+      : process.env.TALENTRANK_STORAGE_KEY
       ? "local-encrypted"
       : "local-unencrypted";
+  const email = process.env.TALENTRANK_EMAIL_PROVIDER === "resend" || process.env.RESEND_API_KEY
+    ? "resend"
+    : process.env.TALENTRANK_EMAIL_PROVIDER === "postmark" || process.env.POSTMARK_SERVER_TOKEN
+      ? "postmark"
+      : process.env.TALENTRANK_EMAIL_PROVIDER === "sendgrid" || process.env.SENDGRID_API_KEY
+        ? "sendgrid"
+        : process.env.TALENTRANK_EMAIL_PROVIDER === "webhook" || process.env.TALENTRANK_EMAIL_WEBHOOK_URL
+          ? "webhook"
+          : "not-configured";
   const weakSecret = (key: string) => {
     const value = process.env[key] || "";
     return value.length < 24 || /change|replace|dummy|secret|password/i.test(value);
@@ -71,6 +81,27 @@ export function runtimeMode(): RuntimeMode {
   if (process.env.TALENTRANK_MALWARE_PROVIDER === "virustotal" && !process.env.VIRUSTOTAL_API_KEY) {
     warnings.push("TALENTRANK_MALWARE_PROVIDER=virustotal requires VIRUSTOTAL_API_KEY.");
   }
+  if (process.env.NODE_ENV === "production" && !process.env.TALENTRANK_APP_URL) {
+    warnings.push("Production invite and password reset links require TALENTRANK_APP_URL.");
+  }
+  if (process.env.NODE_ENV === "production" && email === "not-configured") {
+    warnings.push("Production invites and password resets require transactional email.");
+  }
+  if (email !== "not-configured" && !process.env.TALENTRANK_EMAIL_FROM) {
+    warnings.push("Transactional email requires TALENTRANK_EMAIL_FROM.");
+  }
+  if (process.env.TALENTRANK_EMAIL_PROVIDER === "resend" && !process.env.RESEND_API_KEY) {
+    warnings.push("TALENTRANK_EMAIL_PROVIDER=resend requires RESEND_API_KEY.");
+  }
+  if (process.env.TALENTRANK_EMAIL_PROVIDER === "postmark" && !process.env.POSTMARK_SERVER_TOKEN) {
+    warnings.push("TALENTRANK_EMAIL_PROVIDER=postmark requires POSTMARK_SERVER_TOKEN.");
+  }
+  if (process.env.TALENTRANK_EMAIL_PROVIDER === "sendgrid" && !process.env.SENDGRID_API_KEY) {
+    warnings.push("TALENTRANK_EMAIL_PROVIDER=sendgrid requires SENDGRID_API_KEY.");
+  }
+  if (process.env.TALENTRANK_EMAIL_PROVIDER === "webhook" && !process.env.TALENTRANK_EMAIL_WEBHOOK_URL) {
+    warnings.push("TALENTRANK_EMAIL_PROVIDER=webhook requires TALENTRANK_EMAIL_WEBHOOK_URL.");
+  }
 
   return {
     persistence,
@@ -78,6 +109,7 @@ export function runtimeMode(): RuntimeMode {
     embeddings,
     ocr,
     storage,
+    email,
     ready: warnings.length === 0,
     warnings,
   };

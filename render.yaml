@@ -1,0 +1,89 @@
+services:
+  - type: web
+    name: talentrank-ai
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: TALENTRANK_RUN_MIGRATIONS
+        value: "true"
+      - key: TALENTRANK_USE_PRISMA
+        value: "true"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: talentrank-postgres
+          property: connectionString
+      - key: TALENTRANK_APP_URL
+        sync: false
+      - key: TALENTRANK_AUTH_SECRET
+        generateValue: true
+      - key: TALENTRANK_BOOTSTRAP_EMAIL
+        sync: false
+      - key: TALENTRANK_BOOTSTRAP_PASSWORD
+        sync: false
+      - key: TALENTRANK_STORAGE_KEY
+        generateValue: true
+      - key: TALENTRANK_STORAGE_PROVIDER
+        sync: false
+      - key: S3_ENDPOINT
+        sync: false
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_REGION
+        sync: false
+      - key: S3_ACCESS_KEY_ID
+        sync: false
+      - key: S3_SECRET_ACCESS_KEY
+        sync: false
+      - key: TALENTRANK_MALWARE_SCAN_URL
+        sync: false
+      - key: TALENTRANK_MALWARE_SCAN_KEY
+        sync: false
+      - key: OCR_PROVIDER
+        sync: false
+      - key: OCR_API_URL
+        sync: false
+      - key: OCR_API_KEY
+        sync: false
+      - key: OCR_SPACE_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: TALENTRANK_LOG_DRAIN_URL
+        sync: false
+      - key: TALENTRANK_LOG_DRAIN_TOKEN
+        sync: false
+      - key: TALENTRANK_EMAIL_PROVIDER
+        sync: false
+      - key: TALENTRANK_EMAIL_FROM
+        sync: false
+      - key: TALENTRANK_EMAIL_TEST_TO
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: POSTMARK_SERVER_TOKEN
+        sync: false
+      - key: SENDGRID_API_KEY
+        sync: false
+      - key: TALENTRANK_EMAIL_WEBHOOK_URL
+        sync: false
+      - key: TALENTRANK_EMAIL_WEBHOOK_TOKEN
+        sync: false
+      - key: OIDC_ISSUER_URL
+        sync: false
+      - key: OIDC_CLIENT_ID
+        sync: false
+      - key: OIDC_CLIENT_SECRET
+        sync: false
+
+databases:
+  - name: talentrank-postgres
+    plan: starter
+    databaseName: talentrank
+    user: talentrank
