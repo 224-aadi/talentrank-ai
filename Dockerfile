@@ -31,6 +31,9 @@ COPY --from=builder /app/scripts ./scripts
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
+# pdfjs-dist loads its worker via dynamic import, which standalone tracing misses
+COPY --from=builder /app/node_modules/pdf-parse ./node_modules/pdf-parse
+COPY --from=builder /app/node_modules/pdfjs-dist ./node_modules/pdfjs-dist
 
 USER nextjs
 EXPOSE 3000

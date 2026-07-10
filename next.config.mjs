@@ -5,6 +5,9 @@ const frontendOnly = process.env.TALENTRANK_FRONTEND_ONLY === "true";
 const nextConfig = {
   output: "standalone",
   serverExternalPackages: ["pdf-parse"],
+  outputFileTracingIncludes: {
+    "/api/**": ["./node_modules/pdfjs-dist/legacy/build/**"],
+  },
   experimental: {
     serverActions: {
       bodySizeLimit: "25mb",
