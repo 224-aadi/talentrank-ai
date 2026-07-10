@@ -179,6 +179,81 @@ function layoutWarnings(text: string, tables: ParsedResumeTable[], timeline: Wor
   return warnings;
 }
 
+function ensurePdfRuntimePolyfills() {
+  const runtime = globalThis as typeof globalThis & {
+    DOMMatrix?: typeof DOMMatrix;
+    ImageData?: typeof ImageData;
+    Path2D?: typeof Path2D;
+  };
+
+  if (!runtime.DOMMatrix) {
+    runtime.DOMMatrix = class DOMMatrix {
+      a = 1;
+      b = 0;
+      c = 0;
+      d = 1;
+      e = 0;
+      f = 0;
+      is2D = true;
+      isIdentity = true;
+
+      constructor(init?: string | number[]) {
+        if (Array.isArray(init)) {
+          [this.a, this.b, this.c, this.d, this.e, this.f] = [
+            init[0] ?? 1,
+            init[1] ?? 0,
+            init[2] ?? 0,
+            init[3] ?? 1,
+            init[4] ?? 0,
+            init[5] ?? 0,
+          ];
+        }
+        this.isIdentity = this.a === 1 && this.b === 0 && this.c === 0 && this.d === 1 && this.e === 0 && this.f === 0;
+      }
+
+      multiplySelf() {
+        return this;
+      }
+
+      preMultiplySelf() {
+        return this;
+      }
+
+      translateSelf(x = 0, y = 0) {
+        this.e += x;
+        this.f += y;
+        this.isIdentity = false;
+        return this;
+      }
+
+      scaleSelf(scaleX = 1, scaleY = scaleX) {
+        this.a *= scaleX;
+        this.d *= scaleY;
+        this.isIdentity = false;
+        return this;
+      }
+    } as typeof DOMMatrix;
+  }
+
+  if (!runtime.ImageData) {
+    runtime.ImageData = class ImageData {
+      data: Uint8ClampedArray;
+      width: number;
+      height: number;
+
+      constructor(data: Uint8ClampedArray, width: number, height?: number) {
+        this.data = data;
+        this.width = width;
+        this.height = height ?? Math.floor(data.length / 4 / width);
+      }
+    } as typeof ImageData;
+  }
+
+  if (!runtime.Path2D) {
+    runtime.Path2D = class Path2D {} as typeof Path2D;
+  }
+}
+
 export function extractStructuredProfile(text: string): StructuredResumeProfile {
   const sections = extractSections(text);
   const email = text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0];
@@ -214,6 +289,7 @@ export function extractStructuredProfile(text: string): StructuredResumeProfile 
 }
 
 async function parsePdf(file: File) {
+  ensurePdfRuntimePolyfills();
   const { PDFParse } = await import("pdf-parse");
   const buffer = Buffer.from(await file.arrayBuffer());
   const parser = new PDFParse({ data: buffer });
