@@ -112,6 +112,8 @@ External storage uses HTTP upload and signed-download gateways. The upload gatew
 
 For direct S3-compatible uploads, set `TALENTRANK_STORAGE_PROVIDER=s3`. This supports AWS S3 and S3-compatible endpoints such as Cloudflare R2 or GCS interoperability mode.
 
+S3-compatible storage also supports native signed resume downloads. For Supabase Storage S3, set `S3_ENDPOINT`, `S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY_ID`, and `S3_SECRET_ACCESS_KEY`; no separate `TALENTRANK_STORAGE_DOWNLOAD_URL` gateway is required. Signed URLs default to 300 seconds and can be tuned with `S3_SIGNED_URL_TTL_SECONDS`.
+
 ## Admin Operations
 
 Admins can open:

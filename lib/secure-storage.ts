@@ -57,41 +57,60 @@ function awsDate(date = new Date()) {
   return date.toISOString().replace(/[:-]|\.\d{3}/g, "");
 }
 
-async function storeS3Compatible(file: File, raw: Buffer): Promise<StoredFile | null> {
-  if (process.env.TALENTRANK_STORAGE_PROVIDER !== "s3") return null;
+function s3Config() {
   const accessKey = process.env.S3_ACCESS_KEY_ID || process.env.AWS_ACCESS_KEY_ID;
   const secretKey = process.env.S3_SECRET_ACCESS_KEY || process.env.AWS_SECRET_ACCESS_KEY;
   const bucket = process.env.S3_BUCKET || process.env.TALENTRANK_STORAGE_BUCKET;
   const endpoint = (process.env.S3_ENDPOINT || process.env.TALENTRANK_STORAGE_S3_ENDPOINT || "").replace(/\/$/, "");
   const region = process.env.S3_REGION || process.env.AWS_REGION || "auto";
   if (!accessKey || !secretKey || !bucket || !endpoint) return null;
+  return { accessKey, secretKey, bucket, endpoint, region };
+}
+
+function encodePath(value: string) {
+  return value.split("/").map((part) => encodeURIComponent(part)).join("/");
+}
+
+function encodeQuery(value: string) {
+  return encodeURIComponent(value).replace(/[!'()*]/g, (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`);
+}
+
+function signingKey(secretKey: string, dateStamp: string, region: string) {
+  return hmac(hmac(hmac(hmac(`AWS4${secretKey}`, dateStamp), region), "s3"), "aws4_request");
+}
+
+async function storeS3Compatible(file: File, raw: Buffer): Promise<StoredFile | null> {
+  if (process.env.TALENTRANK_STORAGE_PROVIDER !== "s3") return null;
+  const config = s3Config();
+  if (!config) return null;
 
   const id = crypto.randomBytes(12).toString("hex");
   const objectKey = `resumes/${new Date().toISOString().slice(0, 10)}/${id}-${safeName(file.name)}`;
-  const host = new URL(endpoint).host;
-  const url = `${endpoint}/${bucket}/${objectKey}`;
+  const endpointUrl = new URL(config.endpoint);
+  const host = endpointUrl.host;
+  const url = `${config.endpoint}/${config.bucket}/${objectKey}`;
   const amzDate = awsDate();
   const dateStamp = amzDate.slice(0, 8);
   const payloadHash = sha256Hex(raw);
   const canonicalHeaders = `host:${host}\nx-amz-content-sha256:${payloadHash}\nx-amz-date:${amzDate}\n`;
   const signedHeaders = "host;x-amz-content-sha256;x-amz-date";
-  const canonicalRequest = `PUT\n/${bucket}/${objectKey}\n\n${canonicalHeaders}\n${signedHeaders}\n${payloadHash}`;
-  const scope = `${dateStamp}/${region}/s3/aws4_request`;
+  const canonicalUri = `${endpointUrl.pathname.replace(/\/$/, "")}/${encodePath(config.bucket)}/${encodePath(objectKey)}`;
+  const canonicalRequest = `PUT\n${canonicalUri}\n\n${canonicalHeaders}\n${signedHeaders}\n${payloadHash}`;
+  const scope = `${dateStamp}/${config.region}/s3/aws4_request`;
   const stringToSign = `AWS4-HMAC-SHA256\n${amzDate}\n${scope}\n${sha256Hex(canonicalRequest)}`;
-  const signingKey = hmac(hmac(hmac(hmac(`AWS4${secretKey}`, dateStamp), region), "s3"), "aws4_request");
-  const signature = hexHmac(signingKey, stringToSign);
+  const signature = hexHmac(signingKey(config.secretKey, dateStamp, config.region), stringToSign);
   const response = await fetch(url, {
     method: "PUT",
     headers: {
       "content-type": file.type || "application/octet-stream",
       "x-amz-content-sha256": payloadHash,
       "x-amz-date": amzDate,
-      authorization: `AWS4-HMAC-SHA256 Credential=${accessKey}/${scope}, SignedHeaders=${signedHeaders}, Signature=${signature}`,
+      authorization: `AWS4-HMAC-SHA256 Credential=${config.accessKey}/${scope}, SignedHeaders=${signedHeaders}, Signature=${signature}`,
     },
     body: new Uint8Array(raw),
   });
   if (!response.ok) throw new Error(`S3-compatible storage returned HTTP ${response.status}.`);
-  return { storageKey: `external/${bucket}/${objectKey}`, encrypted: false, bytes: raw.length, provider: "external" };
+  return { storageKey: `external/${config.bucket}/${objectKey}`, encrypted: false, bytes: raw.length, provider: "external" };
 }
 
 function decrypt(buffer: Buffer) {
@@ -171,6 +190,8 @@ export async function readStoredFile(storageKey: string) {
 }
 
 export async function externalDownloadUrl(storageKey: string, fileName: string) {
+  const s3Url = s3DownloadUrl(storageKey, fileName);
+  if (s3Url) return s3Url;
   const endpoint = process.env.TALENTRANK_STORAGE_DOWNLOAD_URL;
   if (!endpoint || !storageKey.startsWith("external/")) return null;
   const response = await fetch(endpoint, {
@@ -184,4 +205,39 @@ export async function externalDownloadUrl(storageKey: string, fileName: string) 
   if (!response.ok) throw new Error(`External storage download gateway returned HTTP ${response.status}.`);
   const payload = await response.json().catch(() => ({}));
   return typeof payload.url === "string" ? payload.url : null;
+}
+
+function s3DownloadUrl(storageKey: string, fileName: string) {
+  if (process.env.TALENTRANK_STORAGE_PROVIDER !== "s3" || !storageKey.startsWith("external/")) return null;
+  const config = s3Config();
+  if (!config) return null;
+  const [, bucketFromKey, ...objectKeyParts] = storageKey.split("/");
+  const objectKey = objectKeyParts.join("/");
+  if (!bucketFromKey || !objectKey || bucketFromKey !== config.bucket) return null;
+
+  const endpointUrl = new URL(config.endpoint);
+  const host = endpointUrl.host;
+  const amzDate = awsDate();
+  const dateStamp = amzDate.slice(0, 8);
+  const expires = String(Math.max(60, Math.min(3600, Number(process.env.S3_SIGNED_URL_TTL_SECONDS || 300))));
+  const scope = `${dateStamp}/${config.region}/s3/aws4_request`;
+  const disposition = `attachment; filename="${safeName(fileName)}"`;
+  const query: Record<string, string> = {
+    "X-Amz-Algorithm": "AWS4-HMAC-SHA256",
+    "X-Amz-Credential": `${config.accessKey}/${scope}`,
+    "X-Amz-Date": amzDate,
+    "X-Amz-Expires": expires,
+    "X-Amz-SignedHeaders": "host",
+    "response-content-disposition": disposition,
+  };
+  const canonicalQuery = Object.entries(query)
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([key, value]) => `${encodeQuery(key)}=${encodeQuery(value)}`)
+    .join("&");
+  const canonicalUri = `${endpointUrl.pathname.replace(/\/$/, "")}/${encodePath(config.bucket)}/${encodePath(objectKey)}`;
+  const canonicalHeaders = `host:${host}\n`;
+  const canonicalRequest = `GET\n${canonicalUri}\n${canonicalQuery}\n${canonicalHeaders}\nhost\nUNSIGNED-PAYLOAD`;
+  const stringToSign = `AWS4-HMAC-SHA256\n${amzDate}\n${scope}\n${sha256Hex(canonicalRequest)}`;
+  const signature = hexHmac(signingKey(config.secretKey, dateStamp, config.region), stringToSign);
+  return `${config.endpoint}/${encodePath(config.bucket)}/${encodePath(objectKey)}?${canonicalQuery}&X-Amz-Signature=${signature}`;
 }
