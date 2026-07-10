@@ -263,6 +263,8 @@ TALENTRANK_AUTH_SECRET=the_same_value_as_render
 
 With `TALENTRANK_BACKEND_URL` set, Vercel rewrites `/api/*` to Render. Vercel does not need Supabase, S3, malware scanner, OCR, or email secrets in this mode; those stay on Render. `TALENTRANK_AUTH_SECRET` must match Render so Vercel can read the signed session cookie while Render owns login, uploads, scoring, and persistence.
 
+Do not set `TALENTRANK_BACKEND_URL`, `NEXT_PUBLIC_BACKEND_URL`, or `TALENTRANK_FRONTEND_ONLY=true` on Render. Those variables are only for Vercel/local frontend shells. Render is the backend origin and should serve its own `/api/*` routes directly.
+
 For local frontend-only development, use the same backend URL values in `.env.local`, then run:
 
 ```bash
