@@ -23,13 +23,13 @@ function csvList(values?: string[]) {
 
 export async function GET(request: Request) {
   try {
-    await requireRole("admin");
+    const user = await requireRole("admin");
     const origin = new URL(request.url).origin;
     const [pool, matches, jobs, decisions] = await Promise.all([
-      listCandidatePool(),
-      listMatchRuns(),
-      listJobs(),
-      listRecruiterDecisions(),
+      listCandidatePool(user.organizationId),
+      listMatchRuns(undefined, user.organizationId),
+      listJobs(user.organizationId),
+      listRecruiterDecisions(undefined, user.organizationId),
     ]);
     const matchRows = matches as ExportMatch[];
     const candidateRows = pool as CandidatePoolItem[];

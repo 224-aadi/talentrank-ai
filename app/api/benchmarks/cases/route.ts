@@ -19,18 +19,18 @@ const importSchema = z.object({
 });
 
 export async function GET(request: Request) {
-  await requireRole("recruiter");
+  const user = await requireRole("recruiter");
   const url = new URL(request.url);
   const jobId = url.searchParams.get("jobId") || undefined;
-  return NextResponse.json({ cases: await listBenchmarkCases(jobId) });
+  return NextResponse.json({ cases: await listBenchmarkCases(jobId, user.organizationId) });
 }
 
 export async function POST(request: Request) {
-  await requireRole("recruiter");
+  const user = await requireRole("recruiter");
   const parsed = importSchema.safeParse(await request.json());
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
-  const cases = await importBenchmarkCases(parsed.data.cases);
+  const cases = await importBenchmarkCases(parsed.data.cases, user.organizationId);
   return NextResponse.json({ imported: cases.length, cases }, { status: 201 });
 }

@@ -11,21 +11,21 @@ const benchmarkSchema = z.object({
 });
 
 export async function GET(request: Request) {
-  await requireRole("recruiter");
+  const user = await requireRole("recruiter");
   const url = new URL(request.url);
   const jobId = url.searchParams.get("jobId") || undefined;
   return NextResponse.json({
-    labels: await listBenchmarkLabels(jobId),
-    metrics: await calibrationMetrics(jobId),
+    labels: await listBenchmarkLabels(jobId, user.organizationId),
+    metrics: await calibrationMetrics(jobId, user.organizationId),
   });
 }
 
 export async function POST(request: Request) {
-  await requireRole("recruiter");
+  const user = await requireRole("recruiter");
   const parsed = benchmarkSchema.safeParse(await request.json());
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
-  const label = await createBenchmarkLabel(parsed.data);
-  return NextResponse.json({ label, metrics: await calibrationMetrics(parsed.data.jobId) }, { status: 201 });
+  const label = await createBenchmarkLabel({ ...parsed.data, organizationId: user.organizationId });
+  return NextResponse.json({ label, metrics: await calibrationMetrics(parsed.data.jobId, user.organizationId) }, { status: 201 });
 }

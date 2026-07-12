@@ -7,8 +7,8 @@ function csvCell(value: string) {
 
 export async function GET() {
   try {
-    await requireRole("admin");
-    const users = await listAuthUsers();
+    const admin = await requireRole("admin");
+    const users = await listAuthUsers(admin.organizationId);
     const rows = [
       ["Name", "Email", "Role", "ID"],
       ...users.map((user: AuthUser) => [user.name, user.email, user.role, user.id]),

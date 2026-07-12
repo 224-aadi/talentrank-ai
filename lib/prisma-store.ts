@@ -149,6 +149,7 @@ function mapBenchmarkRun(item: any): BenchmarkRun {
   return {
     id: item.id,
     at: iso(item.createdAt),
+    organizationId: item.organizationId,
     jobId: item.jobId || undefined,
     modelVersion: item.modelVersion,
     metrics: item.metrics,
@@ -233,12 +234,12 @@ async function ensureUser(userId = "user_demo", organizationId = "org_demo") {
   });
 }
 
-export async function listJobs() {
-  return (await client.job.findMany({ orderBy: { createdAt: "desc" } })).map(mapJob);
+export async function listJobs(organizationId?: string) {
+  return (await client.job.findMany({ where: organizationId ? { organizationId } : undefined, orderBy: { createdAt: "desc" } })).map(mapJob);
 }
 
-export async function getJob(jobId: string) {
-  const job = await client.job.findUnique({ where: { id: jobId } });
+export async function getJob(jobId: string, organizationId?: string) {
+  const job = await client.job.findFirst({ where: { id: jobId, ...(organizationId ? { organizationId } : {}) } });
   return job ? mapJob(job) : null;
 }
 
@@ -266,8 +267,8 @@ export async function createJob(input: Pick<Job, "title" | "description" | "role
   return mapJob(job);
 }
 
-export async function listAuditEvents() {
-  return (await client.auditEvent.findMany({ orderBy: { createdAt: "desc" } })).map(mapAudit);
+export async function listAuditEvents(organizationId?: string) {
+  return (await client.auditEvent.findMany({ where: organizationId ? { organizationId } : undefined, orderBy: { createdAt: "desc" } })).map(mapAudit);
 }
 
 export async function createAuditEvent(input: Omit<AuditEvent, "id" | "at">) {
@@ -352,6 +353,10 @@ export async function createCandidateWithResume(input: {
 
 export async function createMatchRun(input: Omit<MatchRun, "id" | "createdAt">) {
   const job = await client.job.findUnique({ where: { id: input.jobId } });
+  const candidate = await client.candidate.findUnique({ where: { id: input.candidateId } });
+  if (!job || !candidate || job.organizationId !== candidate.organizationId) {
+    throw new Error("Candidate or job not found.");
+  }
   const matchRun = await client.matchRun.create({
     data: {
       jobId: input.jobId,
@@ -392,8 +397,16 @@ export async function createRecruiterDecision(input: {
   decision: RecruiterDecision;
   notes?: string;
   userId?: string;
+  organizationId?: string;
 }) {
   const user = await ensureUser(input.userId || "user_demo");
+  const [job, existingCandidate] = await Promise.all([
+    client.job.findFirst({ where: { id: input.jobId, ...(input.organizationId ? { organizationId: input.organizationId } : {}) } }),
+    client.candidate.findFirst({ where: { id: input.candidateId, ...(input.organizationId ? { organizationId: input.organizationId } : {}) } }),
+  ]);
+  if (!job || !existingCandidate || job.organizationId !== existingCandidate.organizationId || user.organizationId !== existingCandidate.organizationId) {
+    throw new Error("Candidate or job not found.");
+  }
   const decision = await client.recruiterDecision.create({
     data: {
       jobId: input.jobId,
@@ -420,9 +433,12 @@ export async function createRecruiterDecision(input: {
   return { decision: mapDecision(decision), candidate: mapCandidate(candidate) };
 }
 
-export async function listRecruiterDecisions(jobId?: string) {
+export async function listRecruiterDecisions(jobId?: string, organizationId?: string) {
   return (await client.recruiterDecision.findMany({
-    where: jobId ? { jobId } : undefined,
+    where: {
+      ...(jobId ? { jobId } : {}),
+      ...(organizationId ? { candidate: { organizationId }, job: { organizationId } } : {}),
+    },
     orderBy: { createdAt: "desc" },
   })).map(mapDecision);
 }
@@ -432,7 +448,15 @@ export async function createBenchmarkLabel(input: {
   candidateId: string;
   label: BenchmarkLabelValue;
   notes?: string;
+  organizationId?: string;
 }) {
+  const [job, candidate] = await Promise.all([
+    client.job.findFirst({ where: { id: input.jobId, ...(input.organizationId ? { organizationId: input.organizationId } : {}) } }),
+    client.candidate.findFirst({ where: { id: input.candidateId, ...(input.organizationId ? { organizationId: input.organizationId } : {}) } }),
+  ]);
+  if (!job || !candidate || job.organizationId !== candidate.organizationId) {
+    throw new Error("Candidate or job not found.");
+  }
   const label = await client.benchmarkLabel.create({
     data: {
       jobId: input.jobId,
@@ -443,7 +467,7 @@ export async function createBenchmarkLabel(input: {
   });
   await client.auditEvent.create({
     data: {
-      organizationId: "org_demo",
+      organizationId: job.organizationId,
       jobId: input.jobId,
       candidateId: input.candidateId,
       type: "benchmark.label.created",
@@ -453,14 +477,28 @@ export async function createBenchmarkLabel(input: {
   return mapBenchmark(label);
 }
 
-export async function listBenchmarkLabels(jobId?: string) {
+export async function listBenchmarkLabels(jobId?: string, organizationId?: string) {
   return (await client.benchmarkLabel.findMany({
-    where: jobId ? { jobId } : undefined,
+    where: {
+      ...(jobId ? { jobId } : {}),
+      ...(organizationId ? { candidate: { organizationId } } : {}),
+    },
     orderBy: { createdAt: "desc" },
   })).map(mapBenchmark);
 }
 
-export async function importBenchmarkCases(input: Array<Omit<BenchmarkCase, "id" | "createdAt">>) {
+export async function importBenchmarkCases(input: Array<Omit<BenchmarkCase, "id" | "createdAt">>, organizationId?: string) {
+  if (organizationId && input.length) {
+    const [jobs, candidates] = await Promise.all([
+      client.job.findMany({ where: { id: { in: input.map((item) => item.jobId) }, organizationId }, select: { id: true } }),
+      client.candidate.findMany({ where: { id: { in: input.map((item) => item.candidateId) }, organizationId }, select: { id: true } }),
+    ]);
+    const jobIds = new Set(jobs.map((job: { id: string }) => job.id));
+    const candidateIds = new Set(candidates.map((candidate: { id: string }) => candidate.id));
+    if (input.some((item) => !jobIds.has(item.jobId) || !candidateIds.has(item.candidateId))) {
+      throw new Error("Benchmark case references a candidate or job outside this organization.");
+    }
+  }
   await Promise.all(input.map((item) =>
     client.benchmarkCase.upsert({
       where: {
@@ -492,24 +530,34 @@ export async function importBenchmarkCases(input: Array<Omit<BenchmarkCase, "id"
   return await listBenchmarkCases();
 }
 
-export async function listBenchmarkCases(jobId?: string) {
+export async function listBenchmarkCases(jobId?: string, organizationId?: string) {
   return (await client.benchmarkCase.findMany({
-    where: jobId ? { jobId } : undefined,
+    where: {
+      ...(jobId ? { jobId } : {}),
+      ...(organizationId ? { candidate: { organizationId } } : {}),
+    },
     orderBy: { createdAt: "desc" },
   })).map(mapBenchmarkCase);
 }
 
-export async function createBenchmarkRun(input: { jobId?: string; modelVersion?: string; notes?: string }) {
-  await ensureOrg("org_demo");
-  const metrics = await calibrationMetrics(input.jobId);
+export async function createBenchmarkRun(input: { jobId?: string; modelVersion?: string; notes?: string; organizationId?: string }) {
+  const organizationId = input.organizationId || "org_demo";
+  await ensureOrg(organizationId);
+  const metrics = await calibrationMetrics(input.jobId, organizationId);
   const latestRun = await client.matchRun.findFirst({
-    where: input.jobId ? { jobId: input.jobId } : undefined,
+    where: {
+      ...(input.jobId ? { jobId: input.jobId } : {}),
+      candidate: { organizationId },
+      job: { organizationId },
+    },
     orderBy: { createdAt: "desc" },
   });
-  const caseCount = await client.benchmarkCase.count({ where: input.jobId ? { jobId: input.jobId } : undefined });
+  const caseCount = await client.benchmarkCase.count({
+    where: { ...(input.jobId ? { jobId: input.jobId } : {}), candidate: { organizationId } },
+  });
   const run = await client.benchmarkRun.create({
     data: {
-      organizationId: "org_demo",
+      organizationId,
       jobId: input.jobId,
       modelVersion: input.modelVersion || latestRun?.modelVersion || "unknown",
       metrics,
@@ -520,15 +568,15 @@ export async function createBenchmarkRun(input: { jobId?: string; modelVersion?:
   return mapBenchmarkRun(run);
 }
 
-export async function listBenchmarkRuns(jobId?: string) {
+export async function listBenchmarkRuns(jobId?: string, organizationId?: string) {
   return (await client.benchmarkRun.findMany({
-    where: jobId ? { jobId } : undefined,
+    where: { ...(jobId ? { jobId } : {}), ...(organizationId ? { organizationId } : {}) },
     orderBy: { createdAt: "desc" },
   })).map(mapBenchmarkRun);
 }
 
-export async function compareBenchmarkRunIds(baselineId?: string, challengerId?: string): Promise<BenchmarkComparison> {
-  const runs = await listBenchmarkRuns();
+export async function compareBenchmarkRunIds(baselineId?: string, challengerId?: string, organizationId?: string): Promise<BenchmarkComparison> {
+  const runs = await listBenchmarkRuns(undefined, organizationId);
   const baseline = baselineId ? runs.find((run: BenchmarkRun) => run.id === baselineId) || null : runs[1] || null;
   const challenger = challengerId ? runs.find((run: BenchmarkRun) => run.id === challengerId) || null : runs[0] || null;
   return compareBenchmarkRuns(baseline, challenger);
@@ -553,13 +601,16 @@ function correlation(pairs: Array<{ score: number; interviewed: number }>) {
   return denominator ? numerator / denominator : 0;
 }
 
-export async function calibrationMetrics(jobId?: string): Promise<CalibrationMetrics> {
+export async function calibrationMetrics(jobId?: string, organizationId?: string): Promise<CalibrationMetrics> {
   const [runs, labelsResult, decisionsResult, casesResult, jobsResult] = await Promise.all([
-    client.matchRun.findMany({ where: jobId ? { jobId } : undefined, orderBy: { score: "desc" } }),
-    listBenchmarkLabels(jobId),
-    listRecruiterDecisions(jobId),
-    listBenchmarkCases(jobId),
-    listJobs(),
+    client.matchRun.findMany({
+      where: { ...(jobId ? { jobId } : {}), ...(organizationId ? { candidate: { organizationId }, job: { organizationId } } : {}) },
+      orderBy: { score: "desc" },
+    }),
+    listBenchmarkLabels(jobId, organizationId),
+    listRecruiterDecisions(jobId, organizationId),
+    listBenchmarkCases(jobId, organizationId),
+    listJobs(organizationId),
   ]);
   return computeCalibrationMetrics({
     runs: runs.map(mapMatchRun),
@@ -571,22 +622,25 @@ export async function calibrationMetrics(jobId?: string): Promise<CalibrationMet
   });
 }
 
-export async function listCandidatePool() {
+export async function listCandidatePool(organizationId?: string) {
   const resumes = await client.resumeDocument.findMany({
+    where: organizationId ? { candidate: { organizationId } } : undefined,
     include: { candidate: true },
     orderBy: { createdAt: "desc" },
   });
   return resumes.map((item: any) => ({ resume: mapResume(item), candidate: mapCandidate(item.candidate) }));
 }
 
-export async function getResumeDocument(resumeId: string) {
-  const resume = await client.resumeDocument.findUnique({ where: { id: resumeId } });
+export async function getResumeDocument(resumeId: string, organizationId?: string) {
+  const resume = await client.resumeDocument.findFirst({
+    where: { id: resumeId, ...(organizationId ? { candidate: { organizationId } } : {}) },
+  });
   return resume ? mapResume(resume) : null;
 }
 
-export async function getCandidatePoolByResumeIds(resumeIds: string[]) {
+export async function getCandidatePoolByResumeIds(resumeIds: string[], organizationId?: string) {
   const resumes = await client.resumeDocument.findMany({
-    where: { id: { in: resumeIds } },
+    where: { id: { in: resumeIds }, ...(organizationId ? { candidate: { organizationId } } : {}) },
     include: { candidate: true },
   });
   return resumes.map((item: any) => ({ resume: mapResume(item), candidate: mapCandidate(item.candidate) }));
@@ -628,10 +682,13 @@ export async function upsertVectorRecords(records: VectorRecord[]) {
   return records;
 }
 
-export async function listMatchRuns(jobId?: string) {
+export async function listMatchRuns(jobId?: string, organizationId?: string) {
   const [runs, decisions] = await Promise.all([
     client.matchRun.findMany({
-      where: jobId ? { jobId } : undefined,
+      where: {
+        ...(jobId ? { jobId } : {}),
+        ...(organizationId ? { job: { organizationId }, candidate: { organizationId } } : {}),
+      },
       include: { job: true, candidate: true },
       orderBy: { createdAt: "desc" },
     }),
@@ -646,10 +703,10 @@ export async function listMatchRuns(jobId?: string) {
   }));
 }
 
-export async function retentionReport(retentionDays = 365): Promise<RetentionReport> {
+export async function retentionReport(retentionDays = 365, organizationId?: string): Promise<RetentionReport> {
   const cutoffDate = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000);
   const candidates = await client.candidate.findMany({
-    where: { createdAt: { lte: cutoffDate } },
+    where: { createdAt: { lte: cutoffDate }, ...(organizationId ? { organizationId } : {}) },
     include: { resumes: true },
     orderBy: { createdAt: "asc" },
   });
@@ -673,16 +730,16 @@ export async function retentionReport(retentionDays = 365): Promise<RetentionRep
   };
 }
 
-export async function auditExport() {
+export async function auditExport(organizationId?: string) {
   return {
     generatedAt: new Date().toISOString(),
-    events: await listAuditEvents(),
+    events: await listAuditEvents(organizationId),
   };
 }
 
-export async function explainabilityReport(matchRunId: string) {
-  const run = await client.matchRun.findUnique({
-    where: { id: matchRunId },
+export async function explainabilityReport(matchRunId: string, organizationId?: string) {
+  const run = await client.matchRun.findFirst({
+    where: { id: matchRunId, ...(organizationId ? { job: { organizationId }, candidate: { organizationId } } : {}) },
     include: { job: true, candidate: true },
   });
   if (!run) return null;
@@ -708,9 +765,9 @@ export async function explainabilityReport(matchRunId: string) {
   };
 }
 
-export async function deleteCandidate(candidateId: string, actorId = "user_demo") {
-  const candidate = await client.candidate.findUnique({
-    where: { id: candidateId },
+export async function deleteCandidate(candidateId: string, actorId = "user_demo", organizationId?: string) {
+  const candidate = await client.candidate.findFirst({
+    where: { id: candidateId, ...(organizationId ? { organizationId } : {}) },
     include: { resumes: true },
   });
   if (!candidate) {

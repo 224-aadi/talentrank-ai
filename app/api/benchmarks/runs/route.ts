@@ -10,17 +10,17 @@ const runSchema = z.object({
 });
 
 export async function GET(request: Request) {
-  await requireRole("recruiter");
+  const user = await requireRole("recruiter");
   const url = new URL(request.url);
   const jobId = url.searchParams.get("jobId") || undefined;
-  return NextResponse.json({ runs: await listBenchmarkRuns(jobId) });
+  return NextResponse.json({ runs: await listBenchmarkRuns(jobId, user.organizationId) });
 }
 
 export async function POST(request: Request) {
-  await requireRole("recruiter");
+  const user = await requireRole("recruiter");
   const parsed = runSchema.safeParse(await request.json());
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
-  return NextResponse.json({ run: await createBenchmarkRun(parsed.data) }, { status: 201 });
+  return NextResponse.json({ run: await createBenchmarkRun({ ...parsed.data, organizationId: user.organizationId }) }, { status: 201 });
 }

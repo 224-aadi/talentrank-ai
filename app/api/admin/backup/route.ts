@@ -4,14 +4,14 @@ import { auditExport, listBenchmarkCases, listBenchmarkRuns, listJobs, listMatch
 
 export async function GET() {
   try {
-    await requireRole("admin");
+    const user = await requireRole("admin");
     return NextResponse.json({
       generatedAt: new Date().toISOString(),
-      jobs: await listJobs(),
-      matches: await listMatchRuns(),
-      benchmarkCases: await listBenchmarkCases(),
-      benchmarkRuns: await listBenchmarkRuns(),
-      audit: await auditExport(),
+      jobs: await listJobs(user.organizationId),
+      matches: await listMatchRuns(undefined, user.organizationId),
+      benchmarkCases: await listBenchmarkCases(undefined, user.organizationId),
+      benchmarkRuns: await listBenchmarkRuns(undefined, user.organizationId),
+      audit: await auditExport(user.organizationId),
     }, {
       headers: {
         "content-disposition": `attachment; filename="talentrank-backup-${new Date().toISOString().slice(0, 10)}.json"`,

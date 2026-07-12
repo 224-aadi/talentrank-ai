@@ -318,6 +318,7 @@ export interface BenchmarkCase {
 export interface BenchmarkRun {
   id: string;
   at: string;
+  organizationId?: string;
   jobId?: string;
   modelVersion: string;
   metrics: CalibrationMetrics;

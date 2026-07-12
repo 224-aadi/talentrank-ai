@@ -12,7 +12,13 @@ const jobSchema = z.object({
 });
 
 export async function GET() {
-  return NextResponse.json({ jobs: await listJobs() });
+  try {
+    const user = await requireRole("recruiter");
+    return NextResponse.json({ jobs: await listJobs(user.organizationId) });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Could not list jobs";
+    return NextResponse.json({ error: message }, { status: message === "Authentication required." ? 401 : 400 });
+  }
 }
 
 export async function POST(request: Request) {

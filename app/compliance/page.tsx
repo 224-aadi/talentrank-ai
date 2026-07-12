@@ -19,8 +19,8 @@ export default async function CompliancePage() {
   if (!user) redirect("/login");
   const [runtime, retention, auditEvents] = await Promise.all([
     Promise.resolve(runtimeMode()),
-    retentionReport(365),
-    listAuditEvents(),
+    retentionReport(365, user.organizationId),
+    listAuditEvents(user.organizationId),
   ]);
 
   return (

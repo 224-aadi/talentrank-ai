@@ -6,7 +6,7 @@ export async function DELETE(_: Request, context: { params: Promise<{ candidateI
   try {
     const user = await requireRole("admin");
     const { candidateId } = await context.params;
-    return NextResponse.json(await deleteCandidate(candidateId, user.id));
+    return NextResponse.json(await deleteCandidate(candidateId, user.id, user.organizationId));
   } catch (error) {
     const message = error instanceof Error ? error.message : "Candidate deletion failed";
     return NextResponse.json({ error: message }, { status: 400 });

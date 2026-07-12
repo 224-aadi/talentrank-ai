@@ -19,7 +19,13 @@ const auditSchema = z.object({
 });
 
 export async function GET() {
-  return NextResponse.json({ auditEvents: await listAuditEvents() });
+  try {
+    const user = await requireRole("admin");
+    return NextResponse.json({ auditEvents: await listAuditEvents(user.organizationId) });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Could not list audit events";
+    return NextResponse.json({ error: message }, { status: message === "Authentication required." ? 401 : 400 });
+  }
 }
 
 export async function POST(request: Request) {

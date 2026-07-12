@@ -14,11 +14,11 @@ export default async function CalibrationPage() {
   const user = await currentUser();
   if (!user) redirect("/login");
   const [metrics, labels, matches, cases, runs] = await Promise.all([
-    calibrationMetrics(),
-    listBenchmarkLabels(),
-    listMatchRuns(),
-    listBenchmarkCases(),
-    listBenchmarkRuns(),
+    calibrationMetrics(undefined, user.organizationId),
+    listBenchmarkLabels(undefined, user.organizationId),
+    listMatchRuns(undefined, user.organizationId),
+    listBenchmarkCases(undefined, user.organizationId),
+    listBenchmarkRuns(undefined, user.organizationId),
   ]);
   const typedLabels = labels as BenchmarkLabel[];
   const typedMatches = matches as MatchListRow[];

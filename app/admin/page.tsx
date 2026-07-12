@@ -30,11 +30,11 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
   const selectedJobId = (await searchParams).jobId;
   const [status, jobs, candidates, matches, decisions, auditEvents] = await Promise.all([
     Promise.resolve(integrationStatus()),
-    listJobs(),
-    listCandidatePool(),
-    listMatchRuns(),
-    listRecruiterDecisions(),
-    listAuditEvents(),
+    listJobs(user.organizationId),
+    listCandidatePool(user.organizationId),
+    listMatchRuns(undefined, user.organizationId),
+    listRecruiterDecisions(undefined, user.organizationId),
+    listAuditEvents(user.organizationId),
   ]);
   const matchRows = matches as AdminMatch[];
   const candidateRows = candidates as CandidatePoolItem[];

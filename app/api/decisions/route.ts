@@ -11,9 +11,10 @@ const decisionSchema = z.object({
 });
 
 export async function GET(request: Request) {
+  const user = await requireRole("recruiter");
   const url = new URL(request.url);
   const jobId = url.searchParams.get("jobId") || undefined;
-  return NextResponse.json({ decisions: await listRecruiterDecisions(jobId) });
+  return NextResponse.json({ decisions: await listRecruiterDecisions(jobId, user.organizationId) });
 }
 
 export async function POST(request: Request) {
@@ -22,6 +23,6 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
-  const result = await createRecruiterDecision({ ...parsed.data, userId: user.id });
+  const result = await createRecruiterDecision({ ...parsed.data, userId: user.id, organizationId: user.organizationId });
   return NextResponse.json(result, { status: 201 });
 }

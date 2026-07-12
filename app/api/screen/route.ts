@@ -85,7 +85,7 @@ export async function POST(request: Request) {
           ],
         };
       }));
-      const storedResumes = resumeIds.length ? await getCandidatePoolByResumeIds(resumeIds) : [];
+      const storedResumes = resumeIds.length ? await getCandidatePoolByResumeIds(resumeIds, user.organizationId) : [];
       const response = await screen(job, resumes, storedResumes, user);
       incrementMetric("screen.success");
       return response;
@@ -104,7 +104,7 @@ export async function POST(request: Request) {
         parsedJson: extractStructuredProfile(resume.text),
         parseConfidence: Math.min(100, Math.max(45, Math.round(resume.text.length / 35))),
       })),
-      parsed.data.resumeIds.length ? await getCandidatePoolByResumeIds(parsed.data.resumeIds) : [],
+      parsed.data.resumeIds.length ? await getCandidatePoolByResumeIds(parsed.data.resumeIds, user.organizationId) : [],
       user,
     );
     incrementMetric("screen.success");

@@ -4,8 +4,8 @@ import { auditExport } from "@/lib/store";
 
 export async function GET() {
   try {
-    await requireRole("admin");
-    const exportPayload = await auditExport();
+    const user = await requireRole("admin");
+    const exportPayload = await auditExport(user.organizationId);
     return NextResponse.json(exportPayload, {
       headers: {
         "content-disposition": `attachment; filename="talentrank-audit-${new Date().toISOString().slice(0, 10)}.json"`,

@@ -114,16 +114,16 @@ function benchmarkRuns(db: TalentRankDb) {
   return db.benchmarkRuns;
 }
 
-export async function listJobs() {
-  if (prismaEnabled()) return await prismaStore.listJobs();
+export async function listJobs(organizationId?: string) {
+  if (prismaEnabled()) return await prismaStore.listJobs(organizationId);
   const db = await readDb();
-  return db.jobs;
+  return organizationId ? db.jobs.filter((job) => job.organizationId === organizationId) : db.jobs;
 }
 
-export async function getJob(jobId: string) {
-  if (prismaEnabled()) return await prismaStore.getJob(jobId);
+export async function getJob(jobId: string, organizationId?: string) {
+  if (prismaEnabled()) return await prismaStore.getJob(jobId, organizationId);
   const db = await readDb();
-  return db.jobs.find((job) => job.id === jobId) || null;
+  return db.jobs.find((job) => job.id === jobId && (!organizationId || job.organizationId === organizationId)) || null;
 }
 
 export async function createJob(input: Pick<Job, "title" | "description" | "roleTemplate" | "hardRules"> & Partial<Job>) {
@@ -157,10 +157,10 @@ export async function createJob(input: Pick<Job, "title" | "description" | "role
   return job;
 }
 
-export async function listAuditEvents() {
-  if (prismaEnabled()) return await prismaStore.listAuditEvents();
+export async function listAuditEvents(organizationId?: string) {
+  if (prismaEnabled()) return await prismaStore.listAuditEvents(organizationId);
   const db = await readDb();
-  return db.auditEvents;
+  return organizationId ? db.auditEvents.filter((event) => event.organizationId === organizationId) : db.auditEvents;
 }
 
 export async function createAuditEvent(input: Omit<AuditEvent, "id" | "at">) {
@@ -247,6 +247,11 @@ export async function createCandidateWithResume(input: {
 export async function createMatchRun(input: Omit<MatchRun, "id" | "createdAt">) {
   if (prismaEnabled()) return await prismaStore.createMatchRun(input);
   const db = await readDb();
+  const job = db.jobs.find((item) => item.id === input.jobId);
+  const candidate = db.candidates.find((item) => item.id === input.candidateId);
+  if (job && candidate && job.organizationId !== candidate.organizationId) {
+    throw new Error("Job and candidate belong to different organizations.");
+  }
   const matchRun: MatchRun = {
     id: createId("match"),
     createdAt: now(),
@@ -257,6 +262,7 @@ export async function createMatchRun(input: Omit<MatchRun, "id" | "createdAt">) 
     id: createId("audit"),
     type: "match.created",
     at: matchRun.createdAt,
+    organizationId: job?.organizationId || candidate?.organizationId || "org_demo",
     jobId: matchRun.jobId,
     candidateId: matchRun.candidateId,
     score: matchRun.score,
@@ -274,9 +280,15 @@ export async function createRecruiterDecision(input: {
   decision: RecruiterDecision;
   notes?: string;
   userId?: string;
+  organizationId?: string;
 }) {
   if (prismaEnabled()) return await prismaStore.createRecruiterDecision(input);
   const db = await readDb();
+  const job = db.jobs.find((item) => item.id === input.jobId);
+  const candidate = db.candidates.find((item) => item.id === input.candidateId);
+  if (!job || !candidate || (input.organizationId && (job.organizationId !== input.organizationId || candidate.organizationId !== input.organizationId))) {
+    throw new Error("Candidate or job not found.");
+  }
   const timestamp = now();
   const decision: RecruiterDecisionRecord = {
     id: createId("decision"),
@@ -289,7 +301,6 @@ export async function createRecruiterDecision(input: {
   };
   decisions(db).unshift(decision);
 
-  const candidate = db.candidates.find((item) => item.id === input.candidateId);
   if (candidate) {
     candidate.status = statusForDecision(input.decision);
     candidate.updatedAt = timestamp;
@@ -315,11 +326,17 @@ export async function createRecruiterDecision(input: {
   };
 }
 
-export async function listRecruiterDecisions(jobId?: string) {
-  if (prismaEnabled()) return await prismaStore.listRecruiterDecisions(jobId);
+export async function listRecruiterDecisions(jobId?: string, organizationId?: string) {
+  if (prismaEnabled()) return await prismaStore.listRecruiterDecisions(jobId, organizationId);
   const db = await readDb();
   const all = decisions(db);
-  return jobId ? all.filter((item) => item.jobId === jobId) : all;
+  return all.filter((item) => {
+    if (jobId && item.jobId !== jobId) return false;
+    if (!organizationId) return true;
+    const job = db.jobs.find((candidateJob) => candidateJob.id === item.jobId);
+    const candidate = db.candidates.find((candidateItem) => candidateItem.id === item.candidateId);
+    return job?.organizationId === organizationId && candidate?.organizationId === organizationId;
+  });
 }
 
 export async function createBenchmarkLabel(input: {
@@ -327,9 +344,15 @@ export async function createBenchmarkLabel(input: {
   candidateId: string;
   label: BenchmarkLabelValue;
   notes?: string;
+  organizationId?: string;
 }) {
   if (prismaEnabled()) return await prismaStore.createBenchmarkLabel(input);
   const db = await readDb();
+  const job = db.jobs.find((item) => item.id === input.jobId);
+  const candidate = db.candidates.find((item) => item.id === input.candidateId);
+  if (!job || !candidate || job.organizationId !== candidate.organizationId || (input.organizationId && job.organizationId !== input.organizationId)) {
+    throw new Error("Candidate or job not found.");
+  }
   const timestamp = now();
   const label: BenchmarkLabel = {
     id: createId("label"),
@@ -344,7 +367,7 @@ export async function createBenchmarkLabel(input: {
     id: createId("audit"),
     type: "benchmark.label.created",
     at: timestamp,
-    organizationId: "org_demo",
+    organizationId: job.organizationId,
     jobId: input.jobId,
     candidateId: input.candidateId,
     metadata: {
@@ -356,29 +379,47 @@ export async function createBenchmarkLabel(input: {
   return label;
 }
 
-export async function listBenchmarkLabels(jobId?: string) {
-  if (prismaEnabled()) return await prismaStore.listBenchmarkLabels(jobId);
+export async function listBenchmarkLabels(jobId?: string, organizationId?: string) {
+  if (prismaEnabled()) return await prismaStore.listBenchmarkLabels(jobId, organizationId);
   const db = await readDb();
   const labels = benchmarkLabels(db);
-  return jobId ? labels.filter((label) => label.jobId === jobId) : labels;
+  return labels.filter((label) => {
+    if (jobId && label.jobId !== jobId) return false;
+    if (!organizationId) return true;
+    const job = db.jobs.find((item) => item.id === label.jobId);
+    const candidate = db.candidates.find((item) => item.id === label.candidateId);
+    return job?.organizationId === organizationId && candidate?.organizationId === organizationId;
+  });
 }
 
-export async function calibrationMetrics(jobId?: string): Promise<CalibrationMetrics> {
-  if (prismaEnabled()) return await prismaStore.calibrationMetrics(jobId);
+export async function calibrationMetrics(jobId?: string, organizationId?: string): Promise<CalibrationMetrics> {
+  if (prismaEnabled()) return await prismaStore.calibrationMetrics(jobId, organizationId);
   const db = await readDb();
+  const orgJobs = organizationId ? db.jobs.filter((job) => job.organizationId === organizationId) : db.jobs;
+  const orgJobIds = new Set(orgJobs.map((job) => job.id));
+  const orgCandidates = organizationId ? db.candidates.filter((candidate) => candidate.organizationId === organizationId) : db.candidates;
+  const orgCandidateIds = new Set(orgCandidates.map((candidate) => candidate.id));
   return computeCalibrationMetrics({
-    runs: jobId ? db.matchRuns.filter((run) => run.jobId === jobId) : db.matchRuns,
-    labels: benchmarkLabels(db),
-    decisions: decisions(db),
-    cases: benchmarkCases(db),
-    jobs: db.jobs,
+    runs: (jobId ? db.matchRuns.filter((run) => run.jobId === jobId) : db.matchRuns).filter((run) => orgJobIds.has(run.jobId) && orgCandidateIds.has(run.candidateId)),
+    labels: benchmarkLabels(db).filter((label) => orgJobIds.has(label.jobId) && orgCandidateIds.has(label.candidateId)),
+    decisions: decisions(db).filter((decision) => orgJobIds.has(decision.jobId) && orgCandidateIds.has(decision.candidateId)),
+    cases: benchmarkCases(db).filter((item) => orgJobIds.has(item.jobId) && orgCandidateIds.has(item.candidateId)),
+    jobs: orgJobs,
     jobId,
   });
 }
 
-export async function importBenchmarkCases(input: Array<Omit<BenchmarkCase, "id" | "createdAt">>) {
-  if (prismaEnabled()) return await prismaStore.importBenchmarkCases(input);
+export async function importBenchmarkCases(input: Array<Omit<BenchmarkCase, "id" | "createdAt">>, organizationId?: string) {
+  if (prismaEnabled()) return await prismaStore.importBenchmarkCases(input, organizationId);
   const db = await readDb();
+  if (organizationId) {
+    const invalid = input.find((item) => {
+      const job = db.jobs.find((candidateJob) => candidateJob.id === item.jobId);
+      const candidate = db.candidates.find((candidateItem) => candidateItem.id === item.candidateId);
+      return job?.organizationId !== organizationId || candidate?.organizationId !== organizationId;
+    });
+    if (invalid) throw new Error("Benchmark case references a candidate or job outside this organization.");
+  }
   const timestamp = now();
   const rows: BenchmarkCase[] = input.map((item) => ({
     id: createId("benchcase"),
@@ -394,25 +435,34 @@ export async function importBenchmarkCases(input: Array<Omit<BenchmarkCase, "id"
   return rows;
 }
 
-export async function listBenchmarkCases(jobId?: string): Promise<BenchmarkCase[]> {
-  if (prismaEnabled()) return await prismaStore.listBenchmarkCases(jobId);
+export async function listBenchmarkCases(jobId?: string, organizationId?: string): Promise<BenchmarkCase[]> {
+  if (prismaEnabled()) return await prismaStore.listBenchmarkCases(jobId, organizationId);
   const db = await readDb();
   const rows = benchmarkCases(db);
-  return jobId ? rows.filter((item) => item.jobId === jobId) : rows;
+  return rows.filter((item) => {
+    if (jobId && item.jobId !== jobId) return false;
+    if (!organizationId) return true;
+    const job = db.jobs.find((candidateJob) => candidateJob.id === item.jobId);
+    const candidate = db.candidates.find((candidateItem) => candidateItem.id === item.candidateId);
+    return job?.organizationId === organizationId && candidate?.organizationId === organizationId;
+  });
 }
 
-export async function createBenchmarkRun(input: { jobId?: string; modelVersion?: string; notes?: string }): Promise<BenchmarkRun> {
+export async function createBenchmarkRun(input: { jobId?: string; modelVersion?: string; notes?: string; organizationId?: string }): Promise<BenchmarkRun> {
   if (prismaEnabled()) return await prismaStore.createBenchmarkRun(input);
   const db = await readDb();
-  const metrics = await calibrationMetrics(input.jobId);
-  const modelVersion = input.modelVersion || db.matchRuns.find((run) => !input.jobId || run.jobId === input.jobId)?.modelVersion || "unknown";
+  const metrics = await calibrationMetrics(input.jobId, input.organizationId);
+  const orgJobs = input.organizationId ? db.jobs.filter((job) => job.organizationId === input.organizationId) : db.jobs;
+  const orgJobIds = new Set(orgJobs.map((job) => job.id));
+  const modelVersion = input.modelVersion || db.matchRuns.find((run) => (!input.jobId || run.jobId === input.jobId) && orgJobIds.has(run.jobId))?.modelVersion || "unknown";
   const run: BenchmarkRun = {
     id: createId("benchrun"),
     at: now(),
     jobId: input.jobId,
+    organizationId: input.organizationId,
     modelVersion,
     metrics,
-    caseCount: benchmarkCases(db).filter((item) => !input.jobId || item.jobId === input.jobId).length,
+    caseCount: benchmarkCases(db).filter((item) => (!input.jobId || item.jobId === input.jobId) && orgJobIds.has(item.jobId)).length,
     notes: input.notes,
   };
   benchmarkRuns(db).unshift(run);
@@ -420,42 +470,45 @@ export async function createBenchmarkRun(input: { jobId?: string; modelVersion?:
   return run;
 }
 
-export async function listBenchmarkRuns(jobId?: string): Promise<BenchmarkRun[]> {
-  if (prismaEnabled()) return await prismaStore.listBenchmarkRuns(jobId);
+export async function listBenchmarkRuns(jobId?: string, organizationId?: string): Promise<BenchmarkRun[]> {
+  if (prismaEnabled()) return await prismaStore.listBenchmarkRuns(jobId, organizationId);
   const db = await readDb();
   const rows = benchmarkRuns(db);
-  return jobId ? rows.filter((item) => item.jobId === jobId) : rows;
+  return rows.filter((item) => (!jobId || item.jobId === jobId) && (!organizationId || item.organizationId === organizationId));
 }
 
-export async function compareBenchmarkRunIds(baselineId?: string, challengerId?: string): Promise<BenchmarkComparison> {
-  if (prismaEnabled()) return await prismaStore.compareBenchmarkRunIds(baselineId, challengerId);
-  const runs = await listBenchmarkRuns();
+export async function compareBenchmarkRunIds(baselineId?: string, challengerId?: string, organizationId?: string): Promise<BenchmarkComparison> {
+  if (prismaEnabled()) return await prismaStore.compareBenchmarkRunIds(baselineId, challengerId, organizationId);
+  const runs = await listBenchmarkRuns(undefined, organizationId);
   const baseline = baselineId ? runs.find((run) => run.id === baselineId) || null : runs[1] || null;
   const challenger = challengerId ? runs.find((run) => run.id === challengerId) || null : runs[0] || null;
   return compareBenchmarkRuns(baseline, challenger);
 }
 
-export async function listCandidatePool(): Promise<CandidatePoolItem[]> {
-  if (prismaEnabled()) return await prismaStore.listCandidatePool();
+export async function listCandidatePool(organizationId?: string): Promise<CandidatePoolItem[]> {
+  if (prismaEnabled()) return await prismaStore.listCandidatePool(organizationId);
   const db = await readDb();
   return db.resumes
     .map((resume) => ({
       resume,
       candidate: db.candidates.find((candidate) => candidate.id === resume.candidateId),
     }))
-    .filter((item): item is { resume: ResumeDocument; candidate: Candidate } => Boolean(item.candidate));
+    .filter((item): item is { resume: ResumeDocument; candidate: Candidate } => Boolean(item.candidate))
+    .filter((item) => !organizationId || item.candidate.organizationId === organizationId);
 }
 
-export async function getResumeDocument(resumeId: string) {
-  if (prismaEnabled()) return await prismaStore.getResumeDocument(resumeId);
+export async function getResumeDocument(resumeId: string, organizationId?: string) {
+  if (prismaEnabled()) return await prismaStore.getResumeDocument(resumeId, organizationId);
   const db = await readDb();
-  return db.resumes.find((resume) => resume.id === resumeId) || null;
+  const resume = db.resumes.find((item) => item.id === resumeId);
+  const candidate = resume ? db.candidates.find((item) => item.id === resume.candidateId) : null;
+  return resume && (!organizationId || candidate?.organizationId === organizationId) ? resume : null;
 }
 
-export async function getCandidatePoolByResumeIds(resumeIds: string[]): Promise<CandidatePoolItem[]> {
-  if (prismaEnabled()) return await prismaStore.getCandidatePoolByResumeIds(resumeIds);
+export async function getCandidatePoolByResumeIds(resumeIds: string[], organizationId?: string): Promise<CandidatePoolItem[]> {
+  if (prismaEnabled()) return await prismaStore.getCandidatePoolByResumeIds(resumeIds, organizationId);
   const wanted = new Set(resumeIds);
-  const pool = await listCandidatePool();
+  const pool = await listCandidatePool(organizationId);
   return pool.filter((item) => wanted.has(item.resume.id));
 }
 
@@ -479,8 +532,8 @@ export async function upsertVectorRecords(records: VectorRecord[]) {
   return records;
 }
 
-export async function listMatchRuns(jobId?: string) {
-  if (prismaEnabled()) return await prismaStore.listMatchRuns(jobId);
+export async function listMatchRuns(jobId?: string, organizationId?: string) {
+  if (prismaEnabled()) return await prismaStore.listMatchRuns(jobId, organizationId);
   const db = await readDb();
   const runs = jobId ? db.matchRuns.filter((run) => run.jobId === jobId) : db.matchRuns;
   const allDecisions = decisions(db);
@@ -490,16 +543,16 @@ export async function listMatchRuns(jobId?: string) {
     job: db.jobs.find((job) => job.id === run.jobId) || null,
     candidate: db.candidates.find((candidate) => candidate.id === run.candidateId) || null,
     latestDecision: allDecisions.find((decision) => decision.jobId === run.jobId && decision.candidateId === run.candidateId) || null,
-  }));
+  })).filter((run) => !organizationId || (run.job?.organizationId === organizationId && run.candidate?.organizationId === organizationId));
 }
 
-export async function retentionReport(retentionDays = 365): Promise<RetentionReport> {
-  if (prismaEnabled()) return await prismaStore.retentionReport(retentionDays);
+export async function retentionReport(retentionDays = 365, organizationId?: string): Promise<RetentionReport> {
+  if (prismaEnabled()) return await prismaStore.retentionReport(retentionDays, organizationId);
   const db = await readDb();
   const cutoffTime = Date.now() - retentionDays * 24 * 60 * 60 * 1000;
   const cutoff = new Date(cutoffTime).toISOString();
   const dueCandidates = db.candidates
-    .filter((candidate) => new Date(candidate.createdAt).getTime() <= cutoffTime)
+    .filter((candidate) => (!organizationId || candidate.organizationId === organizationId) && new Date(candidate.createdAt).getTime() <= cutoffTime)
     .map((candidate) => {
       const resume = db.resumes.find((item) => item.candidateId === candidate.id);
       return {
@@ -520,21 +573,22 @@ export async function retentionReport(retentionDays = 365): Promise<RetentionRep
   };
 }
 
-export async function auditExport() {
-  if (prismaEnabled()) return await prismaStore.auditExport();
+export async function auditExport(organizationId?: string) {
+  if (prismaEnabled()) return await prismaStore.auditExport(organizationId);
   return {
     generatedAt: now(),
-    events: await listAuditEvents(),
+    events: await listAuditEvents(organizationId),
   };
 }
 
-export async function explainabilityReport(matchRunId: string): Promise<ExplainabilityReport | null> {
-  if (prismaEnabled()) return await prismaStore.explainabilityReport(matchRunId);
+export async function explainabilityReport(matchRunId: string, organizationId?: string): Promise<ExplainabilityReport | null> {
+  if (prismaEnabled()) return await prismaStore.explainabilityReport(matchRunId, organizationId);
   const db = await readDb();
   const matchRun = db.matchRuns.find((run) => run.id === matchRunId);
   if (!matchRun) return null;
   const job = db.jobs.find((item) => item.id === matchRun.jobId) || null;
   const candidate = db.candidates.find((item) => item.id === matchRun.candidateId) || null;
+  if (organizationId && (job?.organizationId !== organizationId || candidate?.organizationId !== organizationId)) return null;
   const resume = db.resumes.find((item) => item.candidateId === matchRun.candidateId) || null;
   const latestDecision = decisions(db).find((item) => item.jobId === matchRun.jobId && item.candidateId === matchRun.candidateId) || null;
   return {
@@ -549,10 +603,17 @@ export async function explainabilityReport(matchRunId: string): Promise<Explaina
   };
 }
 
-export async function deleteCandidate(candidateId: string, actorId = "user_demo"): Promise<DeletionResult> {
-  if (prismaEnabled()) return await prismaStore.deleteCandidate(candidateId, actorId);
+export async function deleteCandidate(candidateId: string, actorId = "user_demo", organizationId?: string): Promise<DeletionResult> {
+  if (prismaEnabled()) return await prismaStore.deleteCandidate(candidateId, actorId, organizationId);
   const db = await readDb();
   const candidate = db.candidates.find((item) => item.id === candidateId);
+  if (!candidate || (organizationId && candidate.organizationId !== organizationId)) {
+    return {
+      candidateId,
+      deleted: false,
+      removed: { candidates: 0, resumes: 0, matchRuns: 0, decisions: 0, benchmarkLabels: 0, vectors: 0 },
+    };
+  }
   const resumeIds = new Set(db.resumes.filter((resume) => resume.candidateId === candidateId).map((resume) => resume.id));
   const before = {
     candidates: db.candidates.length,

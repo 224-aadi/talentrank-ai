@@ -125,6 +125,8 @@ async function verifyPassword(password: string, encoded?: string | null) {
 async function ensureBootstrapUser() {
   const email = process.env.TALENTRANK_BOOTSTRAP_EMAIL || "admin@talentrank.local";
   const password = process.env.TALENTRANK_BOOTSTRAP_PASSWORD || (process.env.NODE_ENV === "production" ? "" : "talentrank-admin");
+  const isDefaultBootstrap = email.toLowerCase() === "admin@talentrank.local" || password === "talentrank-admin";
+  if (process.env.NODE_ENV === "production" && isDefaultBootstrap) return null;
   if (!password) return null;
 
   if (prismaEnabled()) {
@@ -286,6 +288,7 @@ export async function signupUser(input: {
 }
 
 export async function loginWithPassword(email: string, password: string) {
+  if (process.env.NODE_ENV === "production" && email.trim().toLowerCase() === "admin@talentrank.local") return null;
   const user = await findUserByEmail(email.trim().toLowerCase());
   const passwordOk = await verifyPassword(password, user?.passwordHash);
   if (!user || !passwordOk) return null;
@@ -298,14 +301,14 @@ export async function loginWithPassword(email: string, password: string) {
   };
 }
 
-export async function listAuthUsers() {
+export async function listAuthUsers(organizationId?: string) {
   await ensureBootstrapUser();
   if (prismaEnabled()) {
-    const users = await (prisma as any).user.findMany({ orderBy: { createdAt: "desc" } });
+    const users = await (prisma as any).user.findMany({ where: organizationId ? { organizationId } : undefined, orderBy: { createdAt: "desc" } });
     return users.map(toAuthUserFromPrisma);
   }
   const db = await readDb();
-  return (db.users || []).map(toAuthUser);
+  return (db.users || []).filter((user) => !organizationId || user.organizationId === organizationId).map(toAuthUser);
 }
 
 export async function createAuthUser(input: {
@@ -491,13 +494,15 @@ export async function resetPassword(token: string, password: string) {
   return true;
 }
 
-export async function updateAuthUserRole(userId: string, role: AuthUser["role"]) {
+export async function updateAuthUserRole(userId: string, role: AuthUser["role"], organizationId?: string) {
   if (prismaEnabled()) {
+    const existing = await (prisma as any).user.findFirst({ where: { id: userId, ...(organizationId ? { organizationId } : {}) } });
+    if (!existing) throw new Error("User not found.");
     const user = await (prisma as any).user.update({ where: { id: userId }, data: { role: role.toUpperCase() } });
     return toAuthUserFromPrisma(user);
   }
   const db = await readDb();
-  const user = (db.users || []).find((item) => item.id === userId);
+  const user = (db.users || []).find((item) => item.id === userId && (!organizationId || item.organizationId === organizationId));
   if (!user) throw new Error("User not found.");
   user.role = role;
   user.updatedAt = now();

@@ -13,7 +13,7 @@ export async function GET(_: Request, context: { params: Promise<{ resumeId: str
       return NextResponse.json({ error: "Too many download requests. Try again shortly." }, { status: 429 });
     }
     const { resumeId } = await context.params;
-    const resume = await getResumeDocument(resumeId);
+    const resume = await getResumeDocument(resumeId, user.organizationId);
     if (!resume) return NextResponse.json({ error: "Resume not found." }, { status: 404 });
 
     const buffer = await readStoredFile(resume.storageKey);

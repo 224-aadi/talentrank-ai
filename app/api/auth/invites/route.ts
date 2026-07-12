@@ -4,7 +4,6 @@ import { inviteAuthUser, requireRole } from "@/lib/auth";
 import { emailConfig, sendInviteEmail } from "@/lib/email";
 
 const inviteSchema = z.object({
-  organizationId: z.string().optional(),
   email: z.string().email(),
   name: z.string().min(1),
   role: z.enum(["admin", "recruiter", "reviewer"]).default("recruiter"),
@@ -14,7 +13,7 @@ export async function POST(request: Request) {
   try {
     const admin = await requireRole("admin");
     const input = inviteSchema.parse(await request.json());
-    const invite = await inviteAuthUser({ ...input, organizationId: input.organizationId || admin.organizationId });
+    const invite = await inviteAuthUser({ ...input, organizationId: admin.organizationId });
     const origin = new URL(request.url).origin;
     const email = await sendInviteEmail({
       to: invite.user.email,
