@@ -289,6 +289,7 @@ export async function signupUser(input: {
 
 export async function loginWithPassword(email: string, password: string) {
   if (process.env.NODE_ENV === "production" && email.trim().toLowerCase() === "admin@talentrank.local") return null;
+  if (process.env.NODE_ENV === "production" && password === "talentrank-admin") return null;
   const user = await findUserByEmail(email.trim().toLowerCase());
   const passwordOk = await verifyPassword(password, user?.passwordHash);
   if (!user || !passwordOk) return null;
