@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { currentUser } from "@/lib/auth";
+import { canAccessInternalTools, currentUser } from "@/lib/auth";
 import { calibrationMetrics, listBenchmarkCases, listBenchmarkLabels, listBenchmarkRuns, listMatchRuns } from "@/lib/store";
 import type { BenchmarkCase, BenchmarkLabel, BenchmarkRun, Candidate, Job, MatchRun, RecruiterDecisionRecord } from "@/lib/types";
 import { AppShell } from "@/components/app-shell";
@@ -13,6 +13,7 @@ type MatchListRow = MatchRun & {
 export default async function CalibrationPage() {
   const user = await currentUser();
   if (!user) redirect("/login");
+  if (!canAccessInternalTools(user)) redirect("/screen");
   const [metrics, labels, matches, cases, runs] = await Promise.all([
     calibrationMetrics(undefined, user.organizationId),
     listBenchmarkLabels(undefined, user.organizationId),

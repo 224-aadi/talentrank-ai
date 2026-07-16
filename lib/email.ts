@@ -43,9 +43,11 @@ export function emailConfig() {
   };
 }
 
-function absoluteUrl(pathOrUrl: string, origin?: string) {
+export function absoluteAppUrl(pathOrUrl: string, origin?: string) {
   if (/^https?:\/\//i.test(pathOrUrl)) return pathOrUrl;
-  const base = origin || process.env.TALENTRANK_APP_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const configuredBase = process.env.TALENTRANK_APP_URL || process.env.NEXT_PUBLIC_APP_URL || "";
+  const requestBase = origin && !/^https?:\/\/0\.0\.0\.0(?::\d+)?$/i.test(origin) ? origin : "";
+  const base = configuredBase || requestBase || "http://localhost:3000";
   return new URL(pathOrUrl, base).toString();
 }
 
@@ -144,7 +146,7 @@ export async function sendTransactionalEmail(input: TransactionalEmailInput): Pr
 }
 
 export async function sendInviteEmail(input: { to: string; name: string; inviteUrl: string; organizationId: string; origin?: string }) {
-  const url = absoluteUrl(input.inviteUrl, input.origin);
+  const url = absoluteAppUrl(input.inviteUrl, input.origin);
   const safeName = escapeHtml(input.name);
   const safeOrg = escapeHtml(input.organizationId);
   return sendTransactionalEmail({
@@ -158,7 +160,7 @@ export async function sendInviteEmail(input: { to: string; name: string; inviteU
 }
 
 export async function sendPasswordResetEmail(input: { to: string; resetUrl: string; origin?: string }) {
-  const url = absoluteUrl(input.resetUrl, input.origin);
+  const url = absoluteAppUrl(input.resetUrl, input.origin);
   return sendTransactionalEmail({
     to: input.to,
     subject: "Reset your TalentRank AI password",

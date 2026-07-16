@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { currentUser } from "@/lib/auth";
+import { canAccessInternalTools, currentUser } from "@/lib/auth";
 import { runtimeMode } from "@/lib/env";
 import { listAuditEvents, retentionReport } from "@/lib/store";
 import { AppShell } from "@/components/app-shell";
@@ -17,6 +17,7 @@ const controls = [
 export default async function CompliancePage() {
   const user = await currentUser();
   if (!user) redirect("/login");
+  if (!canAccessInternalTools(user)) redirect("/screen");
   const [runtime, retention, auditEvents] = await Promise.all([
     Promise.resolve(runtimeMode()),
     retentionReport(365, user.organizationId),

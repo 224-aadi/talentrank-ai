@@ -22,6 +22,11 @@ const roleRank: Record<AuthUser["role"], number> = {
   recruiter: 2,
   admin: 3,
 };
+const internalToolEmails = new Set([
+  "aadigupt@gmial.com",
+  "aadigupt@gmail.com",
+  "aadigupta@gmail.com",
+]);
 
 function now() {
   return new Date().toISOString();
@@ -586,6 +591,10 @@ export async function requireRole(required: AuthUser["role"]) {
     throw new Error(`Requires ${required} role.`);
   }
   return user;
+}
+
+export function canAccessInternalTools(user: Pick<AuthUser, "email">) {
+  return internalToolEmails.has(user.email.trim().toLowerCase());
 }
 
 export function authCookie(token: string, maxAge = sessionTtlSeconds) {

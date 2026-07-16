@@ -1,8 +1,11 @@
 import Link from "next/link";
-import type { AuthUser } from "@/lib/auth";
+import { canAccessInternalTools, type AuthUser } from "@/lib/auth";
 
 const navItems: Array<{ href: string; label: string }> = [
   { href: "/screen", label: "Screening" },
+];
+
+const internalNavItems: Array<{ href: string; label: string }> = [
   { href: "/calibration", label: "Calibration" },
   { href: "/compliance", label: "Compliance" },
 ];
@@ -16,7 +19,11 @@ export function AppShell({
   children: React.ReactNode;
   wide?: boolean;
 }) {
-  const items = user.role === "admin" ? [...navItems, { href: "/admin", label: "Admin" }] : navItems;
+  const items = [
+    ...navItems,
+    ...(canAccessInternalTools(user) ? internalNavItems : []),
+    ...(user.role === "admin" ? [{ href: "/admin", label: "Admin" }] : []),
+  ];
 
   return (
     <div className="app-shell min-h-screen bg-background text-foreground">
