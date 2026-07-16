@@ -112,7 +112,7 @@ export function LoginPanel({
         <form onSubmit={acceptInvite} className="mt-6 grid gap-4">
           <label className="grid gap-2 text-sm">
             <span className="font-medium">New password</span>
-            <PasswordInput name="password" autoComplete="new-password" minLength={10} required inputClassName={inputClass} />
+            <PasswordInput name="password" aria-label="New password" autoComplete="new-password" minLength={10} required inputClassName={inputClass} />
           </label>
           <button type="submit" disabled={loading} className={primaryButtonClass}>
             Accept invite
@@ -130,7 +130,7 @@ export function LoginPanel({
         <form onSubmit={confirmReset} className="mt-6 grid gap-4">
           <label className="grid gap-2 text-sm">
             <span className="font-medium">New password</span>
-            <PasswordInput name="password" autoComplete="new-password" minLength={10} required inputClassName={inputClass} />
+            <PasswordInput name="password" aria-label="New password" autoComplete="new-password" minLength={10} required inputClassName={inputClass} />
           </label>
           <button type="submit" disabled={loading} className={primaryButtonClass}>
             Reset password
@@ -173,7 +173,7 @@ export function LoginPanel({
             </label>
             <label className="grid gap-2 text-sm">
               <span className="font-medium">Password</span>
-              <PasswordInput name="password" autoComplete="current-password" required inputClassName={inputClass} />
+              <PasswordInput name="password" aria-label="Password" autoComplete="current-password" required inputClassName={inputClass} />
             </label>
             <label className="flex items-center justify-between gap-3 rounded-md border border-border bg-muted/30 px-3 py-2.5 text-sm">
               <span>

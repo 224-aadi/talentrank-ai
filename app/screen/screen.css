@@ -1231,6 +1231,10 @@
 /* ---------- Responsive ---------- */
 
 @media (max-width: 920px) {
+  .workbench-shell .workbench-grid {
+    grid-template-columns: 1fr;
+  }
+
   .workbench-shell .screen-form {
     position: static;
   }
@@ -1241,5 +1245,81 @@
 
   .workbench-shell .review-tabs button {
     font-size: 0.8rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .workbench-shell {
+    font-size: 14px;
+  }
+
+  .workbench-shell .workbench-grid {
+    gap: 12px;
+    margin-top: 14px;
+  }
+
+  .workbench-shell .screen-form,
+  .workbench-shell .results-column,
+  .workbench-shell .match-card {
+    padding: 14px;
+  }
+
+  .workbench-shell .screen-form textarea {
+    min-height: 150px;
+  }
+
+  .workbench-shell .review-summary,
+  .workbench-shell .compare-tray,
+  .workbench-shell .match-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .workbench-shell .review-actions {
+    justify-content: stretch;
+  }
+
+  .workbench-shell .review-actions button,
+  .workbench-shell .compare-tray button,
+  .workbench-shell .match-actions button,
+  .workbench-shell .decision-panel button,
+  .workbench-shell .benchmark-panel button,
+  .workbench-shell .resume-link-row a {
+    width: 100%;
+    min-height: 40px;
+  }
+
+  .workbench-shell .review-tabs {
+    grid-template-columns: 1fr;
+  }
+
+  .workbench-shell .review-tabs button {
+    justify-content: space-between;
+    padding-inline: 12px;
+  }
+
+  .workbench-shell .match-identity {
+    align-items: flex-start;
+  }
+
+  .workbench-shell .score-ring {
+    width: 48px;
+    height: 48px;
+  }
+
+  .workbench-shell .signal-strip span,
+  .workbench-shell .profile-strip span,
+  .workbench-shell .risk-row span,
+  .workbench-shell .rule-grid span {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+
+  .workbench-shell .breakdown-bars .bar-row {
+    grid-template-columns: 1fr 56px;
+  }
+
+  .workbench-shell .breakdown-bars .bar-row > span {
+    grid-column: 1 / -1;
   }
 }

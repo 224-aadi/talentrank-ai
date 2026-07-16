@@ -72,6 +72,7 @@ export function SignupPanel({ error }: { error?: string }) {
           <span className="font-medium">Password</span>
           <PasswordInput
             name="password"
+            aria-label="Password"
             autoComplete="new-password"
             minLength={10}
             required

@@ -612,11 +612,20 @@ h1 {
   grid-template-columns: minmax(180px, 1fr) minmax(220px, 1.2fr) 110px auto;
   align-items: center;
   gap: 12px;
+  min-width: 0;
   padding: 12px;
 }
 
 .app-shell .candidate-ledger-row span {
   font-weight: 650;
+}
+
+.app-shell .candidate-ledger-row > *,
+.app-shell .candidate-ledger-row span,
+.app-shell .candidate-ledger-row small {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 
 .app-shell .admin-list.compact div {
@@ -2101,5 +2110,51 @@ code {
   .decision-panel div,
   .benchmark-panel div {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .app-shell header nav {
+    padding: 12px 16px;
+  }
+
+  .app-shell .app-content {
+    padding: 22px 16px;
+  }
+
+  .app-shell .mobile-nav summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .app-shell .metrics,
+  .app-shell .panel-grid,
+  .app-shell .admin-overview-grid,
+  .app-shell .calibration-grid,
+  .app-shell .calibration-panels,
+  .app-shell .trust-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .app-shell .metrics article,
+  .app-shell .panel-grid article,
+  .app-shell .admin-table-card,
+  .app-shell .calibration-grid article,
+  .app-shell .calibration-panels article {
+    padding: 14px;
+  }
+
+  .app-shell .admin-action-bar,
+  .app-shell .selected-jd-banner,
+  .app-shell .admin-card-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .app-shell .admin-action-bar a,
+  .app-shell .admin-card-head a,
+  .app-shell .selected-jd-banner a,
+  .app-shell .candidate-ledger-row a,
+  .app-shell .jd-select-link {
+    width: 100%;
   }
 }
