@@ -253,7 +253,7 @@ export async function signupUser(input: {
         organizationId,
         email,
         name,
-        role: "RECRUITER",
+        role: "ADMIN",
         passwordHash: await hashPassword(input.password),
       },
     });
@@ -276,7 +276,7 @@ export async function signupUser(input: {
     organizationId,
     email,
     name,
-    role: "recruiter",
+    role: "admin",
     passwordHash: await hashPassword(input.password),
     createdAt: timestamp,
     updatedAt: timestamp,
