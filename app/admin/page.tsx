@@ -82,7 +82,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
           ) : null}
         </section>
         {backendData?.error ? (
-          <p className="form-error">Workspace history is reconnecting to the backend. Check Vercel and Render auth env vars if this persists.</p>
+          <p className="form-error">Workspace history is reconnecting to the backend. Wait for Render and Vercel to finish redeploying, then refresh.</p>
         ) : null}
         {showInternalTools ? (
           <section className="metrics">
