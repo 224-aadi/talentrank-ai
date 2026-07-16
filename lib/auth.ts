@@ -201,6 +201,26 @@ async function touchLastLogin(userId: string) {
   }
 }
 
+async function ensureSoloWorkspaceAdmin(user: AuthUser): Promise<AuthUser> {
+  if (user.role === "admin") return user;
+  if (prismaEnabled()) {
+    const client = prisma as any;
+    const count = await client.user.count({ where: { organizationId: user.organizationId } });
+    if (count !== 1) return user;
+    const updated = await client.user.update({ where: { id: user.id }, data: { role: "ADMIN" } });
+    return toAuthUserFromPrisma(updated);
+  }
+  const db = await readDb();
+  db.users ||= [];
+  const orgUsers = db.users.filter((item) => item.organizationId === user.organizationId);
+  if (orgUsers.length !== 1) return user;
+  const record = orgUsers[0];
+  record.role = "admin";
+  record.updatedAt = now();
+  await writeDb(db);
+  return toAuthUser(record);
+}
+
 function createSessionToken(user: AuthUser) {
   const payload = base64Url(JSON.stringify({
     sub: user.id,
@@ -293,7 +313,7 @@ export async function loginWithPassword(email: string, password: string) {
   const user = await findUserByEmail(email.trim().toLowerCase());
   const passwordOk = await verifyPassword(password, user?.passwordHash);
   if (!user || !passwordOk) return null;
-  const authUser = prismaEnabled() ? toAuthUserFromPrisma(user) : toAuthUser(user);
+  const authUser = await ensureSoloWorkspaceAdmin(prismaEnabled() ? toAuthUserFromPrisma(user) : toAuthUser(user));
   await touchLastLogin(authUser.id);
   return {
     user: authUser,
@@ -556,7 +576,7 @@ export async function currentUser(): Promise<AuthUser | null> {
   if (frontendOnlyMode()) return session;
   const user = await findUserById(session.id);
   if (!user) return null;
-  return prismaEnabled() ? toAuthUserFromPrisma(user) : toAuthUser(user);
+  return await ensureSoloWorkspaceAdmin(prismaEnabled() ? toAuthUserFromPrisma(user) : toAuthUser(user));
 }
 
 export async function requireRole(required: AuthUser["role"]) {
