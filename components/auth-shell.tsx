@@ -32,10 +32,10 @@ export function AuthShell({
         </nav>
       </header>
 
-      <main className="mx-auto flex min-h-[calc(100vh-65px)] max-w-md flex-col justify-center px-6 py-12">
+      <main className="mx-auto flex min-h-[calc(100vh-65px)] max-w-lg flex-col justify-center px-6 py-12">
         <div className="rounded-xl border border-border bg-card p-8 shadow-sm">
           <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Secure workspace</p>
-          <h1 className="mt-3 text-3xl font-semibold">{title}</h1>
+          <h1 className="auth-title mt-3 font-semibold">{title}</h1>
           <p className="mt-2 text-sm text-muted-foreground">{subtitle}</p>
           <div className="mt-8">{children}</div>
           {footer ? <div className="mt-6 border-t border-border pt-6 text-center text-sm text-muted-foreground">{footer}</div> : null}

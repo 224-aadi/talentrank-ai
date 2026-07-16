@@ -176,9 +176,9 @@ h1 {
   letter-spacing: 0;
 }
 
-.auth-page h1 {
+.auth-page .auth-title {
   max-width: 100%;
-  font-size: clamp(2.6rem, 6.6vw, 75px);
+  font-size: clamp(2.75rem, 6.6vw, 75px);
   line-height: 0.98;
 }
 
