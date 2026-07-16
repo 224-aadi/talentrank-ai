@@ -16,6 +16,7 @@ export type AuthUser = {
 
 const sessionCookieName = "tr_session";
 const sessionTtlSeconds = 60 * 60 * 12;
+const rememberedSessionTtlSeconds = 60 * 60 * 24 * 30;
 const hashIterations = 120000;
 const roleRank: Record<AuthUser["role"], number> = {
   reviewer: 1,
@@ -226,14 +227,14 @@ async function ensureSoloWorkspaceAdmin(user: AuthUser): Promise<AuthUser> {
   return toAuthUser(record);
 }
 
-function createSessionToken(user: AuthUser) {
+function createSessionToken(user: AuthUser, ttlSeconds = sessionTtlSeconds) {
   const payload = base64Url(JSON.stringify({
     sub: user.id,
     org: user.organizationId,
     email: user.email,
     name: user.name,
     role: user.role,
-    exp: Math.floor(Date.now() / 1000) + sessionTtlSeconds,
+    exp: Math.floor(Date.now() / 1000) + ttlSeconds,
   }));
   return `${payload}.${sign(payload)}`;
 }
@@ -312,7 +313,7 @@ export async function signupUser(input: {
   return { user: authUser, token: createSessionToken(authUser), maxAge: sessionTtlSeconds };
 }
 
-export async function loginWithPassword(email: string, password: string) {
+export async function loginWithPassword(email: string, password: string, remember = false) {
   if (process.env.NODE_ENV === "production" && email.trim().toLowerCase() === "admin@talentrank.local") return null;
   if (process.env.NODE_ENV === "production" && password === "talentrank-admin") return null;
   const user = await findUserByEmail(email.trim().toLowerCase());
@@ -320,10 +321,11 @@ export async function loginWithPassword(email: string, password: string) {
   if (!user || !passwordOk) return null;
   const authUser = await ensureSoloWorkspaceAdmin(prismaEnabled() ? toAuthUserFromPrisma(user) : toAuthUser(user));
   await touchLastLogin(authUser.id);
+  const maxAge = remember ? rememberedSessionTtlSeconds : sessionTtlSeconds;
   return {
     user: authUser,
-    token: createSessionToken(authUser),
-    maxAge: sessionTtlSeconds,
+    token: createSessionToken(authUser, maxAge),
+    maxAge,
   };
 }
 

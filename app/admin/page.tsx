@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { currentUser } from "@/lib/auth";
+import { canAccessInternalTools, currentUser } from "@/lib/auth";
 import { integrationStatus } from "@/lib/integrations";
 import { listAuditEvents, listCandidatePool, listJobs, listMatchRuns, listRecruiterDecisions } from "@/lib/store";
 import type { AuditEvent, Candidate, CandidatePoolItem, Job, MatchRun, RecruiterDecisionRecord } from "@/lib/types";
@@ -27,6 +27,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
   const user = await currentUser();
   if (!user) redirect("/login");
   if (user.role !== "admin") redirect("/screen");
+  const showInternalTools = canAccessInternalTools(user);
   const selectedJobId = (await searchParams).jobId;
   const [status, jobs, candidates, matches, decisions, auditEvents] = await Promise.all([
     Promise.resolve(integrationStatus()),
@@ -66,31 +67,36 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
           <p className="workbench-lede">Screening history, candidate records, resume downloads, JDs, exports, integrations, and workspace controls.</p>
         </section>
 
-        <section className="metrics">
-          <article>
-            <span>Readiness</span>
-            <strong>{status.ready ? "ready" : "needs work"}</strong>
-          </article>
-          <article>
-            <span>{selectedJob ? "JD candidates" : "Candidates"}</span>
-            <strong>{visibleCandidateRows.length}</strong>
-          </article>
-          <article>
-            <span>Avg score</span>
-            <strong>{selectedMatchRows.length ? `${avgScore}%` : "none"}</strong>
-          </article>
-          <article>
-            <span>Advanced</span>
-            <strong>{shortlisted}</strong>
-          </article>
-        </section>
-
         <section className="admin-action-bar">
           <a href="/api/admin/candidates/export">Export candidates CSV</a>
-          <a href="/api/admin/backup">Backup JSON</a>
-          <a href="/api/compliance/audit-export">Audit export</a>
-          <a href="/api/health">Health</a>
+          {showInternalTools ? (
+            <>
+              <a href="/api/admin/backup">Backup JSON</a>
+              <a href="/api/compliance/audit-export">Audit export</a>
+              <a href="/api/health">Health</a>
+            </>
+          ) : null}
         </section>
+        {showInternalTools ? (
+          <section className="metrics">
+            <article>
+              <span>Readiness</span>
+              <strong>{status.ready ? "ready" : "needs work"}</strong>
+            </article>
+            <article>
+              <span>{selectedJob ? "JD candidates" : "Candidates"}</span>
+              <strong>{visibleCandidateRows.length}</strong>
+            </article>
+            <article>
+              <span>Avg score</span>
+              <strong>{selectedMatchRows.length ? `${avgScore}%` : "none"}</strong>
+            </article>
+            <article>
+              <span>Advanced</span>
+              <strong>{shortlisted}</strong>
+            </article>
+          </section>
+        ) : null}
         {selectedJob ? (
           <section className="selected-jd-banner">
             <div>
@@ -156,69 +162,73 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
           </div>
         </section>
 
-        <section className="admin-overview-grid">
-          <article className="admin-table-card">
-            <div className="admin-card-head">
-              <div>
-                <span>Audit trail</span>
-                <h2>Recent activity</h2>
-              </div>
-              <a href="/api/audit">Open</a>
-            </div>
-            <div className="admin-list compact">
-              {latestAudits.length ? latestAudits.map((event) => (
-                <div key={event.id}>
-                  <strong>{event.type}</strong>
-                  <small>{shortDate(event.at)} {event.candidateName ? `· ${event.candidateName}` : ""}</small>
-                </div>
-              )) : <p>No audit events yet.</p>}
-            </div>
-          </article>
-          <article className="admin-table-card">
-            <div className="admin-card-head">
-              <div>
-                <span>Runtime</span>
-                <h2>Provider status</h2>
-              </div>
-            </div>
-            <div className="admin-runtime-grid">
-              <span>DB <b>{status.runtime.persistence}</b></span>
-              <span>Storage <b>{status.runtime.storage}</b></span>
-              <span>Auth <b>{status.runtime.auth}</b></span>
-              <span>Email <b>{status.runtime.email}</b></span>
-              <span>OCR <b>{status.runtime.ocr}</b></span>
-              <span>Embeddings <b>{status.runtime.embeddings}</b></span>
-            </div>
-          </article>
-        </section>
-
-        <section className="panel-grid trust-grid">
-          <article>
-            <h2>Integrations</h2>
-            <div className="control-list">
-              {status.items.map((item) => (
-                <div key={item.key} className="control-row">
+        {showInternalTools ? (
+          <>
+            <section className="admin-overview-grid">
+              <article className="admin-table-card">
+                <div className="admin-card-head">
                   <div>
-                    <strong>{item.label}</strong>
+                    <span>Audit trail</span>
+                    <h2>Recent activity</h2>
                   </div>
-                  <span className={`status-${item.status}`}>{item.status}</span>
+                  <a href="/api/audit">Open</a>
                 </div>
-              ))}
-            </div>
-          </article>
-          <article>
-            <h2>Operator Exports</h2>
-            <div className="endpoint-list">
-              <a href="/api/admin/candidates/export">Candidate CSV with resume links</a>
-              <a href="/api/admin/integrations">Integration status JSON</a>
-              <a href="/api/admin/backup">Backup export</a>
-              <a href="/api/admin/users/export">Users CSV export</a>
-              <a href="/api/ops/metrics">Ops metrics</a>
-              <a href="/api/health">Health check</a>
-            </div>
-          </article>
-        </section>
-        <IntegrationDiagnosticsPanel items={status.items} />
+                <div className="admin-list compact">
+                  {latestAudits.length ? latestAudits.map((event) => (
+                    <div key={event.id}>
+                      <strong>{event.type}</strong>
+                      <small>{shortDate(event.at)} {event.candidateName ? `· ${event.candidateName}` : ""}</small>
+                    </div>
+                  )) : <p>No audit events yet.</p>}
+                </div>
+              </article>
+              <article className="admin-table-card">
+                <div className="admin-card-head">
+                  <div>
+                    <span>Runtime</span>
+                    <h2>Provider status</h2>
+                  </div>
+                </div>
+                <div className="admin-runtime-grid">
+                  <span>DB <b>{status.runtime.persistence}</b></span>
+                  <span>Storage <b>{status.runtime.storage}</b></span>
+                  <span>Auth <b>{status.runtime.auth}</b></span>
+                  <span>Email <b>{status.runtime.email}</b></span>
+                  <span>OCR <b>{status.runtime.ocr}</b></span>
+                  <span>Embeddings <b>{status.runtime.embeddings}</b></span>
+                </div>
+              </article>
+            </section>
+
+            <section className="panel-grid trust-grid">
+              <article>
+                <h2>Integrations</h2>
+                <div className="control-list">
+                  {status.items.map((item) => (
+                    <div key={item.key} className="control-row">
+                      <div>
+                        <strong>{item.label}</strong>
+                      </div>
+                      <span className={`status-${item.status}`}>{item.status}</span>
+                    </div>
+                  ))}
+                </div>
+              </article>
+              <article>
+                <h2>Operator Exports</h2>
+                <div className="endpoint-list">
+                  <a href="/api/admin/candidates/export">Candidate CSV with resume links</a>
+                  <a href="/api/admin/integrations">Integration status JSON</a>
+                  <a href="/api/admin/backup">Backup export</a>
+                  <a href="/api/admin/users/export">Users CSV export</a>
+                  <a href="/api/ops/metrics">Ops metrics</a>
+                  <a href="/api/health">Health check</a>
+                </div>
+              </article>
+            </section>
+            <IntegrationDiagnosticsPanel items={status.items} />
+          </>
+        ) : null}
       </main>
     </AppShell>
   );

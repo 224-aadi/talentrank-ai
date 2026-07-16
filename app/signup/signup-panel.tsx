@@ -2,10 +2,12 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { PasswordInput } from "@/components/password-input";
 
 export function SignupPanel({ error }: { error?: string }) {
   const [message, setMessage] = useState(error ? "Could not create your account." : "");
   const [loading, setLoading] = useState(false);
+  const inputClass = "rounded-md border border-border bg-background px-3 py-2.5 outline-none ring-primary focus:ring-2";
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -44,7 +46,7 @@ export function SignupPanel({ error }: { error?: string }) {
             type="text"
             autoComplete="name"
             required
-            className="rounded-md border border-border bg-background px-3 py-2.5 outline-none ring-primary focus:ring-2"
+            className={inputClass}
           />
         </label>
         <label className="grid gap-2 text-sm">
@@ -54,7 +56,7 @@ export function SignupPanel({ error }: { error?: string }) {
             type="email"
             autoComplete="email"
             required
-            className="rounded-md border border-border bg-background px-3 py-2.5 outline-none ring-primary focus:ring-2"
+            className={inputClass}
           />
         </label>
         <label className="grid gap-2 text-sm">
@@ -63,18 +65,17 @@ export function SignupPanel({ error }: { error?: string }) {
             name="organizationName"
             type="text"
             placeholder="Optional"
-            className="rounded-md border border-border bg-background px-3 py-2.5 outline-none ring-primary focus:ring-2"
+            className={inputClass}
           />
         </label>
         <label className="grid gap-2 text-sm">
           <span className="font-medium">Password</span>
-          <input
+          <PasswordInput
             name="password"
-            type="password"
             autoComplete="new-password"
             minLength={10}
             required
-            className="rounded-md border border-border bg-background px-3 py-2.5 outline-none ring-primary focus:ring-2"
+            inputClassName={inputClass}
           />
           <span className="text-xs text-muted-foreground">At least 10 characters</span>
         </label>

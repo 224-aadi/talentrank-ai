@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { PasswordInput } from "@/components/password-input";
 
 export function LoginPanel({
   inviteToken,
@@ -17,6 +18,7 @@ export function LoginPanel({
   const [mode, setMode] = useState<"login" | "reset-request">("login");
   const [message, setMessage] = useState(error ? "Invalid email or password." : "");
   const [loading, setLoading] = useState(false);
+  const [remember, setRemember] = useState(true);
 
   const inputClass =
     "rounded-md border border-border bg-background px-3 py-2.5 outline-none ring-primary focus:ring-2";
@@ -90,6 +92,7 @@ export function LoginPanel({
       body: JSON.stringify({
         email: form.get("email"),
         password: form.get("password"),
+        remember,
       }),
     });
     const payload = await response.json().catch(() => ({}));
@@ -109,7 +112,7 @@ export function LoginPanel({
         <form onSubmit={acceptInvite} className="mt-6 grid gap-4">
           <label className="grid gap-2 text-sm">
             <span className="font-medium">New password</span>
-            <input name="password" type="password" autoComplete="new-password" minLength={10} required className={inputClass} />
+            <PasswordInput name="password" autoComplete="new-password" minLength={10} required inputClassName={inputClass} />
           </label>
           <button type="submit" disabled={loading} className={primaryButtonClass}>
             Accept invite
@@ -127,7 +130,7 @@ export function LoginPanel({
         <form onSubmit={confirmReset} className="mt-6 grid gap-4">
           <label className="grid gap-2 text-sm">
             <span className="font-medium">New password</span>
-            <input name="password" type="password" autoComplete="new-password" minLength={10} required className={inputClass} />
+            <PasswordInput name="password" autoComplete="new-password" minLength={10} required inputClassName={inputClass} />
           </label>
           <button type="submit" disabled={loading} className={primaryButtonClass}>
             Reset password
@@ -170,7 +173,19 @@ export function LoginPanel({
             </label>
             <label className="grid gap-2 text-sm">
               <span className="font-medium">Password</span>
-              <input name="password" type="password" autoComplete="current-password" required className={inputClass} />
+              <PasswordInput name="password" autoComplete="current-password" required inputClassName={inputClass} />
+            </label>
+            <label className="flex items-center justify-between gap-3 rounded-md border border-border bg-muted/30 px-3 py-2.5 text-sm">
+              <span>
+                <span className="block font-medium">Remember me</span>
+                <span className="text-xs text-muted-foreground">Stay signed in on this device.</span>
+              </span>
+              <input
+                type="checkbox"
+                checked={remember}
+                onChange={(event) => setRemember(event.target.checked)}
+                className="h-4 w-4 accent-primary"
+              />
             </label>
             <button type="submit" disabled={loading} className={primaryButtonClass}>
               {loading ? "Signing in…" : "Sign in"}

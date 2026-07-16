@@ -18,7 +18,8 @@ export async function POST(request: Request) {
     : Object.fromEntries((await request.formData()).entries());
   const email = String(payload.email || "");
   const password = String(payload.password || "");
-  const result = await loginWithPassword(email, password);
+  const remember = payload.remember === true || payload.remember === "true" || payload.remember === "on";
+  const result = await loginWithPassword(email, password, remember);
 
   if (!result) {
     incrementMetric("auth.login.failure");

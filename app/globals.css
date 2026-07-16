@@ -176,6 +176,12 @@ h1 {
   letter-spacing: 0;
 }
 
+.auth-page h1 {
+  max-width: 100%;
+  font-size: clamp(2.6rem, 6.6vw, 75px);
+  line-height: 0.98;
+}
+
 .lede {
   max-width: 780px;
   margin: 18px 0 0;
