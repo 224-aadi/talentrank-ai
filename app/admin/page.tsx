@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { canAccessInternalTools, currentUser } from "@/lib/auth";
 import { integrationStatus } from "@/lib/integrations";
 import { listAuditEvents, listCandidatePool, listJobs, listMatchRuns, listRecruiterDecisions } from "@/lib/store";
+import { frontendOnlyAdminData } from "@/lib/backend-api";
 import type { AuditEvent, Candidate, CandidatePoolItem, Job, MatchRun, RecruiterDecisionRecord } from "@/lib/types";
 import { AppShell } from "@/components/app-shell";
 import { IntegrationDiagnosticsPanel } from "./integration-diagnostics-panel";
@@ -29,14 +30,17 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
   if (user.role !== "admin") redirect("/dashboard");
   const showInternalTools = canAccessInternalTools(user);
   const selectedJobId = (await searchParams).jobId;
-  const [status, jobs, candidates, matches, decisions, auditEvents] = await Promise.all([
-    Promise.resolve(integrationStatus()),
-    listJobs(user.organizationId),
-    listCandidatePool(user.organizationId),
-    listMatchRuns(undefined, user.organizationId),
-    listRecruiterDecisions(undefined, user.organizationId),
-    listAuditEvents(user.organizationId),
-  ]);
+  const status = integrationStatus();
+  const backendData = await frontendOnlyAdminData();
+  const [jobs, candidates, matches, decisions, auditEvents] = backendData
+    ? [backendData.jobs, backendData.candidates, backendData.matches, backendData.decisions, backendData.auditEvents]
+    : await Promise.all([
+        listJobs(user.organizationId),
+        listCandidatePool(user.organizationId),
+        listMatchRuns(undefined, user.organizationId),
+        listRecruiterDecisions(undefined, user.organizationId),
+        listAuditEvents(user.organizationId),
+      ]);
   const matchRows = matches as AdminMatch[];
   const candidateRows = candidates as CandidatePoolItem[];
   const jobRows = jobs as Job[];
@@ -103,7 +107,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
               <span>Selected JD</span>
               <strong>{selectedJob.title}</strong>
             </div>
-            <a href="/admin">View all candidates</a>
+            <a href="/workspace">View all candidates</a>
           </section>
         ) : null}
 
@@ -123,7 +127,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
                     <small>{shortDate(job.createdAt)} · {job.hardRules.length} hard rules</small>
                   </summary>
                   <p>{truncate(job.description, 420)}</p>
-                  <a className="jd-select-link" href={`/admin?jobId=${job.id}`}>View candidates for this JD</a>
+                  <a className="jd-select-link" href={`/workspace?jobId=${job.id}`}>View candidates for this JD</a>
                 </details>
               )) : <p>No job descriptions uploaded yet.</p>}
             </div>
