@@ -4,7 +4,7 @@ import { LandingPage } from "@/components/landing-page";
 
 export default async function HomePage() {
   const user = await currentUser();
-  if (user) redirect("/screen");
+  if (user) redirect("/dashboard");
 
   return <LandingPage />;
 }

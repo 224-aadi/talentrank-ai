@@ -2,12 +2,12 @@ import Link from "next/link";
 import { canAccessInternalTools, type AuthUser } from "@/lib/auth";
 
 const navItems: Array<{ href: string; label: string }> = [
-  { href: "/screen", label: "Screening" },
+  { href: "/dashboard", label: "Dashboard" },
 ];
 
 const internalNavItems: Array<{ href: string; label: string }> = [
-  { href: "/calibration", label: "Calibration" },
-  { href: "/compliance", label: "Compliance" },
+  { href: "/quality", label: "Quality" },
+  { href: "/trust", label: "Trust" },
 ];
 
 export function AppShell({
@@ -22,14 +22,14 @@ export function AppShell({
   const items = [
     ...navItems,
     ...(canAccessInternalTools(user) ? internalNavItems : []),
-    ...(user.role === "admin" ? [{ href: "/admin", label: "Admin" }] : []),
+    ...(user.role === "admin" ? [{ href: "/workspace", label: "Workspace" }] : []),
   ];
 
   return (
     <div className="app-shell min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur">
         <nav className={`mx-auto flex items-center justify-between gap-4 px-6 py-4 ${wide ? "max-w-7xl" : "max-w-6xl"}`}>
-          <Link href="/screen" className="font-display text-base font-semibold tracking-tight">
+          <Link href="/dashboard" className="font-display text-base font-semibold tracking-tight">
             TalentRank<span className="text-primary">AI</span>
           </Link>
           <div className="hidden items-center gap-1 md:flex">

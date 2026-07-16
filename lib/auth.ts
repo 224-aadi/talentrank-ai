@@ -3,6 +3,7 @@ import { cookies, headers } from "next/headers";
 import type { UserRole } from "@prisma/client";
 import { prismaEnabled } from "./prisma";
 import { prisma } from "./prisma";
+import { frontendOnlyMode } from "./deployment";
 import { createId, readDb, writeDb } from "./store";
 import type { AuthUserRecord } from "./types";
 
@@ -41,10 +42,6 @@ function normalizeRole(value?: string | null): AuthUser["role"] {
 
 function authMode() {
   return process.env.TALENTRANK_AUTH_MODE === "headers" ? "headers" : "session";
-}
-
-function frontendOnlyMode() {
-  return Boolean(process.env.TALENTRANK_BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL) && process.env.TALENTRANK_FRONTEND_ONLY !== "false";
 }
 
 function sessionSecret() {

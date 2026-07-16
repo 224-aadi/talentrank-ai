@@ -34,7 +34,7 @@ export async function POST(request: Request) {
   logEvent("auth.login.success", { userId: result.user.id, organizationId: result.user.organizationId });
   const response = contentType.includes("application/json")
     ? NextResponse.json({ user: result.user })
-    : NextResponse.redirect(redirectTo(request, "/screen"), { status: 303 });
+    : NextResponse.redirect(redirectTo(request, "/dashboard"), { status: 303 });
   const cookie = authCookie(result.token, result.maxAge);
   response.cookies.set(cookie.name, cookie.value, cookie.options);
   return response;

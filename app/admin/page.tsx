@@ -26,7 +26,7 @@ function truncate(value: string, length = 160) {
 export default async function AdminPage({ searchParams }: { searchParams: Promise<{ jobId?: string }> }) {
   const user = await currentUser();
   if (!user) redirect("/login");
-  if (user.role !== "admin") redirect("/screen");
+  if (user.role !== "admin") redirect("/dashboard");
   const showInternalTools = canAccessInternalTools(user);
   const selectedJobId = (await searchParams).jobId;
   const [status, jobs, candidates, matches, decisions, auditEvents] = await Promise.all([

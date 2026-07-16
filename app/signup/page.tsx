@@ -5,7 +5,7 @@ import { SignupFooter, SignupPanel } from "./signup-panel";
 
 export default async function SignupPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const user = await currentUser();
-  if (user) redirect("/screen");
+  if (user) redirect("/dashboard");
   const params = await searchParams;
 
   return (

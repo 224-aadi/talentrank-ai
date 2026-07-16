@@ -5,7 +5,7 @@ import { LoginFooter, LoginPanel } from "./login-panel";
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string; invite?: string; reset?: string }> }) {
   const user = await currentUser();
-  if (user) redirect("/screen");
+  if (user) redirect("/dashboard");
   const params = await searchParams;
   const hasOidc = Boolean(process.env.OIDC_ISSUER_URL && process.env.OIDC_CLIENT_ID);
   const isSpecialFlow = Boolean(params.invite || params.reset);

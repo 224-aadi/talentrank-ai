@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export default async function ExportPage() {
   const user = await currentUser();
   if (!user) redirect("/login");
-  if (user.role !== "admin") redirect("/screen");
+  if (user.role !== "admin") redirect("/dashboard");
 
   return (
     <AppShell user={user}>

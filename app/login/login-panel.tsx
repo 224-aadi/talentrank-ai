@@ -51,7 +51,7 @@ export function LoginPanel({
       token: inviteToken,
       password: form.get("password") || "",
     });
-    if (payload) window.location.href = "/screen";
+    if (payload) window.location.href = "/dashboard";
   }
 
   async function requestReset(event: React.FormEvent<HTMLFormElement>) {
@@ -101,7 +101,7 @@ export function LoginPanel({
       setMessage(payload.error || "Invalid email or password.");
       return;
     }
-    window.location.href = "/screen";
+    window.location.href = "/dashboard";
   }
 
   if (inviteToken) {

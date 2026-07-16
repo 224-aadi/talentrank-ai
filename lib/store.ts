@@ -3,6 +3,7 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { prismaEnabled } from "./prisma";
 import * as prismaStore from "./prisma-store";
+import { frontendOnlyMode } from "./deployment";
 import { explainabilitySummary, guardrailReport } from "./compliance";
 import { compareBenchmarkRuns, computeCalibrationMetrics } from "./benchmarking";
 import type {
@@ -81,11 +82,13 @@ async function ensureDb() {
 }
 
 export async function readDb(): Promise<TalentRankDb> {
+  if (frontendOnlyMode()) return emptyDb();
   await ensureDb();
   return JSON.parse(await fs.readFile(dbPath, "utf8")) as TalentRankDb;
 }
 
 export async function writeDb(db: TalentRankDb) {
+  if (frontendOnlyMode()) throw new Error("Writes must be handled by the backend service in frontend-only mode.");
   await fs.writeFile(dbPath, JSON.stringify(db, null, 2));
 }
 

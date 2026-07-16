@@ -13,7 +13,7 @@ type MatchListRow = MatchRun & {
 export default async function CalibrationPage() {
   const user = await currentUser();
   if (!user) redirect("/login");
-  if (!canAccessInternalTools(user)) redirect("/screen");
+  if (!canAccessInternalTools(user)) redirect("/dashboard");
   const [metrics, labels, matches, cases, runs] = await Promise.all([
     calibrationMetrics(undefined, user.organizationId),
     listBenchmarkLabels(undefined, user.organizationId),

@@ -30,7 +30,7 @@ export function SignupPanel({ error }: { error?: string }) {
       setMessage(payload.error || "Could not create your account.");
       return;
     }
-    window.location.href = "/screen";
+    window.location.href = "/dashboard";
   }
 
   return (

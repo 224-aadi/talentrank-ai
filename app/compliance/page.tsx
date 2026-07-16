@@ -17,7 +17,7 @@ const controls = [
 export default async function CompliancePage() {
   const user = await currentUser();
   if (!user) redirect("/login");
-  if (!canAccessInternalTools(user)) redirect("/screen");
+  if (!canAccessInternalTools(user)) redirect("/dashboard");
   const [runtime, retention, auditEvents] = await Promise.all([
     Promise.resolve(runtimeMode()),
     retentionReport(365, user.organizationId),
