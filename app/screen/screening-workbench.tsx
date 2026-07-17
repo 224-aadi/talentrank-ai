@@ -137,7 +137,7 @@ function csvList(values?: string[]) {
 }
 
 function resumeDownloadUrl(match: MatchRow) {
-  return match.resume?.id ? `${window.location.origin}/api/resumes/${match.resume.id}/download` : "";
+  return match.resume?.id ? new URL(`/api/resumes/${match.resume.id}/download`, window.location.origin).toString() : "";
 }
 
 export default function ScreeningWorkbench({
@@ -149,6 +149,7 @@ export default function ScreeningWorkbench({
 }) {
   const [title, setTitle] = useState("Data Science / Analyst");
   const [description, setDescription] = useState("");
+  const [jobFile, setJobFile] = useState<File | null>(null);
   const [hardRules, setHardRules] = useState("");
   const [roleTemplate, setRoleTemplate] = useState("auto");
   const [resumeFiles, setResumeFiles] = useState<File[]>([]);
@@ -236,42 +237,42 @@ export default function ScreeningWorkbench({
     const headers = [
       "Rank",
       "Candidate",
+      "Score",
+      "Confidence",
+      "Verdict",
+      "Decision",
+      "Required keywords",
+      "Skills extracted",
+      "LLM rationale",
+      "Matched signals",
+      "Missing signals",
+      "Parser warnings",
       "Email",
       "Resume file",
       "Open resume",
       "Resume URL",
       "Job",
-      "Score",
-      "Confidence",
-      "Verdict",
-      "Decision",
-      "Matched signals",
-      "Missing signals",
-      "Required keyword outcomes",
-      "Skills extracted",
-      "LLM rationale",
-      "Parser warnings",
     ];
     const rows = matches.map((match, index) => {
       const resumeUrl = resumeDownloadUrl(match);
       return [
         csvCell(index + 1),
         csvCell(match.candidate?.name || ""),
+        csvCell(match.score),
+        csvCell(match.confidence),
+        csvCell(match.verdict),
+        csvCell(match.latestDecision?.decision || ""),
+        csvCell(match.hardRuleOutcomes?.map((outcome) => `${outcome.passed ? "pass" : "fail"}: ${outcome.rule}`).join("; ") || ""),
+        csvCell(csvList(match.resume?.parsedJson?.skills)),
+        csvCell(rationaleFor(match) || ""),
+        csvCell(csvList(match.matchedSignals)),
+        csvCell(csvList(match.missingSignals)),
+        csvCell(csvList(match.resume?.warnings)),
         csvCell(match.candidate?.email || match.resume?.parsedJson?.contact?.email || ""),
         csvCell(match.resume?.fileName || ""),
         resumeUrl ? csvFormula(`=HYPERLINK("${resumeUrl}", "Open resume")`) : csvCell(""),
         csvCell(resumeUrl),
         csvCell(match.job?.title || title),
-        csvCell(match.score),
-        csvCell(match.confidence),
-        csvCell(match.verdict),
-        csvCell(match.latestDecision?.decision || ""),
-        csvCell(csvList(match.matchedSignals)),
-        csvCell(csvList(match.missingSignals)),
-        csvCell(match.hardRuleOutcomes?.map((outcome) => `${outcome.passed ? "pass" : "fail"}: ${outcome.rule}`).join("; ") || ""),
-        csvCell(csvList(match.resume?.parsedJson?.skills)),
-        csvCell(rationaleFor(match) || ""),
-        csvCell(csvList(match.resume?.warnings)),
       ];
     });
     const csv = [headers.map(csvCell).join(","), ...rows.map((row) => row.join(","))].join("\n");
@@ -291,6 +292,10 @@ export default function ScreeningWorkbench({
   function handleFiles(files: FileList | null) {
     if (!files) return;
     setResumeFiles([...files]);
+  }
+
+  function handleJobFile(files: FileList | null) {
+    setJobFile(files?.[0] || null);
   }
 
   function toggleResume(resumeId: string) {
@@ -339,6 +344,7 @@ export default function ScreeningWorkbench({
             .filter(Boolean),
         }),
       );
+      if (jobFile) formData.append("jobDescriptionFile", jobFile);
       for (const file of resumeFiles) formData.append("resumes", file);
       formData.append("savedResumeIds", JSON.stringify(selectedResumeIds));
       const response = await fetch("/api/screen", {
@@ -432,7 +438,16 @@ export default function ScreeningWorkbench({
         <form className="screen-form" onSubmit={(event) => event.preventDefault()}>
           <label>
             <span>Job description</span>
-            <textarea value={description} onChange={(event) => setDescription(event.target.value)} />
+            <textarea
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
+              placeholder="Paste the JD here, or upload it below."
+            />
+          </label>
+          <label className={`file-drop jd-file-drop${jobFile ? " has-files" : ""}`}>
+            <span>JD upload</span>
+            <input type="file" accept=".pdf,.docx,.txt,.md,.csv" onChange={(event) => handleJobFile(event.target.files)} />
+            <strong>{jobFile ? jobFile.name : "Upload a JD file"}</strong>
           </label>
           <label className={`file-drop${resumeFiles.length ? " has-files" : ""}`}>
             <span>Resume batch</span>
@@ -505,7 +520,7 @@ export default function ScreeningWorkbench({
               ))}
             </div>
           ) : null}
-          <button disabled={isRunning || !description || (!resumeFiles.length && !selectedResumeIds.length)} onClick={runScreen}>
+          <button disabled={isRunning || (!description.trim() && !jobFile) || (!resumeFiles.length && !selectedResumeIds.length)} onClick={runScreen}>
             {isRunning ? (
               <span className="loading-label">
                 Screening<span className="loading-dots" aria-hidden="true"><i /><i /><i /></span>

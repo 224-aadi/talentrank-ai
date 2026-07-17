@@ -27,7 +27,24 @@ export async function POST(request: Request) {
     : Object.fromEntries((await request.formData()).entries());
 
   try {
-    const input = signupSchema.parse(payload);
+    const parsed = signupSchema.safeParse(payload);
+    if (!parsed.success) {
+      const passwordIssue = parsed.error.issues.find((issue) => issue.path[0] === "password");
+      const emailIssue = parsed.error.issues.find((issue) => issue.path[0] === "email");
+      const nameIssue = parsed.error.issues.find((issue) => issue.path[0] === "name");
+      const message = passwordIssue
+        ? "Password must be at least 10 characters."
+        : emailIssue
+          ? "Enter a valid work email."
+          : nameIssue
+            ? "Enter your full name."
+            : "Could not create account.";
+      if (contentType.includes("application/json")) {
+        return NextResponse.json({ error: message }, { status: 400 });
+      }
+      return NextResponse.redirect(redirectTo(request, `/signup?error=${encodeURIComponent(message)}`), { status: 303 });
+    }
+    const input = parsed.data;
     const result = await signupUser(input);
 
     incrementMetric("auth.login.success");

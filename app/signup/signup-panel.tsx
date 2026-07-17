@@ -8,26 +8,50 @@ export function SignupPanel({ error }: { error?: string }) {
   const [message, setMessage] = useState(error ? "Could not create your account." : "");
   const [loading, setLoading] = useState(false);
   const inputClass = "rounded-md border border-border bg-background px-3 py-2.5 outline-none ring-primary focus:ring-2";
+  const minPasswordLength = 10;
+
+  function displayError(errorValue: unknown, fallback: string) {
+    return typeof errorValue === "string" && errorValue.trim() ? errorValue : fallback;
+  }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setLoading(true);
     setMessage("");
     const form = new FormData(event.currentTarget);
+    const name = String(form.get("name") || "").trim();
+    const email = String(form.get("email") || "").trim();
+    const password = String(form.get("password") || "");
+    if (!name) {
+      setMessage("Enter your full name.");
+      return;
+    }
+    if (!email) {
+      setMessage("Enter your work email.");
+      return;
+    }
+    if (!password) {
+      setMessage("Create a password.");
+      return;
+    }
+    if (password.length < minPasswordLength) {
+      setMessage("Password must be at least 10 characters.");
+      return;
+    }
+    setLoading(true);
     const response = await fetch("/api/auth/signup", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        name: form.get("name"),
-        email: form.get("email"),
-        password: form.get("password"),
+        name,
+        email,
+        password,
         organizationName: form.get("organizationName") || undefined,
       }),
     });
     const payload = await response.json().catch(() => ({}));
     setLoading(false);
     if (!response.ok) {
-      setMessage(payload.error || "Could not create your account.");
+      setMessage(displayError(payload.error, "Could not create your account."));
       return;
     }
     window.location.href = "/dashboard";
@@ -38,7 +62,7 @@ export function SignupPanel({ error }: { error?: string }) {
       {message ? (
         <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{message}</div>
       ) : null}
-      <form onSubmit={handleSubmit} className="grid gap-4">
+      <form onSubmit={handleSubmit} className="grid gap-4" noValidate>
         <label className="grid gap-2 text-sm">
           <span className="font-medium">Full name</span>
           <input

@@ -8,7 +8,11 @@ const schema = z.object({
 });
 
 export async function POST(request: Request) {
-  const input = schema.parse(await request.json());
+  const parsed = schema.safeParse(await request.json());
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Password must be at least 10 characters." }, { status: 400 });
+  }
+  const input = parsed.data;
   const result = await acceptInvite(input.token, input.password);
   if (!result) return NextResponse.json({ error: "Invite is invalid or expired." }, { status: 400 });
   const response = NextResponse.json({ user: result.user });

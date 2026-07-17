@@ -60,7 +60,20 @@ export async function POST(request: Request) {
     if (contentType.includes("multipart/form-data")) {
       const formData = await request.formData();
       const jobPayload = JSON.parse(String(formData.get("job") || "{}"));
-      const job = jobSchema.parse(jobPayload);
+      const jobDescriptionFile = formData.get("jobDescriptionFile");
+      let uploadedJobDescription = "";
+      if (jobDescriptionFile instanceof File && jobDescriptionFile.size > 0) {
+        await validateResumeUpload(jobDescriptionFile);
+        const parsedJobFile = await parseResumeFile(jobDescriptionFile);
+        uploadedJobDescription = parsedJobFile.text;
+      }
+      const job = jobSchema.parse({
+        ...jobPayload,
+        description: [jobPayload.description, uploadedJobDescription]
+          .map((value) => String(value || "").trim())
+          .filter(Boolean)
+          .join("\n\n"),
+      });
       const files = formData.getAll("resumes").filter((item): item is File => item instanceof File);
       validateBatchSize(files);
       const resumeIds = [
