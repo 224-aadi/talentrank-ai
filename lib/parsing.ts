@@ -170,6 +170,53 @@ function extractWorkTimeline(text: string, sections: Record<string, string[]>): 
   return timeline.slice(0, 12);
 }
 
+function countMatches(text: string, patterns: RegExp[]) {
+  return patterns.reduce((count, pattern) => count + (pattern.test(text) ? 1 : 0), 0);
+}
+
+export function validateResumeContent(fileName: string, text: string, profile = extractStructuredProfile(text)) {
+  const source = normalized(text);
+  const contactScore = Number(Boolean(profile.contact.email)) + Number(Boolean(profile.contact.phone)) + Number(profile.contact.links.length > 0);
+  const sectionScore = countMatches(source, [
+    /\beducation\b/,
+    /\bexperience\b|\bemployment\b|\bwork history\b/,
+    /\bskills?\b|\btechnical skills?\b|\bcompetencies\b/,
+    /\bprojects?\b|\bcertifications?\b/,
+  ]);
+  const roleScore = countMatches(source, [
+    /\b(engineer|developer|analyst|manager|consultant|designer|scientist|accountant|specialist|intern)\b/,
+    /\b(university|college|bachelor|master|phd|degree|gpa)\b/,
+    /\b(led|built|created|developed|implemented|analyzed|managed|designed|deployed|improved)\b/,
+  ]);
+  const structureScore = Number((profile.bullets?.length || 0) >= 2) + Number((profile.dates?.length || 0) >= 1);
+  const score = contactScore + sectionScore + roleScore + structureScore;
+
+  if (text.length < 180 || score < 4) {
+    throw new Error(`${fileName} does not look like a resume. Upload a resume with work history, education, skills, projects, or contact details.`);
+  }
+}
+
+export function validateJobDescriptionContent(fileName: string, text: string) {
+  const source = normalized(text);
+  const requirementScore = countMatches(source, [
+    /\b(job description|role|position|opening|department|team)\b/,
+    /\b(responsibilities|what you'?ll do|duties|scope|about the role)\b/,
+    /\b(requirements|qualifications|must have|preferred|minimum qualifications)\b/,
+    /\b(experience|years|degree|bachelor|master|certification)\b/,
+    /\b(skills|proficiency|knowledge|familiarity|expertise)\b/,
+    /\b(apply|candidate|hiring|recruiting|employment)\b/,
+  ]);
+  const resumeOnlySignals = countMatches(source, [
+    /\bresume\b|\bcurriculum vitae\b/,
+    /\bgpa\b|\bgraduated\b/,
+    /\blinkedin\.com|github\.com/,
+  ]);
+
+  if (text.length < 160 || requirementScore < 3 || (resumeOnlySignals >= 2 && requirementScore < 4)) {
+    throw new Error(`${fileName} does not look like a job description. Upload or paste a JD with role responsibilities, requirements, qualifications, or required skills.`);
+  }
+}
+
 function layoutWarnings(text: string, tables: ParsedResumeTable[], timeline: WorkTimelineItem[]) {
   const warnings: string[] = [];
   const longLines = text.split(/\n+/).filter((line) => line.length > 180).length;
@@ -358,6 +405,7 @@ export async function parseResumeFile(file: File): Promise<ParsedResumeFile> {
   }
   if (text.length < 250) warnings.push("Very little text extracted");
   if (!/education|experience|skills|project/i.test(text)) warnings.push("Common resume sections not detected");
+  const parsedJson = extractStructuredProfile(text);
 
   return {
     fileName: file.name,
@@ -365,7 +413,7 @@ export async function parseResumeFile(file: File): Promise<ParsedResumeFile> {
     text,
     parser,
     warnings,
-    parsedJson: extractStructuredProfile(text),
+    parsedJson,
     parseConfidence: confidenceFor(text, parser, warnings),
   };
 }

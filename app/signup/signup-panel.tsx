@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { PasswordInput } from "@/components/password-input";
+import { normalizeEmail, validateSignupEmail } from "@/lib/email-validation";
 
 export function SignupPanel({ error }: { error?: string }) {
   const [message, setMessage] = useState(error ? "Could not create your account." : "");
@@ -19,14 +20,15 @@ export function SignupPanel({ error }: { error?: string }) {
     setMessage("");
     const form = new FormData(event.currentTarget);
     const name = String(form.get("name") || "").trim();
-    const email = String(form.get("email") || "").trim();
+    const email = normalizeEmail(String(form.get("email") || ""));
     const password = String(form.get("password") || "");
+    const emailError = validateSignupEmail(email);
     if (!name) {
       setMessage("Enter your full name.");
       return;
     }
-    if (!email) {
-      setMessage("Enter your work email.");
+    if (emailError) {
+      setMessage(emailError);
       return;
     }
     if (!password) {

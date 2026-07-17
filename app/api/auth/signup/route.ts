@@ -1,15 +1,24 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { authCookie, signupUser } from "@/lib/auth";
+import { normalizeEmail, validateSignupEmail } from "@/lib/email-validation";
 import { clientKey, checkRateLimit } from "@/lib/rate-limit";
 import { incrementMetric, logEvent } from "@/lib/observability";
 
 const signupSchema = z.object({
-  email: z.string().email(),
+  email: z.string().trim().transform((value) => normalizeEmail(value)),
   name: z.string().min(1),
   password: z.string().min(10),
   organizationName: z.string().optional(),
 });
+
+function signupValidationMessage(input: z.infer<typeof signupSchema>) {
+  if (!input.name.trim()) return "Enter your full name.";
+  const emailError = validateSignupEmail(input.email);
+  if (emailError) return emailError;
+  if (input.password.length < 10) return "Password must be at least 10 characters.";
+  return "";
+}
 
 function redirectTo(request: Request, path: string) {
   return new URL(path, request.url);
@@ -45,6 +54,13 @@ export async function POST(request: Request) {
       return NextResponse.redirect(redirectTo(request, `/signup?error=${encodeURIComponent(message)}`), { status: 303 });
     }
     const input = parsed.data;
+    const validationMessage = signupValidationMessage(input);
+    if (validationMessage) {
+      if (contentType.includes("application/json")) {
+        return NextResponse.json({ error: validationMessage }, { status: 400 });
+      }
+      return NextResponse.redirect(redirectTo(request, `/signup?error=${encodeURIComponent(validationMessage)}`), { status: 303 });
+    }
     const result = await signupUser(input);
 
     incrementMetric("auth.login.success");

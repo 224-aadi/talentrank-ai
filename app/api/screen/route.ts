@@ -3,7 +3,13 @@ import { z } from "zod";
 import { requireRole, type AuthUser } from "@/lib/auth";
 import { parseCandidateName } from "@/lib/matching";
 import { rankCandidates, rankingModel, llmRankingEnabled } from "@/lib/llm-ranking";
-import { extractStructuredProfile, parseResumeFile, type ParsedResumeFile } from "@/lib/parsing";
+import {
+  extractStructuredProfile,
+  parseResumeFile,
+  validateJobDescriptionContent,
+  validateResumeContent,
+  type ParsedResumeFile,
+} from "@/lib/parsing";
 import { clientKey, checkRateLimit } from "@/lib/rate-limit";
 import { storeUploadedResumeFile } from "@/lib/secure-storage";
 import { incrementMetric, logEvent } from "@/lib/observability";
@@ -65,6 +71,7 @@ export async function POST(request: Request) {
       if (jobDescriptionFile instanceof File && jobDescriptionFile.size > 0) {
         await validateResumeUpload(jobDescriptionFile);
         const parsedJobFile = await parseResumeFile(jobDescriptionFile);
+        validateJobDescriptionContent(parsedJobFile.fileName, parsedJobFile.text);
         uploadedJobDescription = parsedJobFile.text;
       }
       const job = jobSchema.parse({
@@ -74,6 +81,7 @@ export async function POST(request: Request) {
           .filter(Boolean)
           .join("\n\n"),
       });
+      validateJobDescriptionContent("Job description", job.description);
       const files = formData.getAll("resumes").filter((item): item is File => item instanceof File);
       validateBatchSize(files);
       const resumeIds = [
@@ -86,6 +94,7 @@ export async function POST(request: Request) {
       const resumes = await Promise.all(files.map(async (file) => {
         const validated = await validateResumeUpload(file);
         const [parsedFile, storedFile] = await Promise.all([parseResumeFile(file), storeUploadedResumeFile(file)]);
+        validateResumeContent(parsedFile.fileName, parsedFile.text, parsedFile.parsedJson);
         incrementMetric("storage.write");
         return {
           ...parsedFile,
@@ -108,6 +117,7 @@ export async function POST(request: Request) {
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
     }
+    validateJobDescriptionContent("Job description", parsed.data.job.description);
     const response = await screen(
       parsed.data.job,
       parsed.data.resumes.map((resume) => ({
@@ -116,7 +126,10 @@ export async function POST(request: Request) {
         warnings: [],
         parsedJson: extractStructuredProfile(resume.text),
         parseConfidence: Math.min(100, Math.max(45, Math.round(resume.text.length / 35))),
-      })),
+      })).map((resume) => {
+        validateResumeContent(resume.fileName, resume.text, resume.parsedJson);
+        return resume;
+      }),
       parsed.data.resumeIds.length ? await getCandidatePoolByResumeIds(parsed.data.resumeIds, user.organizationId) : [],
       user,
     );
