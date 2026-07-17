@@ -198,21 +198,45 @@ export function validateResumeContent(fileName: string, text: string, profile = 
 
 export function validateJobDescriptionContent(fileName: string, text: string) {
   const source = normalized(text);
-  const requirementScore = countMatches(source, [
-    /\b(job description|role|position|opening|department|team)\b/,
-    /\b(responsibilities|what you'?ll do|duties|scope|about the role)\b/,
-    /\b(requirements|qualifications|must have|preferred|minimum qualifications)\b/,
-    /\b(experience|years|degree|bachelor|master|certification)\b/,
-    /\b(skills|proficiency|knowledge|familiarity|expertise)\b/,
-    /\b(apply|candidate|hiring|recruiting|employment)\b/,
+  const jdAnchorScore = countMatches(source, [
+    /\b(job summary|role overview|about the role|about this role|position summary)\b/,
+    /\b(responsibilities|key responsibilities|what you'?ll do|duties|essential functions|scope)\b/,
+    /\b(requirements|qualifications|minimum qualifications|required qualifications|preferred qualifications|must have|nice to have)\b/,
   ]);
-  const resumeOnlySignals = countMatches(source, [
+  const jdContextScore = countMatches(source, [
+    /\b(job description|role|position|opening|department|team|reports to)\b/,
+    /\b(location|employment type|full time|part time|contract|remote|hybrid|onsite)\b/,
+    /\b(apply|candidate|hiring|recruiting|equal opportunity|reasonable accommodation)\b/,
+  ]);
+  const requirementDetailScore = countMatches(source, [
+    /\b\d+\+?\s*(?:years|yrs)\b|\byears of experience\b/,
+    /\bdegree|bachelor|master|phd|certification\b/,
+    /\bskills|proficiency|knowledge|familiarity|expertise\b/,
+    /\brequired|preferred|must|should\b/,
+  ]);
+  const exportArtifactScore = countMatches(source, [
+    /\brank\b.*\bcandidate\b.*\bscore\b/,
+    /\bconfidence\b.*\bverdict\b.*\bdecision\b/,
+    /\bskills extracted\b|\bllm rationale\b/,
+    /\bmatched signals\b|\bmissing signals\b/,
+    /\bparser warnings\b|\bresume file\b|\bopen resume\b|\bresume url\b/,
+  ]);
+  const resumeOnlyScore = countMatches(source, [
     /\bresume\b|\bcurriculum vitae\b/,
-    /\bgpa\b|\bgraduated\b/,
-    /\blinkedin\.com|github\.com/,
+    /\bgpa\b|\bgraduated\b|\bgraduation\b/,
+    /\blinkedin\.com|github\.com|portfolio\b/,
+    /\b(education|work experience|professional experience|projects|certifications)\b/,
+    /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i,
   ]);
+  const jdScore = jdAnchorScore + jdContextScore + requirementDetailScore;
 
-  if (text.length < 160 || requirementScore < 3 || (resumeOnlySignals >= 2 && requirementScore < 4)) {
+  if (
+    text.length < 160
+    || exportArtifactScore >= 2
+    || jdAnchorScore < 1
+    || jdScore < 4
+    || (resumeOnlyScore >= 3 && jdAnchorScore < 2)
+  ) {
     throw new Error(`${fileName} does not look like a job description. Upload or paste a JD with role responsibilities, requirements, qualifications, or required skills.`);
   }
 }
