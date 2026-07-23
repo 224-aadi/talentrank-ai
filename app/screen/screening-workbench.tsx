@@ -99,6 +99,11 @@ type RetrievalRow = {
   };
 };
 
+type ScreenResponse = {
+  job: Job;
+  results: Array<{ matchRun: MatchRow; candidate: MatchRow["candidate"]; resume: MatchRow["resume"] }>;
+};
+
 async function readApiJson<T>(response: Response, fallback: string): Promise<T> {
   const text = await response.text();
   let payload: unknown = null;
@@ -140,6 +145,30 @@ function resumeDownloadUrl(match: MatchRow) {
   return match.resume?.id ? new URL(`/api/resumes/${match.resume.id}/download`, window.location.origin).toString() : "";
 }
 
+const maxUploadChunkFiles = 8;
+const maxUploadChunkBytes = 3_200_000;
+
+function chunkResumeFiles(files: File[], extraBytes = 0) {
+  const chunks: File[][] = [];
+  let current: File[] = [];
+  let currentBytes = extraBytes;
+  for (const file of files) {
+    if (file.size + extraBytes > maxUploadChunkBytes) {
+      throw new Error(`${file.name} is too large for browser upload. Try compressing it or upload that resume by itself.`);
+    }
+    const wouldOverflow = current.length >= maxUploadChunkFiles || currentBytes + file.size > maxUploadChunkBytes;
+    if (current.length && wouldOverflow) {
+      chunks.push(current);
+      current = [];
+      currentBytes = extraBytes;
+    }
+    current.push(file);
+    currentBytes += file.size;
+  }
+  if (current.length) chunks.push(current);
+  return chunks.length ? chunks : [[]];
+}
+
 export default function ScreeningWorkbench({
   initialJobs,
   initialMatches,
@@ -161,6 +190,7 @@ export default function ScreeningWorkbench({
   const [matches, setMatches] = useState<MatchRow[]>(initialMatches);
   const [jobs, setJobs] = useState(initialJobs);
   const [isRunning, setIsRunning] = useState(false);
+  const [runProgress, setRunProgress] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [decisionNotes, setDecisionNotes] = useState<Record<string, string>>({});
   const [savingDecisionId, setSavingDecisionId] = useState("");
@@ -327,11 +357,9 @@ export default function ScreeningWorkbench({
     }
   }
 
-  async function runScreen() {
-    setIsRunning(true);
-    setError("");
-    try {
+  async function screenBatch(files: File[], savedResumeIds: string[], jobId?: string) {
       const formData = new FormData();
+      if (jobId) formData.append("jobId", jobId);
       formData.append(
         "job",
         JSON.stringify({
@@ -344,28 +372,66 @@ export default function ScreeningWorkbench({
             .filter(Boolean),
         }),
       );
-      if (jobFile) formData.append("jobDescriptionFile", jobFile);
-      for (const file of resumeFiles) formData.append("resumes", file);
-      formData.append("savedResumeIds", JSON.stringify(selectedResumeIds));
+      if (jobFile && !jobId) formData.append("jobDescriptionFile", jobFile);
+      for (const file of files) formData.append("resumes", file);
+      formData.append("savedResumeIds", JSON.stringify(savedResumeIds));
       const response = await fetch("/api/screen", {
         method: "POST",
         body: formData,
       });
-      const payload = await readApiJson<{
-        job: Job;
-        results: Array<{ matchRun: MatchRow; candidate: MatchRow["candidate"]; resume: MatchRow["resume"] }>;
-      }>(response, "Screening failed");
-      setJobs([payload.job, ...jobs]);
-      setMatches(payload.results.map((item) => ({
+      return await readApiJson<ScreenResponse>(response, "Screening failed");
+  }
+
+  function rowsFromPayload(payload: ScreenResponse) {
+    return payload.results.map((item) => ({
         ...item.matchRun,
         candidate: item.candidate,
         resume: item.resume,
         job: payload.job,
-      })));
+      }));
+  }
+
+  async function runScreen() {
+    setIsRunning(true);
+    setRunProgress("");
+    setError("");
+    try {
+      const jobFileBytes = jobFile?.size || 0;
+      if (jobFileBytes > maxUploadChunkBytes) {
+        throw new Error(`${jobFile?.name || "The JD file"} is too large for browser upload. Paste the JD text or upload a smaller JD file.`);
+      }
+      const chunks = chunkResumeFiles(resumeFiles, jobFileBytes);
+      const totalCandidates = resumeFiles.length + selectedResumeIds.length;
+      const accumulated: MatchRow[] = [];
+      let activeJob: Job | null = null;
+      let completed = 0;
+
+      for (let index = 0; index < chunks.length; index += 1) {
+        const files = chunks[index];
+        const savedIds = index === 0 ? selectedResumeIds : [];
+        const chunkTotal = files.length + savedIds.length;
+        setRunProgress(
+          chunks.length > 1
+            ? `Screening batch ${index + 1} of ${chunks.length} (${completed + 1}-${Math.min(totalCandidates, completed + chunkTotal)} of ${totalCandidates})`
+            : "",
+        );
+        const payload = await screenBatch(files, savedIds, activeJob?.id);
+        activeJob ||= payload.job;
+        accumulated.push(...rowsFromPayload(payload));
+        completed += chunkTotal;
+        setMatches([...accumulated].sort((a, b) => b.score - a.score));
+      }
+
+      if (activeJob) {
+        setJobs((current) => current.some((job) => job.id === activeJob?.id) ? current : [activeJob, ...current]);
+      }
+      setMatches([...accumulated].sort((a, b) => b.score - a.score));
+      setCompareIds([]);
     } catch (screenError) {
       setError(screenError instanceof Error ? screenError.message : "Screening failed");
     } finally {
       setIsRunning(false);
+      setRunProgress("");
     }
   }
 
@@ -523,7 +589,7 @@ export default function ScreeningWorkbench({
           <button disabled={isRunning || (!description.trim() && !jobFile) || (!resumeFiles.length && !selectedResumeIds.length)} onClick={runScreen}>
             {isRunning ? (
               <span className="loading-label">
-                Screening<span className="loading-dots" aria-hidden="true"><i /><i /><i /></span>
+                {runProgress || "Screening"}<span className="loading-dots" aria-hidden="true"><i /><i /><i /></span>
               </span>
             ) : "Rank candidates"}
           </button>

@@ -104,6 +104,15 @@ export const skillGraph: SkillNode[] = [
     weight: 1.05,
   },
   {
+    id: "internet of things",
+    label: "Internet of Things",
+    family: "software",
+    aliases: ["iot", "connected devices", "embedded systems", "edge devices", "sensor networks", "telematics"],
+    adjacent: ["cloud infrastructure", "api", "data pipeline", "embedded software"],
+    senioritySignals: ["device telemetry", "fleet monitoring", "edge computing", "sensor integration"],
+    weight: 1.05,
+  },
+  {
     id: "crm",
     label: "CRM",
     family: "sales",

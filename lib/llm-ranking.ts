@@ -114,6 +114,7 @@ const systemPrompt = `You are TalentRank, an expert technical recruiter scoring 
 - Derive years of experience from employment date ranges (e.g. "2019 - Present"), not only explicit "N years" phrases. Assume the current date is ${new Date().toISOString().slice(0, 10)}.
 - Judge hard rules semantically: "Bachelor's degree" is satisfied by "B.S. Computer Science"; "5+ years Python" can be satisfied by dated Python roles even if the resume never writes "5 years". Only fail a rule when the resume genuinely lacks it.
 - Credit adjacent/transferable skills at partial value (e.g. PostgreSQL experience partially covers a MySQL requirement) and say so in evidence strength.
+- Interpret "IoT" or "IOT" as "Internet of Things" unless the job explicitly says "Inductive Output Tube", "electron tube", or RF tube hardware.
 - Discount keyword stuffing: a skill listed with no project or role using it earns little credit.
 - Weigh recency and seniority trajectory, not just totals.
 - Every evidence.text and hardRules.evidence string MUST be copied verbatim from the resume. Never invent quotes.
@@ -188,6 +189,11 @@ function toMatchRun(input: RankCandidateInput, assessment: LlmAssessment, lexica
   const score = rejected ? 0 : clampScore(assessment.score);
   const divergence = Math.abs(clampScore(assessment.score) - lexical.score);
 
+  const normalizeSignal = (signal: string) =>
+    /\binductive output tube\b|\belectron tube\b/i.test(signal) && !/\binductive output tube\b|\belectron tube\b|\brf tube\b/i.test(input.jobText)
+      ? "Internet of Things (IoT)"
+      : signal;
+
   return {
     jobId: input.jobId,
     candidateId: input.candidateId,
@@ -202,8 +208,8 @@ function toMatchRun(input: RankCandidateInput, assessment: LlmAssessment, lexica
       experience: clampScore(assessment.breakdown?.experience),
       education: clampScore(assessment.breakdown?.education),
     },
-    matchedSignals: [...new Set(assessment.matchedSignals.map((signal) => signal.slice(0, 60)))].slice(0, 24),
-    missingSignals: [...new Set(assessment.missingSignals.map((signal) => signal.slice(0, 60)))].slice(0, 24),
+    matchedSignals: [...new Set(assessment.matchedSignals.map(normalizeSignal).map((signal) => signal.slice(0, 60)))].slice(0, 24),
+    missingSignals: [...new Set(assessment.missingSignals.map(normalizeSignal).map((signal) => signal.slice(0, 60)))].slice(0, 24),
     hardRuleOutcomes,
     evidence: evidence.length ? evidence : lexical.evidence,
     riskFlags: [

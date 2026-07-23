@@ -19,9 +19,10 @@ import {
   createEvaluation,
   createJob,
   createMatchRun,
+  getJob,
   getCandidatePoolByResumeIds,
 } from "@/lib/store";
-import type { Candidate, ResumeDocument } from "@/lib/types";
+import type { Candidate, Job, ResumeDocument } from "@/lib/types";
 
 const baseScreenSchema = z.object({
   job: z.object({
@@ -66,22 +67,38 @@ export async function POST(request: Request) {
     if (contentType.includes("multipart/form-data")) {
       const formData = await request.formData();
       const jobPayload = JSON.parse(String(formData.get("job") || "{}"));
-      const jobDescriptionFile = formData.get("jobDescriptionFile");
-      let uploadedJobDescription = "";
-      if (jobDescriptionFile instanceof File && jobDescriptionFile.size > 0) {
-        await validateResumeUpload(jobDescriptionFile);
-        const parsedJobFile = await parseResumeFile(jobDescriptionFile);
-        validateJobDescriptionContent(parsedJobFile.fileName, parsedJobFile.text);
-        uploadedJobDescription = parsedJobFile.text;
+      const existingJobId = String(formData.get("jobId") || "").trim();
+      let existingJob: Job | undefined;
+      let job: z.infer<typeof jobSchema>;
+      if (existingJobId) {
+        const foundJob = await getJob(existingJobId, user.organizationId);
+        if (!foundJob) return NextResponse.json({ error: "Saved job was not found for this workspace." }, { status: 404 });
+        existingJob = foundJob;
+        job = {
+          title: foundJob.title,
+          description: foundJob.description,
+          location: foundJob.location,
+          roleTemplate: foundJob.roleTemplate,
+          hardRules: foundJob.hardRules,
+        };
+      } else {
+        const jobDescriptionFile = formData.get("jobDescriptionFile");
+        let uploadedJobDescription = "";
+        if (jobDescriptionFile instanceof File && jobDescriptionFile.size > 0) {
+          await validateResumeUpload(jobDescriptionFile);
+          const parsedJobFile = await parseResumeFile(jobDescriptionFile);
+          validateJobDescriptionContent(parsedJobFile.fileName, parsedJobFile.text);
+          uploadedJobDescription = parsedJobFile.text;
+        }
+        job = jobSchema.parse({
+          ...jobPayload,
+          description: [jobPayload.description, uploadedJobDescription]
+            .map((value) => String(value || "").trim())
+            .filter(Boolean)
+            .join("\n\n"),
+        });
+        validateJobDescriptionContent("Job description", job.description);
       }
-      const job = jobSchema.parse({
-        ...jobPayload,
-        description: [jobPayload.description, uploadedJobDescription]
-          .map((value) => String(value || "").trim())
-          .filter(Boolean)
-          .join("\n\n"),
-      });
-      validateJobDescriptionContent("Job description", job.description);
       const files = formData.getAll("resumes").filter((item): item is File => item instanceof File);
       validateBatchSize(files);
       const resumeIds = [
@@ -108,7 +125,7 @@ export async function POST(request: Request) {
         };
       }));
       const storedResumes = resumeIds.length ? await getCandidatePoolByResumeIds(resumeIds, user.organizationId) : [];
-      const response = await screen(job, resumes, storedResumes, user);
+      const response = await screen(job, resumes, storedResumes, user, existingJob);
       incrementMetric("screen.success");
       return response;
     }
@@ -143,8 +160,8 @@ export async function POST(request: Request) {
   }
 }
 
-async function screen(jobInput: z.infer<typeof jobSchema>, resumes: ParsedResumeFile[], storedResumes: StoredResumeInput[] = [], user?: AuthUser) {
-  const job = await createJob({ ...jobInput, organizationId: user?.organizationId });
+async function screen(jobInput: z.infer<typeof jobSchema>, resumes: ParsedResumeFile[], storedResumes: StoredResumeInput[] = [], user?: AuthUser, existingJob?: Job) {
+  const job = existingJob || await createJob({ ...jobInput, organizationId: user?.organizationId });
 
   const pending = [];
   for (const resumeInput of resumes) {
