@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { inferJobTitle } from "@/lib/job-intelligence";
 import type { Job } from "@/lib/types";
 
 type DecisionValue = "shortlist" | "hold" | "reject" | "interview";
@@ -176,7 +177,8 @@ export default function ScreeningWorkbench({
   initialJobs: Job[];
   initialMatches: MatchRow[];
 }) {
-  const [title, setTitle] = useState("Data Science / Analyst");
+  const [title, setTitle] = useState("");
+  const [titleTouched, setTitleTouched] = useState(false);
   const [description, setDescription] = useState("");
   const [jobFile, setJobFile] = useState<File | null>(null);
   const [hardRules, setHardRules] = useState("");
@@ -208,6 +210,12 @@ export default function ScreeningWorkbench({
       : 0;
     return { strong, avg, confidence };
   }, [matches]);
+
+  useEffect(() => {
+    if (titleTouched || !description.trim()) return;
+    const inferred = inferJobTitle(description, "");
+    if (inferred) setTitle(inferred);
+  }, [description, titleTouched]);
 
   function bucketFor(match: MatchRow): ReviewBucket {
     if (match.latestDecision?.decision === "reject") return "rejected";
@@ -358,28 +366,29 @@ export default function ScreeningWorkbench({
   }
 
   async function screenBatch(files: File[], savedResumeIds: string[], jobId?: string) {
-      const formData = new FormData();
-      if (jobId) formData.append("jobId", jobId);
-      formData.append(
-        "job",
-        JSON.stringify({
-          title,
-          description,
-          roleTemplate,
-          hardRules: hardRules
-            .split(",")
-            .map((rule) => rule.trim())
-            .filter(Boolean),
-        }),
-      );
-      if (jobFile && !jobId) formData.append("jobDescriptionFile", jobFile);
-      for (const file of files) formData.append("resumes", file);
-      formData.append("savedResumeIds", JSON.stringify(savedResumeIds));
-      const response = await fetch("/api/screen", {
-        method: "POST",
-        body: formData,
-      });
-      return await readApiJson<ScreenResponse>(response, "Screening failed");
+    const formData = new FormData();
+    const inferredTitle = title.trim() || inferJobTitle(description, "");
+    if (jobId) formData.append("jobId", jobId);
+    formData.append(
+      "job",
+      JSON.stringify({
+        title: inferredTitle,
+        description,
+        roleTemplate,
+        hardRules: hardRules
+          .split(",")
+          .map((rule) => rule.trim())
+          .filter(Boolean),
+      }),
+    );
+    if (jobFile && !jobId) formData.append("jobDescriptionFile", jobFile);
+    for (const file of files) formData.append("resumes", file);
+    formData.append("savedResumeIds", JSON.stringify(savedResumeIds));
+    const response = await fetch("/api/screen", {
+      method: "POST",
+      body: formData,
+    });
+    return await readApiJson<ScreenResponse>(response, "Screening failed");
   }
 
   function rowsFromPayload(payload: ScreenResponse) {
@@ -525,7 +534,14 @@ export default function ScreeningWorkbench({
             <summary>Advanced</summary>
             <label>
               <span>Job title</span>
-              <input value={title} onChange={(event) => setTitle(event.target.value)} />
+              <input
+                value={title}
+                onChange={(event) => {
+                  setTitleTouched(true);
+                  setTitle(event.target.value);
+                }}
+                placeholder="Auto-detected from JD"
+              />
             </label>
             <label>
               <span>Required keywords</span>

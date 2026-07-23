@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireRole } from "@/lib/auth";
+import { inferJobTitle } from "@/lib/job-intelligence";
 import { createJob, listJobs } from "@/lib/store";
 
 const jobSchema = z.object({
-  title: z.string().min(1),
+  title: z.string().trim().optional().default(""),
   description: z.string().min(1),
   location: z.string().optional(),
   roleTemplate: z.enum(["auto", "data", "software", "sales", "finance", "operations"]).default("auto"),
@@ -27,6 +28,10 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
-  const job = await createJob({ ...parsed.data, organizationId: user.organizationId });
+  const job = await createJob({
+    ...parsed.data,
+    title: parsed.data.title || inferJobTitle(parsed.data.description),
+    organizationId: user.organizationId,
+  });
   return NextResponse.json({ job }, { status: 201 });
 }

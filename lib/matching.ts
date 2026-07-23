@@ -99,8 +99,9 @@ function experienceScore(jobText: string, resumeText: string) {
 function roleFamily(jobText: string, selected: RoleTemplate) {
   if (selected !== "auto") return selected;
   const normalized = normalize(jobText);
+  if (/iot|internet of things|embedded|firmware|connected device|edge device|telematics|sensor network/.test(normalized)) return "software";
   if (/data|analytics|machine learning|sql|python|statistics/.test(normalized)) return "data";
-  if (/software|frontend|backend|api|react|typescript/.test(normalized)) return "software";
+  if (/software|frontend|backend|api|react|typescript|engineer|developer/.test(normalized)) return "software";
   if (/sales|account|pipeline|quota|crm/.test(normalized)) return "sales";
   if (/finance|accounting|forecast|risk|budget/.test(normalized)) return "finance";
   return "operations";

@@ -10,6 +10,7 @@ import {
   validateResumeContent,
   type ParsedResumeFile,
 } from "@/lib/parsing";
+import { inferJobTitle } from "@/lib/job-intelligence";
 import { clientKey, checkRateLimit } from "@/lib/rate-limit";
 import { storeUploadedResumeFile } from "@/lib/secure-storage";
 import { incrementMetric, logEvent } from "@/lib/observability";
@@ -26,7 +27,7 @@ import type { Candidate, Job, ResumeDocument } from "@/lib/types";
 
 const baseScreenSchema = z.object({
   job: z.object({
-    title: z.string().min(1),
+    title: z.string().trim().optional().default(""),
     description: z.string().min(1),
     location: z.string().optional(),
     roleTemplate: z.enum(["auto", "data", "software", "sales", "finance", "operations"]).default("auto"),
@@ -97,6 +98,7 @@ export async function POST(request: Request) {
             .filter(Boolean)
             .join("\n\n"),
         });
+        job.title = job.title || inferJobTitle(job.description);
         validateJobDescriptionContent("Job description", job.description);
       }
       const files = formData.getAll("resumes").filter((item): item is File => item instanceof File);
@@ -134,6 +136,7 @@ export async function POST(request: Request) {
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
     }
+    parsed.data.job.title = parsed.data.job.title || inferJobTitle(parsed.data.job.description);
     validateJobDescriptionContent("Job description", parsed.data.job.description);
     const response = await screen(
       parsed.data.job,
