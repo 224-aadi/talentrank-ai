@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { canAccessInternalTools, currentUser } from "@/lib/auth";
 import { integrationStatus } from "@/lib/integrations";
+import { jobTitleKey } from "@/lib/job-intelligence";
 import { listAuditEvents, listCandidatePool, listJobs, listMatchRuns, listRecruiterDecisions } from "@/lib/store";
 import { frontendOnlyAdminData } from "@/lib/backend-api";
 import type { AuditEvent, Candidate, CandidatePoolItem, Job, MatchRun, RecruiterDecisionRecord } from "@/lib/types";
@@ -24,12 +25,25 @@ function truncate(value: string, length = 160) {
   return value.length > length ? `${value.slice(0, length).trim()}...` : value;
 }
 
-export default async function AdminPage({ searchParams }: { searchParams: Promise<{ jobId?: string }> }) {
+type JobGroup = {
+  key: string;
+  title: string;
+  jobs: Job[];
+  latestJob: Job;
+  matchRows: AdminMatch[];
+  candidateIds: Set<string>;
+  avgScore: number;
+};
+
+export default async function AdminPage({ searchParams }: { searchParams: Promise<{ jobId?: string; jobTitle?: string; view?: string }> }) {
   const user = await currentUser();
   if (!user) redirect("/login");
   if (user.role !== "admin") redirect("/dashboard");
   const showInternalTools = canAccessInternalTools(user);
-  const selectedJobId = (await searchParams).jobId;
+  const params = await searchParams;
+  const selectedJobId = params.jobId;
+  const selectedJobTitleKey = params.jobTitle;
+  const showAllCandidates = params.view === "all";
   const status = integrationStatus();
   const backendData = await frontendOnlyAdminData();
   const [jobs, candidates, matches, decisions, auditEvents] = backendData
@@ -46,14 +60,49 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
   const jobRows = jobs as Job[];
   const decisionRows = decisions as RecruiterDecisionRecord[];
   const auditRows = auditEvents as AuditEvent[];
+  const jobGroupMap = new Map<string, Job[]>();
+  for (const job of jobRows) {
+    const key = jobTitleKey(job.title || "Untitled role") || job.id;
+    jobGroupMap.set(key, [...(jobGroupMap.get(key) || []), job]);
+  }
+  const jobGroups: JobGroup[] = [...jobGroupMap.entries()]
+    .map(([key, groupedJobs]) => {
+      const sortedJobs = [...groupedJobs].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      const jobIds = new Set(sortedJobs.map((job) => job.id));
+      const groupMatches = matchRows.filter((match) => jobIds.has(match.jobId));
+      const candidateIds = new Set(groupMatches.map((match) => match.candidateId));
+      return {
+        key,
+        title: sortedJobs[0]?.title || "Untitled role",
+        jobs: sortedJobs,
+        latestJob: sortedJobs[0],
+        matchRows: groupMatches,
+        candidateIds,
+        avgScore: groupMatches.length ? Math.round(groupMatches.reduce((sum, match) => sum + match.score, 0) / groupMatches.length) : 0,
+      };
+    })
+    .sort((a, b) => new Date(b.latestJob.createdAt).getTime() - new Date(a.latestJob.createdAt).getTime());
   const selectedJob = selectedJobId ? jobRows.find((job) => job.id === selectedJobId) || null : null;
-  const selectedMatchRows = selectedJobId ? matchRows.filter((match) => match.jobId === selectedJobId) : matchRows;
+  const selectedGroup = selectedJobTitleKey
+    ? jobGroups.find((group) => group.key === selectedJobTitleKey) || null
+    : selectedJob
+      ? jobGroups.find((group) => group.jobs.some((job) => job.id === selectedJob.id)) || null
+      : null;
+  const selectedJobIds = selectedGroup
+    ? new Set(selectedGroup.jobs.map((job) => job.id))
+    : selectedJob
+      ? new Set([selectedJob.id])
+      : null;
+  const selectedMatchRows = selectedJobIds ? matchRows.filter((match) => selectedJobIds.has(match.jobId)) : matchRows;
   const selectedCandidateIds = new Set(selectedMatchRows.map((match) => match.candidateId));
-  const visibleCandidateRows = selectedJobId
+  const isFilteredWorkspace = Boolean(selectedJobIds);
+  const visibleCandidateRows = isFilteredWorkspace
     ? candidateRows.filter(({ candidate }) => selectedCandidateIds.has(candidate.id))
-    : candidateRows;
+    : showAllCandidates
+      ? candidateRows
+      : [];
   const latestCandidates = visibleCandidateRows.slice(0, 25);
-  const latestJobs = jobRows.slice(0, 6);
+  const latestJobGroups = jobGroups.slice(0, 40);
   const latestAudits = auditRows.slice(0, 8);
   const shortlisted = decisionRows.filter((decision) => decision.decision === "shortlist" || decision.decision === "interview").length;
   const avgScore = selectedMatchRows.length ? Math.round(selectedMatchRows.reduce((sum, match) => sum + match.score, 0) / selectedMatchRows.length) : 0;
@@ -91,8 +140,8 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
               <strong>{status.ready ? "ready" : "needs work"}</strong>
             </article>
             <article>
-              <span>{selectedJob ? "JD candidates" : "Candidates"}</span>
-              <strong>{visibleCandidateRows.length}</strong>
+              <span>{isFilteredWorkspace ? "JD candidates" : "Job titles"}</span>
+              <strong>{isFilteredWorkspace || showAllCandidates ? visibleCandidateRows.length : jobGroups.length}</strong>
             </article>
             <article>
               <span>Avg score</span>
@@ -104,13 +153,14 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
             </article>
           </section>
         ) : null}
-        {selectedJob ? (
+        {selectedGroup || selectedJob ? (
           <section className="selected-jd-banner">
             <div>
-              <span>Selected JD</span>
-              <strong>{selectedJob.title}</strong>
+              <span>Selected job title</span>
+              <strong>{selectedGroup?.title || selectedJob?.title}</strong>
+              {selectedGroup ? <small>{selectedGroup.jobs.length} JD{selectedGroup.jobs.length === 1 ? "" : "s"} · {selectedGroup.candidateIds.size} candidates</small> : null}
             </div>
-            <a href="/workspace">View all candidates</a>
+            <a href="/workspace">Clear selection</a>
           </section>
         ) : null}
 
@@ -119,18 +169,20 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
             <div className="admin-card-head">
               <div>
                 <span>Job descriptions</span>
-                <h2>Uploaded JDs</h2>
+                <h2>By job title</h2>
               </div>
             </div>
             <div className="admin-list">
-              {latestJobs.length ? latestJobs.map((job) => (
-                <details key={job.id} open={job.id === selectedJobId}>
+              {latestJobGroups.length ? latestJobGroups.map((group) => (
+                <details key={group.key} open={group.key === selectedJobTitleKey || group.jobs.some((job) => job.id === selectedJobId)}>
                   <summary>
-                    <strong>{job.title}</strong>
-                    <small>{shortDate(job.createdAt)} · {job.hardRules.length} hard rules</small>
+                    <strong>{group.title}</strong>
+                    <small>
+                      {group.candidateIds.size} candidates · {group.matchRows.length} rankings · {group.avgScore ? `${group.avgScore}% avg` : "no scores"} · {group.jobs.length} JD{group.jobs.length === 1 ? "" : "s"}
+                    </small>
                   </summary>
-                  <p>{truncate(job.description, 420)}</p>
-                  <a className="jd-select-link" href={`/workspace?jobId=${job.id}`}>View candidates for this JD</a>
+                  <p>{truncate(group.latestJob.description, 420)}</p>
+                  <a className="jd-select-link" href={`/workspace?jobTitle=${encodeURIComponent(group.key)}`}>View candidates for this job title</a>
                 </details>
               )) : <p>No job descriptions uploaded yet.</p>}
             </div>
@@ -141,9 +193,9 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
           <div className="admin-card-head">
             <div>
               <span>Candidate archive</span>
-              <h2>{selectedJob ? "Candidates for selected JD" : "Every candidate and resume"}</h2>
+              <h2>{isFilteredWorkspace ? "Candidates for selected job title" : showAllCandidates ? "Every candidate and resume" : "Select a job title"}</h2>
             </div>
-            <a href="/api/admin/candidates/export">Export CSV</a>
+            <a href={selectedGroup ? `/api/admin/candidates/export?jobTitle=${encodeURIComponent(selectedGroup.key)}` : selectedJob ? `/api/admin/candidates/export?jobId=${selectedJob.id}` : "/api/admin/candidates/export"}>Export CSV</a>
           </div>
           <div className="candidate-ledger">
             {latestCandidates.length ? latestCandidates.map(({ candidate, resume }) => {
@@ -165,7 +217,15 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
                   <a href={`/api/resumes/${resume.id}/download`}>Download</a>
                 </div>
               );
-            }) : <p>No candidates uploaded yet.</p>}
+            }) : (
+              <p>
+                {isFilteredWorkspace || showAllCandidates
+                  ? "No candidates uploaded yet."
+                  : "Choose a job title above to see only that JD's candidates, or open every candidate if you need a full archive."}
+                {!isFilteredWorkspace && !showAllCandidates ? " " : ""}
+                {!isFilteredWorkspace && !showAllCandidates ? <a className="jd-select-link" href="/workspace?view=all">View every candidate</a> : null}
+              </p>
+            )}
           </div>
         </section>
 

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/auth";
+import { jobTitleKey } from "@/lib/job-intelligence";
 import { listCandidatePool, listJobs, listMatchRuns, listRecruiterDecisions } from "@/lib/store";
 import type { Candidate, CandidatePoolItem, Job, MatchRun, RecruiterDecisionRecord } from "@/lib/types";
 
@@ -38,6 +39,9 @@ export async function GET(request: Request) {
   try {
     const user = await requireRole("admin");
     const origin = exportOrigin(request);
+    const url = new URL(request.url);
+    const selectedJobId = url.searchParams.get("jobId") || "";
+    const selectedJobTitleKey = url.searchParams.get("jobTitle") || "";
     const [pool, matches, jobs, decisions] = await Promise.all([
       listCandidatePool(user.organizationId),
       listMatchRuns(undefined, user.organizationId),
@@ -48,15 +52,27 @@ export async function GET(request: Request) {
     const candidateRows = pool as CandidatePoolItem[];
     const jobRows = jobs as Job[];
     const decisionRows = decisions as RecruiterDecisionRecord[];
+    const jobById = new Map(jobRows.map((job) => [job.id, job]));
+    const selectedJobIds = new Set(
+      selectedJobTitleKey
+        ? jobRows.filter((job) => jobTitleKey(job.title) === selectedJobTitleKey).map((job) => job.id)
+        : selectedJobId
+          ? [selectedJobId]
+          : jobRows.map((job) => job.id),
+    );
+    const filteredMatchRows = matchRows.filter((match) => selectedJobIds.has(match.jobId));
+    const filteredCandidateIds = new Set(filteredMatchRows.map((match) => match.candidateId));
+    const exportCandidateRows = selectedJobId || selectedJobTitleKey
+      ? candidateRows.filter(({ candidate }) => filteredCandidateIds.has(candidate.id))
+      : candidateRows;
     const latestMatchByCandidate = new Map<string, ExportMatch>();
-    for (const match of matchRows) {
+    for (const match of filteredMatchRows) {
       if (!latestMatchByCandidate.has(match.candidateId)) latestMatchByCandidate.set(match.candidateId, match);
     }
     const latestDecisionByCandidate = new Map<string, RecruiterDecisionRecord>();
     for (const decision of decisionRows) {
       if (!latestDecisionByCandidate.has(decision.candidateId)) latestDecisionByCandidate.set(decision.candidateId, decision);
     }
-    const jobById = new Map(jobRows.map((job) => [job.id, job]));
     const rows = [
       [
         "Rank",
@@ -77,7 +93,7 @@ export async function GET(request: Request) {
         "Resume URL",
         "Job",
       ],
-      ...candidateRows.map(({ candidate, resume }, index) => {
+      ...exportCandidateRows.map(({ candidate, resume }, index) => {
         const match = latestMatchByCandidate.get(candidate.id);
         const decision = latestDecisionByCandidate.get(candidate.id);
         const job = match ? jobById.get(match.jobId) : undefined;

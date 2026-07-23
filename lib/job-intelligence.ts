@@ -85,6 +85,15 @@ export function inferJobTitle(text: string, fallback = "Untitled role") {
   return fallback;
 }
 
+export function jobTitleKey(title: string) {
+  return title
+    .toLowerCase()
+    .replace(/\biot\b/g, "internet of things")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export function normalizeRecruitingSignal(signal: string, jobText: string) {
   let normalized = signal;
   const jobHasInternetOfThings = /\binternet of things\b|\biot\b|\bconnected devices?\b|\btelematics\b|\bedge devices?\b|\bsensor networks?\b/i.test(jobText);
