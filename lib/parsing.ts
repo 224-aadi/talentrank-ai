@@ -178,20 +178,42 @@ export function validateResumeContent(fileName: string, text: string, profile = 
   const source = normalized(text);
   const contactScore = Number(Boolean(profile.contact.email)) + Number(Boolean(profile.contact.phone)) + Number(profile.contact.links.length > 0);
   const sectionScore = countMatches(source, [
-    /\beducation\b/,
-    /\bexperience\b|\bemployment\b|\bwork history\b/,
-    /\bskills?\b|\btechnical skills?\b|\bcompetencies\b/,
-    /\bprojects?\b|\bcertifications?\b/,
+    /\beducation\b|\bacademic (?:background|qualifications?)\b|\bqualification\b/,
+    /\bexperience\b|\bemployment\b|\bwork history\b|\binternships?\b|\btraining\b/,
+    /\bskills?\b|\btechnical skills?\b|\bcompetencies\b|\btechnologies\b|\btools\b/,
+    /\bprojects?\b|\bcertifications?\b|\bachievements?\b|\bactivities\b/,
   ]);
   const roleScore = countMatches(source, [
-    /\b(engineer|developer|analyst|manager|consultant|designer|scientist|accountant|specialist|intern)\b/,
-    /\b(university|college|bachelor|master|phd|degree|gpa)\b/,
-    /\b(led|built|created|developed|implemented|analyzed|managed|designed|deployed|improved)\b/,
+    /\b(engineer|developer|analyst|manager|consultant|designer|scientist|accountant|specialist|intern|graduate|technician|coordinator|architect)\b/,
+    /\b(university|college|institute|school|bachelor|master|phd|degree|diploma|gpa|b\.?\s*tech|m\.?\s*tech)\b/,
+    /\b(led|built|created|developed|implemented|analyzed|managed|designed|deployed|improved|integrated|programmed|tested|supported|coordinated|worked)\b/,
   ]);
-  const structureScore = Number((profile.bullets?.length || 0) >= 2) + Number((profile.dates?.length || 0) >= 1);
+  const hasBullets = (profile.bullets?.length || 0) >= 2;
+  const hasDates = (profile.dates?.length || 0) >= 1;
+  const structureScore = Number(hasBullets) + Number(hasDates);
+  const extractedEvidenceScore = [
+    profile.skills.length >= 2,
+    profile.education.length > 0,
+    profile.experience.length > 0,
+    profile.projects.length > 0,
+  ].filter(Boolean).length;
   const score = contactScore + sectionScore + roleScore + structureScore;
+  const evidenceCategories = [
+    contactScore > 0,
+    sectionScore > 0,
+    roleScore > 0,
+    extractedEvidenceScore > 0,
+    hasBullets,
+    hasDates,
+  ].filter(Boolean).length;
+  const hasCareerEvidence = sectionScore >= 2
+    || roleScore >= 2
+    || extractedEvidenceScore >= 2
+    || (sectionScore >= 1 && roleScore >= 1);
+  const confidentlyResumeLike = score >= 4
+    || (text.length >= 250 && evidenceCategories >= 3 && hasCareerEvidence);
 
-  if (text.length < 180 || score < 4) {
+  if (text.length < 180 || !confidentlyResumeLike) {
     throw new Error(`${fileName} does not look like a resume. Upload a resume with work history, education, skills, projects, or contact details.`);
   }
 }

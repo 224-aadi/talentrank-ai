@@ -28,5 +28,6 @@ jobs:
       - run: NODE_ENV=production TALENTRANK_USE_PRISMA=true npm run deploy:check
       - run: npx prisma generate
       - run: npx prisma validate
+      - run: npm test
       - run: npm run build
       - run: npm audit --audit-level=moderate

@@ -10,6 +10,7 @@
     "start": "next start",
     "start:legacy": "node server.js",
     "check": "node --check app.js && node --check server.js",
+    "test": "node --experimental-strip-types --loader ./scripts/typescript-loader.mjs --test tests/*.test.ts",
     "deploy:check": "node scripts/check-deploy.mjs",
     "deploy:release": "node scripts/release.mjs",
     "mock:integrations": "node scripts/mock-integrations.mjs",

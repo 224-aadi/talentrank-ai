@@ -1,5 +1,21 @@
 const requiredForPrisma = ["DATABASE_URL"];
 
+const ocrApiUrl = process.env.OCR_API_URL || "";
+const ocrApiIsOcrSpace = (() => {
+  try {
+    return new URL(ocrApiUrl).hostname.toLowerCase().endsWith("ocr.space");
+  } catch {
+    return ocrApiUrl.toLowerCase().includes("ocr.space");
+  }
+})();
+const effectiveOcrProvider = process.env.OCR_PROVIDER === "ocrspace"
+  || Boolean(process.env.OCR_SPACE_API_KEY)
+  || ocrApiIsOcrSpace
+  ? "ocrspace"
+  : process.env.OCR_API_URL
+    ? "generic"
+    : "not-configured";
+
 const mode = {
   nodeEnv: process.env.NODE_ENV || "development",
   persistence: process.env.TALENTRANK_USE_PRISMA === "true" ? "prisma" : "json",
@@ -12,11 +28,7 @@ const mode = {
     : process.env.TALENTRANK_STORAGE_KEY
       ? "local-encrypted"
       : "local-unencrypted",
-  ocr: process.env.OCR_SPACE_API_KEY || process.env.OCR_PROVIDER === "ocrspace"
-    ? "ocrspace"
-    : process.env.OCR_API_URL
-      ? "generic"
-      : "not-configured",
+  ocr: effectiveOcrProvider,
   email: process.env.TALENTRANK_EMAIL_PROVIDER ||
     (process.env.RESEND_API_KEY
       ? "resend"
@@ -87,8 +99,12 @@ if (mode.nodeEnv === "production" && process.env.TALENTRANK_MALWARE_PROVIDER !==
   failures.push("TALENTRANK_MALWARE_SCAN_URL is required for production resume uploads.");
 }
 
-if (process.env.OCR_PROVIDER === "ocrspace" && !process.env.OCR_SPACE_API_KEY) {
-  failures.push("OCR_SPACE_API_KEY is required when OCR_PROVIDER=ocrspace.");
+if (
+  effectiveOcrProvider === "ocrspace"
+  && !process.env.OCR_SPACE_API_KEY
+  && !(ocrApiIsOcrSpace && process.env.OCR_API_KEY)
+) {
+  failures.push("OCR_SPACE_API_KEY is required for OCR.space. OCR_API_KEY is accepted when OCR_API_URL points to ocr.space.");
 }
 
 if (process.env.TALENTRANK_MALWARE_PROVIDER === "virustotal" && !process.env.VIRUSTOTAL_API_KEY) {
