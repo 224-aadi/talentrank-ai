@@ -170,10 +170,21 @@ function verdict(score: number, rejected: boolean): MatchVerdict {
 }
 
 export function parseCandidateName(fileName: string, text: string) {
-  const line = text
+  const lines = text
     .split(/\n+/)
     .map((item) => item.trim())
-    .find((item) => item.split(/\s+/).length >= 2 && item.split(/\s+/).length <= 4 && !/@|resume|phone/i.test(item));
+    .filter(Boolean);
+  const sectionHeading = /^(?:profile|summary|professional summary|objective|education|experience|employment|work history|skills?|projects?|certifications?|training)$/i;
+  const firstSectionIndex = lines.findIndex((line) => sectionHeading.test(line.replace(/[^\p{L}\s]/gu, "").trim()));
+  const headerLines = lines.slice(0, firstSectionIndex >= 0 ? firstSectionIndex : 12);
+  const nonNameTerms = /\b(?:resume|curriculum vitae|phone|email|engineer|developer|analyst|manager|consultant|designer|scientist|accountant|specialist|intern|graduate|university|college|institute|school|bachelor|master|degree|diploma|secondary|b\.?\s*tech|m\.?\s*tech|fpga|embedded|iot|vlsi)\b/i;
+  const line = headerLines.find((item) => {
+    if (item.length < 2 || item.length > 60 || /@|https?:|www\.|linkedin|github|\d|\|/.test(item) || nonNameTerms.test(item)) return false;
+    const words = item.match(/\p{L}+(?:['’-]\p{L}+)?/gu) || [];
+    if (words.length < 1 || words.length > 4) return false;
+    const leftover = item.replace(/[\p{L}\s.'’-]/gu, "");
+    return !leftover;
+  });
   return line || fileName.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ");
 }
 

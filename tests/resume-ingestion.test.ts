@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { runOcr } from "../lib/ocr.ts";
+import { parseCandidateName } from "../lib/matching.ts";
 import { extractStructuredProfile, validateResumeContent } from "../lib/parsing.ts";
 
 const ocrResumeText = [
@@ -74,6 +75,7 @@ test("legacy OCR.space settings parse the provider response and retry weak extra
 test("OCR-style resume text is accepted and a non-resume document is rejected", () => {
   const profile = extractStructuredProfile(ocrResumeText);
   assert.doesNotThrow(() => validateResumeContent("scanned-resume.pdf", ocrResumeText, profile));
+  assert.equal(parseCandidateName("1783794238143.pdf", ocrResumeText), "ALEX MORGAN");
 
   const invoiceText = [
     "INVOICE 1042",
@@ -92,6 +94,20 @@ test("OCR-style resume text is accepted and a non-resume document is rejected", 
     () => validateResumeContent("invoice.pdf", invoiceText),
     /does not look like a resume/i,
   );
+});
+
+test("a one-word OCR header is retained as the candidate name", () => {
+  const singleNameResume = [
+    "ALEX",
+    "B.TECH ECE GRADUATE | FPGA DESIGN | EMBEDDED SYSTEMS | IOT",
+    "alex@example.com",
+    "PROFILE",
+    "Embedded systems student with hands-on project experience.",
+    "EDUCATION",
+    "Senior Secondary (XII), CBSE",
+  ].join("\n");
+
+  assert.equal(parseCandidateName("1783794238143.pdf", singleNameResume), "ALEX");
 });
 
 function setOrDelete(name: string, value?: string) {
