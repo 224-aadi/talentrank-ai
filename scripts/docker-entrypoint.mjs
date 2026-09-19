@@ -7,7 +7,10 @@ function run(command, args) {
 }
 
 if (process.env.TALENTRANK_RUN_MIGRATIONS === "true") {
-  run("node", ["scripts/release.mjs"]);
+  // The client is generated during the image build. Regenerating it here runs
+  // as the unprivileged `nextjs` user against root-owned image files and can
+  // prevent the container from ever reaching the HTTP server.
+  run("node", ["scripts/release.mjs", "--migrate-only"]);
 }
 
 run("node", ["server.js"]);

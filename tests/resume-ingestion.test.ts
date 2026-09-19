@@ -110,6 +110,31 @@ test("a one-word OCR header is retained as the candidate name", () => {
   assert.equal(parseCandidateName("1783794238143.pdf", singleNameResume), "ALEX");
 });
 
+test("decorative separators do not hide a candidate name", () => {
+  const resume = [
+    "Vinod Kumar_________________________________________",
+    "Address",
+    "V.P.O. - Dabli Khurd",
+    "Contact No: - 8178513978",
+    "Email ID - vkumar7475@gmail.com",
+    "Career Objectives",
+    "To work in a responsible SMT production position.",
+  ].join("\n");
+
+  assert.equal(parseCandidateName("PRODUCTION MANAGER-Vinod Kumar.pdf", resume), "Vinod Kumar");
+});
+
+test("contact headings are not treated as names and image-only files use a clean filename", () => {
+  const ocrHeader = [
+    "CONTACT",
+    "tpbehera40@gmail.com",
+    "PROFILE",
+    "Experienced electronics manufacturing leader.",
+  ].join("\n");
+
+  assert.equal(parseCandidateName("Tara_Prasad_Behera_India_CV.pdf", ocrHeader), "Tara Prasad Behera");
+});
+
 function setOrDelete(name: string, value?: string) {
   if (value === undefined) delete process.env[name];
   else process.env[name] = value;

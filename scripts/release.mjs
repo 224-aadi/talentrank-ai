@@ -1,8 +1,9 @@
 import { spawnSync } from "node:child_process";
 
+const migrateOnly = process.argv.includes("--migrate-only");
 const steps = [
   ["node", ["scripts/check-deploy.mjs"]],
-  ["npx", ["prisma", "generate"]],
+  ...(!migrateOnly ? [["npx", ["prisma", "generate"]]] : []),
   ["npx", ["prisma", "migrate", "deploy"]],
 ];
 
