@@ -174,18 +174,48 @@ export function parseCandidateName(fileName: string, text: string) {
     .split(/\n+/)
     .map((item) => item.trim())
     .filter(Boolean);
-  const sectionHeading = /^(?:profile|summary|professional summary|objective|education|experience|employment|work history|skills?|projects?|certifications?|training)$/i;
-  const firstSectionIndex = lines.findIndex((line) => sectionHeading.test(line.replace(/[^\p{L}\s]/gu, "").trim()));
-  const headerLines = lines.slice(0, firstSectionIndex >= 0 ? firstSectionIndex : 12);
-  const nonNameTerms = /\b(?:resume|curriculum vitae|phone|email|engineer|developer|analyst|manager|consultant|designer|scientist|accountant|specialist|intern|graduate|university|college|institute|school|bachelor|master|degree|diploma|secondary|b\.?\s*tech|m\.?\s*tech|fpga|embedded|iot|vlsi)\b/i;
-  const line = headerLines.find((item) => {
-    if (item.length < 2 || item.length > 60 || /@|https?:|www\.|linkedin|github|\d|\|/.test(item) || nonNameTerms.test(item)) return false;
-    const words = item.match(/\p{L}+(?:['’-]\p{L}+)?/gu) || [];
-    if (words.length < 1 || words.length > 4) return false;
-    const leftover = item.replace(/[\p{L}\s.'’-]/gu, "");
-    return !leftover;
+  const sectionHeading = /^(?:contact|contact details?|address|personal details?|profile|summary|professional summary|career objectives?|objective|education|technical qualification|experience|total experience|employment|work history|current organization|job description|skills?|strengths?|projects?|certifications?|training)$/i;
+  const nonNameTerms = /\b(?:address|contact|personal details?|resume|curriculum vitae|phone|email|engineer|developer|analyst|manager|consultant|designer|scientist|accountant|specialist|intern|graduate|university|college|institute|school|bachelor|master|degree|diploma|secondary|b\.?\s*tech|m\.?\s*tech|fpga|embedded|iot|vlsi)\b/i;
+  const cleanLine = (value: string) => value
+    .replace(/^[^\p{L}]+|[^\p{L}.'’-]+$/gu, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  const firstSectionIndex = lines.findIndex((line) => sectionHeading.test(cleanLine(line)));
+  const headerLines = lines.slice(0, firstSectionIndex >= 0 ? firstSectionIndex : 16);
+  const candidates = headerLines.flatMap((item, index) => {
+    const cleaned = cleanLine(item);
+    if (
+      cleaned.length < 2
+      || cleaned.length > 60
+      || sectionHeading.test(cleaned)
+      || /@|https?:|www\.|linkedin|github|\d|\|/.test(cleaned)
+      || nonNameTerms.test(cleaned)
+    ) return [];
+    const words = cleaned.match(/\p{L}+(?:['’-]\p{L}+)?/gu) || [];
+    if (words.length < 1 || words.length > 4) return [];
+    const leftover = cleaned.replace(/[\p{L}\s.'’-]/gu, "");
+    if (leftover) return [];
+    const casingScore = cleaned === cleaned.toUpperCase()
+      ? 3
+      : words.every((word) => /^\p{Lu}/u.test(word))
+        ? 2
+        : 0;
+    return [{ value: cleaned, score: casingScore + Math.max(0, 8 - index) }];
   });
-  return line || fileName.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ");
+  candidates.sort((left, right) => right.score - left.score);
+  if (candidates[0]) return candidates[0].value;
+
+  const fromFileName = fileName
+    .replace(/\.[^.]+$/, "")
+    .replace(/\[[^\]]*]|\([^)]*\)/g, " ")
+    .replace(/^\d{8,}[\s_-]*/, "")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/\b([A-Z]{1,3})([A-Z][a-z])/g, "$1 $2")
+    .replace(/[_-]+/g, " ")
+    .replace(/\b(?:resume|curriculum vitae|cv|naukri|candidate|profile|updated?|final|india|production|manager|engineer|developer|analyst|consultant|designer|specialist)\b/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return fromFileName || fileName.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ");
 }
 
 export function scoreCandidate(input: {
