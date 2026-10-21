@@ -48,6 +48,10 @@ export async function executeUploadRun(run: UploadRun, options: {
   wait?: (ms: number) => Promise<void>;
 }) {
   const wait = options.wait || (ms => new Promise(resolve => setTimeout(resolve, ms)));
+  if (!options.send) {
+    const health = await requestJson<{ capabilities?: { resumableScreening?: number } }>("/api/health", undefined, 90_000);
+    if (health.capabilities?.resumableScreening !== 1) throw new ApiRequestError("The screening update is still being applied. Your queue is saved; please resume shortly.", 503);
+  }
   const send = options.send || ((body, key) => requestJson<any>("/api/screen", { method: "POST", body, headers: { "Idempotency-Key": key } }, 240_000));
   for (const batch of run.batches) {
     if (batch.done) continue;
