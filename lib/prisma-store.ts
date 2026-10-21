@@ -689,16 +689,17 @@ export async function listMatchRuns(jobId?: string, organizationId?: string) {
         ...(jobId ? { jobId } : {}),
         ...(organizationId ? { job: { organizationId }, candidate: { organizationId } } : {}),
       },
-      include: { job: true, candidate: true },
+      include: { job: true, candidate: { include: { resumes: { orderBy: { createdAt: "desc" }, take: 1 } } } },
       orderBy: { createdAt: "desc" },
     }),
-    client.recruiterDecision.findMany({ orderBy: { createdAt: "desc" } }),
+    client.recruiterDecision.findMany({ where: organizationId ? { candidate: { organizationId }, job: { organizationId } } : undefined, orderBy: { createdAt: "desc" } }),
   ]);
   const mappedDecisions: RecruiterDecisionRecord[] = decisions.map(mapDecision);
   return runs.map((run: any) => ({
     ...mapMatchRun(run),
     job: run.job ? mapJob(run.job) : null,
     candidate: run.candidate ? mapCandidate(run.candidate) : null,
+    resume: run.candidate?.resumes?.[0] ? mapResume(run.candidate.resumes[0]) : null,
     latestDecision: mappedDecisions.find((decision) => decision.jobId === run.jobId && decision.candidateId === run.candidateId) || null,
   }));
 }

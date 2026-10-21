@@ -10,7 +10,7 @@ export default async function ScreenPage() {
   const jobs = await listJobs(user.organizationId);
   return (
     <AppShell user={user} wide>
-      <ScreeningWorkbench initialJobs={jobs} initialMatches={[]} />
+      <ScreeningWorkbench initialJobs={jobs} initialMatches={[]} queueOwner={`${user.organizationId}:${user.id}`} />
     </AppShell>
   );
 }

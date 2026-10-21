@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { PasswordInput } from "@/components/password-input";
+import { requestJson } from "@/lib/client-request";
 
 export function LoginPanel({
   inviteToken,
@@ -41,18 +42,18 @@ export function LoginPanel({
   async function submitJson(path: string, body: Record<string, FormDataEntryValue | string | undefined>) {
     setMessage("");
     setLoading(true);
-    const response = await fetch(path, {
+    try {
+    return await requestJson<any>(path, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(body),
     });
-    const payload = await response.json().catch(() => ({}));
-    setLoading(false);
-    if (!response.ok) {
-      setMessage(displayError(payload.error, "Request failed."));
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Request failed. Please try again.");
       return null;
+    } finally {
+      setLoading(false);
     }
-    return payload;
   }
 
   async function acceptInvite(event: React.FormEvent<HTMLFormElement>) {
@@ -123,23 +124,12 @@ export function LoginPanel({
       setMessage("Enter your password.");
       return;
     }
-    setLoading(true);
-    const response = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
+    const payload = await submitJson("/api/auth/login", {
         email,
         password,
-        remember,
-      }),
+        remember: String(remember),
     });
-    const payload = await response.json().catch(() => ({}));
-    setLoading(false);
-    if (!response.ok) {
-      setMessage(response.status === 401 ? "Incorrect email or password. Check your password and try again." : displayError(payload.error, "Sign in failed."));
-      return;
-    }
-    window.location.href = "/dashboard";
+    if (payload) window.location.href = "/dashboard";
   }
 
   if (inviteToken) {

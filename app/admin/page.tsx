@@ -35,7 +35,7 @@ type JobGroup = {
   avgScore: number;
 };
 
-export default async function AdminPage({ searchParams }: { searchParams: Promise<{ jobId?: string; jobTitle?: string; view?: string }> }) {
+export default async function AdminPage({ searchParams }: { searchParams: Promise<{ jobId?: string; jobTitle?: string; view?: string; page?: string }> }) {
   const user = await currentUser();
   if (!user) redirect("/login");
   if (user.role !== "admin") redirect("/dashboard");
@@ -101,7 +101,17 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     : showAllCandidates
       ? candidateRows
       : [];
-  const latestCandidates = visibleCandidateRows.slice(0, 25);
+  const requestedPage = Number(params.page || 1);
+  const candidatePage = Math.min(Math.max(1, Number.isFinite(requestedPage) ? Math.floor(requestedPage) : 1), Math.max(1, Math.ceil(visibleCandidateRows.length / 25)));
+  const latestCandidates = visibleCandidateRows.slice((candidatePage - 1) * 25, candidatePage * 25);
+  function candidatePageUrl(page: number) {
+    const query = new URLSearchParams();
+    if (selectedJobId) query.set("jobId", selectedJobId);
+    if (selectedJobTitleKey) query.set("jobTitle", selectedJobTitleKey);
+    if (showAllCandidates) query.set("view", "all");
+    query.set("page", String(page));
+    return `/workspace?${query}`;
+  }
   const latestJobGroups = jobGroups.slice(0, 40);
   const latestAudits = auditRows.slice(0, 8);
   const shortlisted = decisionRows.filter((decision) => decision.decision === "shortlist" || decision.decision === "interview").length;
@@ -198,6 +208,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
             <a href={selectedGroup ? `/api/admin/candidates/export?jobTitle=${encodeURIComponent(selectedGroup.key)}` : selectedJob ? `/api/admin/candidates/export?jobId=${selectedJob.id}` : "/api/admin/candidates/export"}>Export CSV</a>
           </div>
           <div className="candidate-ledger">
+            {visibleCandidateRows.length > 25 ? <nav aria-label="Candidate archive pages">{candidatePage > 1 ? <a href={candidatePageUrl(candidatePage - 1)}>Previous</a> : null}<span> Page {candidatePage} of {Math.ceil(visibleCandidateRows.length / 25)} · {visibleCandidateRows.length} candidates </span>{candidatePage * 25 < visibleCandidateRows.length ? <a href={candidatePageUrl(candidatePage + 1)}>Next</a> : null}</nav> : null}
             {latestCandidates.length ? latestCandidates.map(({ candidate, resume }) => {
               const match = latestMatchByCandidate.get(candidate.id);
               return (

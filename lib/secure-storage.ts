@@ -9,7 +9,7 @@ export type StoredFile = {
   provider: "local" | "external";
 };
 
-const storageRoot = path.join(process.cwd(), ".data", "secure-files");
+const storageRoot = path.join(process.env.TALENTRANK_DATA_DIR || path.join(process.cwd(), ".data"), "secure-files");
 
 function safeName(fileName: string) {
   return fileName.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 120) || "resume";
@@ -101,6 +101,7 @@ async function storeS3Compatible(file: File, raw: Buffer): Promise<StoredFile | 
   const signature = hexHmac(signingKey(config.secretKey, dateStamp, config.region), stringToSign);
   const response = await fetch(url, {
     method: "PUT",
+    signal: AbortSignal.timeout(30_000),
     headers: {
       "content-type": file.type || "application/octet-stream",
       "x-amz-content-sha256": payloadHash,
@@ -139,6 +140,7 @@ async function storeExternally(file: File, raw: Buffer): Promise<StoredFile | nu
   formData.append("file", new Blob([new Uint8Array(raw)], { type: file.type || "application/octet-stream" }), file.name);
   const response = await fetch(endpoint, {
     method: "POST",
+    signal: AbortSignal.timeout(30_000),
     headers: process.env.TALENTRANK_STORAGE_TOKEN ? { authorization: `Bearer ${process.env.TALENTRANK_STORAGE_TOKEN}` } : undefined,
     body: formData,
   });
@@ -214,6 +216,7 @@ async function readS3Compatible(storageKey: string) {
     const stringToSign = `AWS4-HMAC-SHA256\n${amzDate}\n${scope}\n${sha256Hex(canonicalRequest)}`;
     const signature = hexHmac(signingKey(config.secretKey, dateStamp, config.region), stringToSign);
     const response = await fetch(url, {
+      signal: AbortSignal.timeout(30_000),
       headers: {
         "x-amz-content-sha256": payloadHash,
         "x-amz-date": amzDate,
