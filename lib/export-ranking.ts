@@ -12,3 +12,16 @@ export function rankExportCandidates<T extends { candidate: { id: string; name: 
       || left.candidate.id.localeCompare(right.candidate.id);
   });
 }
+
+export function decisionsForExport<T extends { candidateId: string; jobId: string }>(
+  matches: ReadonlyMap<string, { jobId: string }>,
+  newestFirst: T[],
+): Map<string, T> {
+  const selected = new Map<string, T>();
+  for (const decision of newestFirst) {
+    if (!selected.has(decision.candidateId) && matches.get(decision.candidateId)?.jobId === decision.jobId) {
+      selected.set(decision.candidateId, decision);
+    }
+  }
+  return selected;
+}

@@ -198,6 +198,10 @@ try {
   assert.equal(reranked.body.results[0].resume.id, sample.resume.id);
   await api("/api/screen", post({ job: { description: jd }, resumes: [{ fileName: "different.txt", text: resume(999) }] }, { "idempotency-key": duplicateKey }), 409);
   pass("saved candidate reranking and conflicting retry-key rejection");
+  await api("/api/decisions", post({ jobId: reranked.body.job.id, candidateId: sample.candidate.id, decision: "shortlist", notes: "Synthetic second-job decision" }), 201);
+  const originalJobExport = await api(`/api/admin/candidates/export?jobId=${jobId}`);
+  assert.ok(originalJobExport.body.includes(',"hold",'), "a decision for another job must not replace this job's hold decision");
+  pass("export decisions remain scoped to the selected job after candidate reuse");
 
   const mixed = new FormData(); mixed.append("job", JSON.stringify({ description: jd })); mixed.append("jobId", jobId);
   mixed.append("resumes", new File([resume(999)], "QA-valid.txt", { type: "text/plain" }));
