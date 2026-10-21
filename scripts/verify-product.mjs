@@ -7,7 +7,7 @@ import path from "node:path";
 import http from "node:http";
 import JSZip from "jszip";
 import { createUploadRun, executeUploadRun } from "../lib/upload-queue.ts";
-import { ApiRequestError } from "../lib/client-request.ts";
+import { ApiRequestError, requestJson } from "../lib/client-request.ts";
 
 const count = Number(process.env.QA_RESUME_COUNT || 550);
 const base = process.env.QA_BASE_URL || "http://127.0.0.1:3199";
@@ -125,14 +125,17 @@ try {
   let checkpoint;
   const start = performance.now();
   const send = async (body, key) => {
-    const result = await fetch(`${base}/api/screen`, { method: "POST", headers: { cookie, "idempotency-key": key }, body, signal: AbortSignal.timeout(240_000) });
-    const payload = await result.json();
-    if (!result.ok) throw new ApiRequestError(payload.error || "Screening failed", result.status, Number(result.headers.get("retry-after") || 0) * 1000);
+    // Exercise the exact browser transport, including HTML gateway errors and
+    // interrupted response bodies, instead of bypassing its typed retries.
+    const payload = await requestJson(`${base}/api/screen`, { method: "POST", headers: { cookie, "idempotency-key": key }, body }, 240_000);
     if (!lostResponseInjected) { lostResponseInjected = true; duplicateKey = key; duplicateIds = payload.results.map(item => item.candidate.id); throw new ApiRequestError("Simulated lost response after server commit", 503); }
     if (key === duplicateKey) assert.deepEqual(payload.results.map(item => item.candidate.id), duplicateIds);
     return payload;
   };
-  const save = async state => { checkpoint = { ...state, errors: [...state.errors], batches: state.batches.map(batch => ({ ...batch, files: [...batch.files] })) }; };
+  const save = async state => {
+    checkpoint = { ...state, errors: [...state.errors], batches: state.batches.map(batch => ({ ...batch, files: [...batch.files] })) };
+    await writeFile(path.join(directory, "progress.json"), JSON.stringify({ jobId: state.jobId, completed: state.batches.filter(batch => batch.done).reduce((n, batch) => n + batch.response.results.length, 0), total: count, updatedAt: new Date().toISOString() }));
+  };
   await executeUploadRun(run, { send, save, progress: () => {}, paused: () => run.batches.filter(batch => batch.done).length === 5 });
   assert.equal(run.batches.filter(batch => batch.done).length, Math.min(5, run.batches.length));
   await executeUploadRun(checkpoint || run, { send, save, progress: state => { const done = state.batches.filter(batch => batch.done).length; if (done % 20 === 0) console.log(JSON.stringify({ progress: done, batches: state.batches.length })); } });
