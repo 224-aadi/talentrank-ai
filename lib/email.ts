@@ -83,6 +83,7 @@ export async function sendTransactionalEmail(input: TransactionalEmailInput): Pr
   if (config.provider === "resend") {
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
+      signal: AbortSignal.timeout(20_000),
       headers: {
         authorization: `Bearer ${process.env.RESEND_API_KEY}`,
         "content-type": "application/json",
@@ -96,6 +97,7 @@ export async function sendTransactionalEmail(input: TransactionalEmailInput): Pr
   if (config.provider === "postmark") {
     const response = await fetch("https://api.postmarkapp.com/email", {
       method: "POST",
+      signal: AbortSignal.timeout(20_000),
       headers: {
         "x-postmark-server-token": String(process.env.POSTMARK_SERVER_TOKEN),
         "content-type": "application/json",
@@ -110,6 +112,7 @@ export async function sendTransactionalEmail(input: TransactionalEmailInput): Pr
     const from = parseAddress(config.from);
     const response = await fetch("https://api.sendgrid.com/v3/mail/send", {
       method: "POST",
+      signal: AbortSignal.timeout(20_000),
       headers: {
         authorization: `Bearer ${process.env.SENDGRID_API_KEY}`,
         "content-type": "application/json",
@@ -135,6 +138,7 @@ export async function sendTransactionalEmail(input: TransactionalEmailInput): Pr
 
   const response = await fetch(String(process.env.TALENTRANK_EMAIL_WEBHOOK_URL), {
     method: "POST",
+    signal: AbortSignal.timeout(20_000),
     headers: {
       "content-type": "application/json",
       ...(process.env.TALENTRANK_EMAIL_WEBHOOK_TOKEN ? { authorization: `Bearer ${process.env.TALENTRANK_EMAIL_WEBHOOK_TOKEN}` } : {}),

@@ -4,6 +4,7 @@ import { authCookie, signupUser } from "@/lib/auth";
 import { normalizeEmail, validateSignupEmail } from "@/lib/email-validation";
 import { clientKey, checkRateLimit } from "@/lib/rate-limit";
 import { incrementMetric, logEvent } from "@/lib/observability";
+import { apiError } from "@/lib/api-error";
 
 const signupSchema = z.object({
   email: z.string().trim().transform((value) => normalizeEmail(value)),
@@ -73,9 +74,10 @@ export async function POST(request: Request) {
     response.cookies.set(cookie.name, cookie.value, cookie.options);
     return response;
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Could not create account.";
+    const failure = apiError(error);
+    const message = failure.message;
     if (contentType.includes("application/json")) {
-      return NextResponse.json({ error: message }, { status: 400 });
+      return NextResponse.json({ error: message }, { status: failure.status });
     }
     return NextResponse.redirect(redirectTo(request, `/signup?error=${encodeURIComponent(message)}`), { status: 303 });
   }

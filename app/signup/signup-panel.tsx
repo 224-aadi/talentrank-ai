@@ -4,16 +4,13 @@ import Link from "next/link";
 import { useState } from "react";
 import { PasswordInput } from "@/components/password-input";
 import { normalizeEmail, validateSignupEmail } from "@/lib/email-validation";
+import { requestJson } from "@/lib/client-request";
 
 export function SignupPanel({ error }: { error?: string }) {
   const [message, setMessage] = useState(error ? "Could not create your account." : "");
   const [loading, setLoading] = useState(false);
   const inputClass = "rounded-md border border-border bg-background px-3 py-2.5 outline-none ring-primary focus:ring-2";
   const minPasswordLength = 10;
-
-  function displayError(errorValue: unknown, fallback: string) {
-    return typeof errorValue === "string" && errorValue.trim() ? errorValue : fallback;
-  }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -40,23 +37,16 @@ export function SignupPanel({ error }: { error?: string }) {
       return;
     }
     setLoading(true);
-    const response = await fetch("/api/auth/signup", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        name,
-        email,
-        password,
-        organizationName: form.get("organizationName") || undefined,
-      }),
-    });
-    const payload = await response.json().catch(() => ({}));
-    setLoading(false);
-    if (!response.ok) {
-      setMessage(displayError(payload.error, "Could not create your account."));
-      return;
-    }
-    window.location.href = "/dashboard";
+    try {
+      await requestJson("/api/auth/signup", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ name, email, password, organizationName: form.get("organizationName") || undefined }),
+      }, 90_000);
+      window.location.href = "/dashboard";
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not create your account. Please try again.");
+    } finally { setLoading(false); }
   }
 
   return (

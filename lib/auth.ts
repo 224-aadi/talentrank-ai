@@ -396,6 +396,8 @@ export async function inviteAuthUser(input: {
   if (prismaEnabled()) {
     const client = prisma as any;
     const organizationId = input.organizationId || "org_demo";
+    const existingUser = await client.user.findUnique({ where: { email: input.email.trim().toLowerCase() } });
+    if (existingUser && existingUser.organizationId !== organizationId) throw new Error("This email is already registered in another workspace.");
     await client.organization.upsert({
       where: { id: organizationId },
       update: {},
@@ -424,6 +426,7 @@ export async function inviteAuthUser(input: {
   db.users ||= [];
   const email = input.email.trim().toLowerCase();
   let user = db.users.find((item) => item.email.toLowerCase() === email);
+  if (user && user.organizationId !== (input.organizationId || "org_demo")) throw new Error("This email is already registered in another workspace.");
   if (!user) {
     const timestamp = now();
     user = {

@@ -1323,3 +1323,18 @@
     grid-column: 1 / -1;
   }
 }
+.workbench-shell nav[aria-label="Candidate result pages"],
+.workbench-shell nav[aria-label="Candidate archive pages"] {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+
+.workbench-shell nav[aria-label="Candidate result pages"] button,
+.workbench-shell nav[aria-label="Candidate archive pages"] a {
+  padding: 0.45rem 0.75rem;
+  border: 1px solid #d8ded8;
+  border-radius: 0.5rem;
+}

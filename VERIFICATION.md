@@ -4,10 +4,11 @@ Run `npm test`, `npm run build`, and `npm run test:product` before a release.
 
 `test:product` starts an isolated production server and submits 550 synthetic
 resumes through the same multipart endpoint and queue used by the browser. It
-checks authentication, protected pages, PDF parsing, retry after a lost response,
+checks authentication, protected pages, PDF/DOCX/Markdown parsing, retry after a lost response,
 pause/resume, exactly-once persistence, candidate search, semantic indexing,
 original downloads, review decisions, CSV exports, pagination, invalid-file
-isolation, workspace isolation, and logout. Test reports are written to a new
+isolation, workspace isolation, password-reset email links and single-use tokens
+(through a local mail stub), benchmark reports, backups, and logout. Test reports are written to a new
 temporary directory. Real candidate data is never required.
 
 The default local test uses local storage and lexical scoring. CI repeats it

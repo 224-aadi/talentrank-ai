@@ -31,6 +31,7 @@ const inFlight = new Map<string, Promise<ScreeningResponse>>();
 export async function POST(request: Request) {
   try {
     const user = await requireRole("recruiter");
+    incrementMetric("screen.request");
     const key = request.headers.get("idempotency-key") || crypto.randomUUID();
     if (key.length > 200) return NextResponse.json({ error: "Upload request key is too long." }, { status: 400 });
     const id = receiptId(user.organizationId, key);
