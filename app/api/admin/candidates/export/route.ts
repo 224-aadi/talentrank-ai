@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/auth";
 import { jobTitleKey } from "@/lib/job-intelligence";
-import { rankExportCandidates } from "@/lib/export-ranking";
+import { decisionsForExport, rankExportCandidates } from "@/lib/export-ranking";
 import { listCandidatePool, listJobs, listMatchRuns, listRecruiterDecisions } from "@/lib/store";
 import type { Candidate, CandidatePoolItem, Job, MatchRun, RecruiterDecisionRecord } from "@/lib/types";
 
@@ -70,10 +70,7 @@ export async function GET(request: Request) {
     for (const match of filteredMatchRows) {
       if (!latestMatchByCandidate.has(match.candidateId)) latestMatchByCandidate.set(match.candidateId, match);
     }
-    const latestDecisionByCandidate = new Map<string, RecruiterDecisionRecord>();
-    for (const decision of decisionRows) {
-      if (!latestDecisionByCandidate.has(decision.candidateId)) latestDecisionByCandidate.set(decision.candidateId, decision);
-    }
+    const latestDecisionByCandidate = decisionsForExport(latestMatchByCandidate, decisionRows);
     const rows = [
       [
         "Rank",
