@@ -192,6 +192,13 @@ try {
   assert.ok((await api("/api/admin/backup")).body.matches.length >= count);
   pass("benchmark labels, explainability, workspace backup");
 
+  const reranked = await api("/api/screen", post({ job: { title: "QA saved-pool rerank", description: jd }, resumeIds: [sample.resume.id] }, { "idempotency-key": crypto.randomUUID() }), 201);
+  assert.equal(reranked.body.results.length, 1);
+  assert.equal(reranked.body.results[0].candidate.id, sample.candidate.id);
+  assert.equal(reranked.body.results[0].resume.id, sample.resume.id);
+  await api("/api/screen", post({ job: { description: jd }, resumes: [{ fileName: "different.txt", text: resume(999) }] }, { "idempotency-key": duplicateKey }), 409);
+  pass("saved candidate reranking and conflicting retry-key rejection");
+
   const mixed = new FormData(); mixed.append("job", JSON.stringify({ description: jd })); mixed.append("jobId", jobId);
   mixed.append("resumes", new File([resume(999)], "QA-valid.txt", { type: "text/plain" }));
   mixed.append("resumes", new File(["INVOICE payment total $500"], "invoice.txt", { type: "text/plain" }));
@@ -210,7 +217,7 @@ try {
   await api("/api/screen", post({ job: { description: jd }, resumes: [{ fileName: "qa.txt", text: resume(1) }] }), 401);
   pass("workspace isolation and logout enforcement");
   if (process.env.QA_ACCOUNT_FILE) await writeFile(process.env.QA_ACCOUNT_FILE, JSON.stringify({ email, password, base }), { mode: 0o600 });
-  await writeFile(path.join(directory, "verification.json"), JSON.stringify({ base, checks, completedAt: new Date().toISOString() }, null, 2));
+  await writeFile(path.join(directory, "verification.json"), JSON.stringify({ base, jobId, checks, completedAt: new Date().toISOString() }, null, 2));
   console.log(JSON.stringify({ complete: true, report: path.join(directory, "verification.json"), checks: checks.length }));
 } catch (error) {
   console.error(error.stack || error);
