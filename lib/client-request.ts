@@ -13,7 +13,9 @@ export async function requestJson<T>(path: string, init?: RequestInit, timeoutMs
   } catch {
     throw new ApiRequestError("The service took too long to respond or the connection was interrupted. Please try again.", 503);
   }
-  const text = await response.text();
+  let text: string;
+  try { text = await response.text(); }
+  catch { throw new ApiRequestError("The connection was interrupted while receiving results. Please try again.", 503); }
   let payload: any;
   let validJson = true;
   try { payload = JSON.parse(text); } catch { payload = {}; validJson = false; }

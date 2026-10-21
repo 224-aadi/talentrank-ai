@@ -37,7 +37,13 @@ function compact(text: string) {
 }
 
 function includesPhrase(text: string, phrase: string) {
-  return normalize(text).includes(normalize(phrase)) || compact(text).includes(compact(phrase));
+  const source = normalize(text);
+  const target = normalize(phrase);
+  if (!target) return false;
+  const contains = (value: string) => new RegExp(`(^|[^\\p{L}\\p{N}])${value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}($|[^\\p{L}\\p{N}])`, "u").test(source);
+  if (contains(target)) return true;
+  const condensed = compact(phrase);
+  return condensed !== target && condensed.length >= 4 && contains(condensed);
 }
 
 function evidenceLine(text: string, terms: string[]) {
@@ -66,7 +72,8 @@ function importantTerms(text: string, limit = 50) {
 function detectSignals(text: string) {
   const allSignals = new Set<string>();
   for (const signal of skillIds) {
-    if (termsFor(signal).some((term) => includesPhrase(text, term))) {
+    const terms = termsFor(signal).filter(term => signal !== "machine learning" || !["model", "models"].includes(term) || /\b(machine learning|ml|neural|regression|classification|prediction|xgboost|random forest)\b/i.test(text));
+    if (terms.some((term) => includesPhrase(text, term))) {
       allSignals.add(signal);
     }
   }
@@ -99,9 +106,10 @@ function experienceScore(jobText: string, resumeText: string) {
 function roleFamily(jobText: string, selected: RoleTemplate) {
   if (selected !== "auto") return selected;
   const normalized = normalize(jobText);
+  if (/\b(mechanical|manufacturing|solidworks|autocad|cad|tolerance|production drawings)\b/.test(normalized)) return "operations";
   if (/iot|internet of things|embedded|firmware|connected device|edge device|telematics|sensor network/.test(normalized)) return "software";
   if (/data|analytics|machine learning|sql|python|statistics/.test(normalized)) return "data";
-  if (/software|frontend|backend|api|react|typescript|engineer|developer/.test(normalized)) return "software";
+  if (/\b(software|frontend|backend|api|react|typescript|developer)\b/.test(normalized)) return "software";
   if (/sales|account|pipeline|quota|crm/.test(normalized)) return "sales";
   if (/finance|accounting|forecast|risk|budget/.test(normalized)) return "finance";
   return "operations";

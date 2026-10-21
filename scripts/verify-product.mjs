@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
 import { spawn } from "node:child_process";
-import { mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { createUploadRun, executeUploadRun } from "../lib/upload-queue.ts";
@@ -74,6 +74,14 @@ try {
     ? new File([pdfBytes(resume(i))], `QA_Candidate_${i}.pdf`, { type: "application/pdf" })
     : new File([resume(i)], `QA_Candidate_${i}.txt`, { type: "text/plain" }));
   if (process.env.QA_SCANNED_PDF) files[files.length - 1] = new File([await readFile(process.env.QA_SCANNED_PDF)], "Tara_Prasad_Behera_QA_Scanned.pdf", { type: "application/pdf" });
+  if (process.env.QA_FIXTURE_DIR) {
+    await mkdir(process.env.QA_FIXTURE_DIR, { recursive: true });
+    for (let i = 0; i < Number(process.env.QA_FIXTURE_COUNT || count); i++) {
+      const name = `QA_Candidate_${String(i).padStart(4, "0")}.${i % 50 === 0 ? "pdf" : "txt"}`;
+      await writeFile(path.join(process.env.QA_FIXTURE_DIR, name), i % 50 === 0 ? pdfBytes(resume(i)) : resume(i));
+    }
+    await writeFile(path.join(process.env.QA_FIXTURE_DIR, "job-description.md"), jd);
+  }
   const run = createUploadRun(files, [], { title: "QA Mechanical Engineer", description: jd, roleTemplate: "auto", hardRules: [] });
   let duplicateKey;
   let duplicateIds;

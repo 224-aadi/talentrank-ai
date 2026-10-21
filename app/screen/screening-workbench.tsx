@@ -182,6 +182,7 @@ export default function ScreeningWorkbench({
   const [resultPage, setResultPage] = useState(0);
   const [compareIds, setCompareIds] = useState<string[]>([]);
   const uploadRun = useRef<UploadRun | null>(null);
+  const initialBucketSelected = useRef(false);
   const pauseRequested = useRef(false);
   const [queueLoaded, setQueueLoaded] = useState(false);
   const [hasPendingUpload, setHasPendingUpload] = useState(false);
@@ -190,6 +191,10 @@ export default function ScreeningWorkbench({
   function showRun(run: UploadRun, message?: string) {
     const rows = run.batches.flatMap(batch => batch.response ? rowsFromPayload(batch.response) : []);
     setMatches(rows.sort((a, b) => b.score - a.score));
+    if (rows.length && !initialBucketSelected.current) {
+      initialBucketSelected.current = true;
+      setActiveBucket(rows.some(row => bucketFor(row) === "recommended") ? "recommended" : rows.some(row => bucketFor(row) === "review") ? "review" : "rejected");
+    }
     setUploadErrors([...run.errors]);
     setHasPendingUpload(run.batches.some(batch => !batch.done));
     if (message) setRunProgress(message);
@@ -339,6 +344,7 @@ export default function ScreeningWorkbench({
   function handleFiles(files: FileList | null) {
     if (!files) return;
     uploadRun.current = null;
+    initialBucketSelected.current = false;
     setHasPendingUpload(false);
     setUploadErrors([]);
     setResumeFiles([...files]);

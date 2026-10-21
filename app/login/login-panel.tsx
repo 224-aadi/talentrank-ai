@@ -35,19 +35,15 @@ export function LoginPanel({
     return "";
   }
 
-  function displayError(errorValue: unknown, fallback: string) {
-    return typeof errorValue === "string" && errorValue.trim() ? errorValue : fallback;
-  }
-
   async function submitJson(path: string, body: Record<string, FormDataEntryValue | string | undefined>) {
     setMessage("");
     setLoading(true);
     try {
-    return await requestJson<any>(path, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(body),
-    });
+      return await requestJson<any>(path, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      }, 90_000);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Request failed. Please try again.");
       return null;
