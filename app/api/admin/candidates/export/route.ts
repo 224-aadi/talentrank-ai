@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/auth";
 import { jobTitleKey } from "@/lib/job-intelligence";
+import { rankExportCandidates } from "@/lib/export-ranking";
 import { listCandidatePool, listJobs, listMatchRuns, listRecruiterDecisions } from "@/lib/store";
 import type { Candidate, CandidatePoolItem, Job, MatchRun, RecruiterDecisionRecord } from "@/lib/types";
 
@@ -93,7 +94,7 @@ export async function GET(request: Request) {
         "Resume URL",
         "Job",
       ],
-      ...exportCandidateRows.map(({ candidate, resume }, index) => {
+      ...rankExportCandidates(exportCandidateRows, latestMatchByCandidate).map(({ candidate, resume }, index) => {
         const match = latestMatchByCandidate.get(candidate.id);
         const decision = latestDecisionByCandidate.get(candidate.id);
         const job = match ? jobById.get(match.jobId) : undefined;
@@ -104,8 +105,8 @@ export async function GET(request: Request) {
         return [
           csvCell(index + 1),
           csvCell(candidate.name),
-          csvCell(match?.score || ""),
-          csvCell(match?.confidence || ""),
+          csvCell(match?.score ?? ""),
+          csvCell(match?.confidence ?? ""),
           csvCell(match?.verdict || ""),
           csvCell(decision?.decision || ""),
           csvCell(match?.hardRuleOutcomes?.map((outcome) => `${outcome.passed ? "pass" : "fail"}: ${outcome.rule}`).join("; ") || ""),
@@ -113,7 +114,7 @@ export async function GET(request: Request) {
           csvCell(rationale || ""),
           csvCell(csvList(match?.matchedSignals)),
           csvCell(csvList(match?.missingSignals)),
-          csvCell(""),
+          csvCell(csvList(resume.warnings)),
           csvCell(candidate.email || resume.parsedJson?.contact?.email || ""),
           csvCell(resume.fileName),
           csvFormula(`=HYPERLINK("${resumeUrl}", "Open resume")`),

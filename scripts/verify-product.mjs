@@ -157,6 +157,9 @@ try {
   const persisted = (await api(`/api/matches?jobId=${jobId}`)).body.matchRuns;
   assert.equal(persisted.length, count); assert.equal(new Set(persisted.map(item => item.candidateId)).size, count);
   assert.ok(persisted.every(item => item.resume?.id));
+  if (!process.env.QA_BASE_URL || process.env.QA_REQUIRE_INGESTION_METADATA === "true") {
+    assert.ok(persisted.every(item => item.resume?.warnings?.some(warning => warning.startsWith("Upload scanner:"))), "ingestion warnings survive database reload");
+  }
   pass("bulk upload, lost-response retry, pause/resume, exactly-once persistence", { resumes: count, seconds: Math.round((performance.now() - start) / 1000), providers: providerEvidence });
 
   const sample = results[0];
@@ -173,6 +176,12 @@ try {
   assert.ok(decisions.some(item => item.candidateId === sample.candidate.id && item.decision === "hold"));
   const exported = await api(`/api/admin/candidates/export?jobId=${jobId}`);
   assert.ok(exported.body.includes(sample.candidate.name));
+  if (!process.env.QA_BASE_URL || process.env.QA_REQUIRE_INGESTION_METADATA === "true") {
+    const scores = [...exported.body.matchAll(/^"\d+","(?:[^"]|"")*","(\d*)",/gm)].map(match => Number(match[1]));
+    assert.equal(scores.length, count);
+    assert.deepEqual(scores, [...scores].sort((a, b) => b - a), "CSV ranks follow scores");
+    assert.ok(exported.body.includes("Upload scanner:"), "CSV retains provider warnings");
+  }
   const lastPage = await api(`/workspace?jobId=${jobId}&page=${Math.ceil(count / 25)}`);
   assert.ok(lastPage.body.includes("Candidate archive"));
   pass("review decision, candidate export, archive pagination");

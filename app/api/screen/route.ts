@@ -126,7 +126,7 @@ async function processBatch(user: AuthUser, id: string, fingerprint: string, raw
   const newCandidateIds = new Set(pending.map(item => item.candidate.id));
   const saved = await getCandidatePoolByResumeIds(savedIds, user.organizationId);
   if (saved.length !== new Set(savedIds).size) throw new Error("Some selected resumes were not found in this workspace.");
-  pending.push(...saved.map(item => ({ ...item, resume: { ...item.resume, parser: "saved-pool", warnings: [] } })));
+  pending.push(...saved.map(item => ({ ...item, resume: { ...item.resume, parser: "saved-pool", warnings: item.resume.warnings || [] } })));
   const scores = await rankCandidates(pending.map(item => ({ jobId: job.id, candidateId: item.candidate.id, jobTitle: job.title, jobText: job.description, resumeText: item.resume.rawText || "", hardRules: job.hardRules, roleTemplate: job.roleTemplate })));
   const results = pending.map((item, index) => ({ ...item, matchRun: { ...scores[index], id: crypto.randomUUID(), createdAt: timestamp } })).sort((a, b) => b.matchRun.score - a.matchRun.score);
   const response = await persistScreening(id, fingerprint, { job, results, errors }, !existingJob, newCandidateIds);

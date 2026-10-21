@@ -48,7 +48,8 @@ export async function persistScreening(id: string, fingerprint: string, response
           await tx.candidate.createMany({ data: fresh.map(({ candidate }) => ({ ...candidate, status: "SCREENED" })) });
           await tx.resumeDocument.createMany({ data: fresh.map(({ resume }) => ({
             id: resume.id, candidateId: resume.candidateId, fileName: resume.fileName, mimeType: resume.mimeType,
-            storageKey: resume.storageKey, rawText: resume.rawText, parsedJson: resume.parsedJson as any,
+            storageKey: resume.storageKey, rawText: resume.rawText,
+            parsedJson: { ...resume.parsedJson, ingestion: { parser: resume.parser, warnings: resume.warnings || [] } } as any,
             parseStatus: "PARSED", parseConfidence: resume.parseConfidence, createdAt: resume.createdAt,
           })) });
         }
