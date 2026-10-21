@@ -61,6 +61,8 @@ export interface ResumeDocument {
   parsedJson?: StructuredResumeProfile;
   parseStatus: "pending" | "parsed" | "failed";
   parseConfidence: number;
+  parser?: string;
+  warnings?: string[];
   createdAt: string;
 }
 

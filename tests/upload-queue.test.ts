@@ -63,5 +63,9 @@ test("network errors become retryable errors and honor Retry-After", async () =>
     await assert.rejects(() => requestJson("/api/auth/login"), (error: any) => error.status === 503);
     globalThis.fetch = async () => new Response('{"error":"busy"}', { status: 429, headers: { "retry-after": "7" } });
     await assert.rejects(() => requestJson("/api/screen"), (error: any) => error.status === 429 && error.retryAfterMs === 7000);
+    globalThis.fetch = async () => new Response('<!DOCTYPE html><h1>Bad gateway</h1>', { status: 502 });
+    await assert.rejects(() => requestJson("/api/screen"), (error: any) => error instanceof ApiRequestError && error.status === 502);
+    globalThis.fetch = async () => new Response('<!DOCTYPE html><h1>Unavailable</h1>', { status: 200 });
+    await assert.rejects(() => requestJson("/api/screen"), (error: any) => error instanceof ApiRequestError && error.status === 502);
   } finally { globalThis.fetch = original; }
 });

@@ -83,6 +83,8 @@ function mapResume(resume: any): ResumeDocument {
     parsedJson: resume.parsedJson || undefined,
     parseStatus: resume.parseStatus.toLowerCase(),
     parseConfidence: resume.parseConfidence,
+    parser: resume.parsedJson?.ingestion?.parser,
+    warnings: resume.parsedJson?.ingestion?.warnings || [],
     createdAt: iso(resume.createdAt),
   };
 }

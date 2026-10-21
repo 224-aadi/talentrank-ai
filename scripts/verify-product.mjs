@@ -7,7 +7,7 @@ import path from "node:path";
 import http from "node:http";
 import JSZip from "jszip";
 import { createUploadRun, executeUploadRun } from "../lib/upload-queue.ts";
-import { ApiRequestError } from "../lib/client-request.ts";
+import { ApiRequestError, requestJson } from "../lib/client-request.ts";
 
 const count = Number(process.env.QA_RESUME_COUNT || 550);
 const base = process.env.QA_BASE_URL || "http://127.0.0.1:3199";
@@ -98,7 +98,7 @@ try {
   }
   pass("authenticated product pages render");
 
-  const files = Array.from({ length: count }, (_, i) => i % 50 === 0
+  const files = Array.from({ length: count }, (_, i) => process.env.QA_PDF_HEAVY === "true" || i % 50 === 0
     ? new File([pdfBytes(resume(i))], `QA_Candidate_${i}.pdf`, { type: "application/pdf" })
     : new File([resume(i)], `QA_Candidate_${i}.txt`, { type: "text/plain" }));
   if (process.env.QA_SCANNED_PDF) files[files.length - 1] = new File([await readFile(process.env.QA_SCANNED_PDF)], "Tara_Prasad_Behera_QA_Scanned.pdf", { type: "application/pdf" });
@@ -125,14 +125,17 @@ try {
   let checkpoint;
   const start = performance.now();
   const send = async (body, key) => {
-    const result = await fetch(`${base}/api/screen`, { method: "POST", headers: { cookie, "idempotency-key": key }, body, signal: AbortSignal.timeout(240_000) });
-    const payload = await result.json();
-    if (!result.ok) throw new ApiRequestError(payload.error || "Screening failed", result.status, Number(result.headers.get("retry-after") || 0) * 1000);
+    // Exercise the exact browser transport, including HTML gateway errors and
+    // interrupted response bodies, instead of bypassing its typed retries.
+    const payload = await requestJson(`${base}/api/screen`, { method: "POST", headers: { cookie, "idempotency-key": key }, body }, 240_000);
     if (!lostResponseInjected) { lostResponseInjected = true; duplicateKey = key; duplicateIds = payload.results.map(item => item.candidate.id); throw new ApiRequestError("Simulated lost response after server commit", 503); }
     if (key === duplicateKey) assert.deepEqual(payload.results.map(item => item.candidate.id), duplicateIds);
     return payload;
   };
-  const save = async state => { checkpoint = { ...state, errors: [...state.errors], batches: state.batches.map(batch => ({ ...batch, files: [...batch.files] })) }; };
+  const save = async state => {
+    checkpoint = { ...state, errors: [...state.errors], batches: state.batches.map(batch => ({ ...batch, files: [...batch.files] })) };
+    await writeFile(path.join(directory, "progress.json"), JSON.stringify({ jobId: state.jobId, completed: state.batches.filter(batch => batch.done).reduce((n, batch) => n + batch.response.results.length, 0), total: count, updatedAt: new Date().toISOString() }));
+  };
   await executeUploadRun(run, { send, save, progress: () => {}, paused: () => run.batches.filter(batch => batch.done).length === 5 });
   assert.equal(run.batches.filter(batch => batch.done).length, Math.min(5, run.batches.length));
   await executeUploadRun(checkpoint || run, { send, save, progress: state => { const done = state.batches.filter(batch => batch.done).length; if (done % 20 === 0) console.log(JSON.stringify({ progress: done, batches: state.batches.length })); } });
@@ -154,6 +157,9 @@ try {
   const persisted = (await api(`/api/matches?jobId=${jobId}`)).body.matchRuns;
   assert.equal(persisted.length, count); assert.equal(new Set(persisted.map(item => item.candidateId)).size, count);
   assert.ok(persisted.every(item => item.resume?.id));
+  if (!process.env.QA_BASE_URL || process.env.QA_REQUIRE_INGESTION_METADATA === "true") {
+    assert.ok(persisted.every(item => item.resume?.warnings?.some(warning => warning.startsWith("Upload scanner:"))), "ingestion warnings survive database reload");
+  }
   pass("bulk upload, lost-response retry, pause/resume, exactly-once persistence", { resumes: count, seconds: Math.round((performance.now() - start) / 1000), providers: providerEvidence });
 
   const sample = results[0];
@@ -170,6 +176,12 @@ try {
   assert.ok(decisions.some(item => item.candidateId === sample.candidate.id && item.decision === "hold"));
   const exported = await api(`/api/admin/candidates/export?jobId=${jobId}`);
   assert.ok(exported.body.includes(sample.candidate.name));
+  if (!process.env.QA_BASE_URL || process.env.QA_REQUIRE_INGESTION_METADATA === "true") {
+    const scores = [...exported.body.matchAll(/^"\d+","(?:[^"]|"")*","(\d*)",/gm)].map(match => Number(match[1]));
+    assert.equal(scores.length, count);
+    assert.deepEqual(scores, [...scores].sort((a, b) => b - a), "CSV ranks follow scores");
+    assert.ok(exported.body.includes("Upload scanner:"), "CSV retains provider warnings");
+  }
   const lastPage = await api(`/workspace?jobId=${jobId}&page=${Math.ceil(count / 25)}`);
   assert.ok(lastPage.body.includes("Candidate archive"));
   pass("review decision, candidate export, archive pagination");
@@ -179,6 +191,13 @@ try {
   assert.equal(explanation.body.candidate.id, sample.candidate.id);
   assert.ok((await api("/api/admin/backup")).body.matches.length >= count);
   pass("benchmark labels, explainability, workspace backup");
+
+  const reranked = await api("/api/screen", post({ job: { title: "QA saved-pool rerank", description: jd }, resumeIds: [sample.resume.id] }, { "idempotency-key": crypto.randomUUID() }), 201);
+  assert.equal(reranked.body.results.length, 1);
+  assert.equal(reranked.body.results[0].candidate.id, sample.candidate.id);
+  assert.equal(reranked.body.results[0].resume.id, sample.resume.id);
+  await api("/api/screen", post({ job: { description: jd }, resumes: [{ fileName: "different.txt", text: resume(999) }] }, { "idempotency-key": duplicateKey }), 409);
+  pass("saved candidate reranking and conflicting retry-key rejection");
 
   const mixed = new FormData(); mixed.append("job", JSON.stringify({ description: jd })); mixed.append("jobId", jobId);
   mixed.append("resumes", new File([resume(999)], "QA-valid.txt", { type: "text/plain" }));
@@ -198,7 +217,7 @@ try {
   await api("/api/screen", post({ job: { description: jd }, resumes: [{ fileName: "qa.txt", text: resume(1) }] }), 401);
   pass("workspace isolation and logout enforcement");
   if (process.env.QA_ACCOUNT_FILE) await writeFile(process.env.QA_ACCOUNT_FILE, JSON.stringify({ email, password, base }), { mode: 0o600 });
-  await writeFile(path.join(directory, "verification.json"), JSON.stringify({ base, checks, completedAt: new Date().toISOString() }, null, 2));
+  await writeFile(path.join(directory, "verification.json"), JSON.stringify({ base, jobId, checks, completedAt: new Date().toISOString() }, null, 2));
   console.log(JSON.stringify({ complete: true, report: path.join(directory, "verification.json"), checks: checks.length }));
 } catch (error) {
   console.error(error.stack || error);

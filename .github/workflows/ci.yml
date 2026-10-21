@@ -45,4 +45,5 @@ jobs:
       - run: npm run test:product
         env:
           QA_USE_PRISMA: "true"
+          QA_PDF_HEAVY: "true"
       - run: npm audit --omit=dev --omit=optional --audit-level=moderate
