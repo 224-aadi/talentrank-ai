@@ -20,6 +20,10 @@ embedding providers. `QA_RESUME_COUNT` changes the default of 550.
 `QA_SCANNED_PDF` can point to a synthetic image-only PDF; when supplied, the test
 requires a successful `pdf+ocr` result. Never use a real person's resume as a QA
 fixture without authorization.
+Set `QA_PDF_HEAVY=true` to use PDFs for all but the DOCX/Markdown format checks
+(and the optional image-only PDF). CI uses this mode. Set
+`QA_REQUIRE_INGESTION_METADATA=true` on the deployed follow-up release to also
+check that persisted warnings and score-sorted CSV exports survive database reads.
 
 ## Upload behavior
 

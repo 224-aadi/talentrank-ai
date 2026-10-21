@@ -98,7 +98,7 @@ try {
   }
   pass("authenticated product pages render");
 
-  const files = Array.from({ length: count }, (_, i) => i % 50 === 0
+  const files = Array.from({ length: count }, (_, i) => process.env.QA_PDF_HEAVY === "true" || i % 50 === 0
     ? new File([pdfBytes(resume(i))], `QA_Candidate_${i}.pdf`, { type: "application/pdf" })
     : new File([resume(i)], `QA_Candidate_${i}.txt`, { type: "text/plain" }));
   if (process.env.QA_SCANNED_PDF) files[files.length - 1] = new File([await readFile(process.env.QA_SCANNED_PDF)], "Tara_Prasad_Behera_QA_Scanned.pdf", { type: "application/pdf" });
