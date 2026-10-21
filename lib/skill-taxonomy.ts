@@ -13,6 +13,13 @@ export type SkillNode = {
 };
 
 export const skillGraph: SkillNode[] = [
+  { id: "solidworks", label: "SolidWorks", family: "operations", aliases: ["solid works"], adjacent: ["cad design", "autocad"], senioritySignals: ["assembly design", "production drawings"], weight: 1.1 },
+  { id: "autocad", label: "AutoCAD", family: "operations", aliases: ["auto cad"], adjacent: ["cad design", "solidworks"], senioritySignals: ["manufacturing drawings"], weight: 1.1 },
+  { id: "cad design", label: "CAD Design", family: "operations", aliases: ["cad", "mechanical design", "3d modeling", "3d modelling"], adjacent: ["solidworks", "autocad"], senioritySignals: ["design release", "design validation"], weight: 1.1 },
+  { id: "gd&t", label: "GD&T", family: "operations", aliases: ["geometric dimensioning", "geometrical tolerancing"], adjacent: ["tolerance analysis"], senioritySignals: ["drawing standards"], weight: 1.1 },
+  { id: "tolerance analysis", label: "Tolerance Analysis", family: "operations", aliases: ["tolerance stack", "tolerance stackup", "tolerance stack-up"], adjacent: ["gd&t"], senioritySignals: ["validated tolerances"], weight: 1.1 },
+  { id: "bom management", label: "BOM Management", family: "operations", aliases: ["bill of materials", "bills of materials"], adjacent: ["operations"], senioritySignals: ["engineering change", "design release"], weight: 1 },
+  { id: "finite element analysis", label: "Finite Element Analysis", family: "operations", aliases: ["fea", "ansys"], adjacent: ["cad design"], senioritySignals: ["structural analysis", "simulation validation"], weight: 1 },
   {
     id: "python",
     label: "Python",

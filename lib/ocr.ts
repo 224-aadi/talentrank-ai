@@ -48,6 +48,7 @@ async function runGenericOcr(file: File): Promise<OcrResult> {
 
   const response = await fetch(endpoint, {
     method: "POST",
+    signal: AbortSignal.timeout(30_000),
     headers: process.env.OCR_API_KEY ? { authorization: `Bearer ${process.env.OCR_API_KEY}` } : undefined,
     body,
   });
@@ -94,6 +95,7 @@ async function runOcrSpace(file: File): Promise<OcrResult> {
 
     const response = await fetch(endpoint, {
       method: "POST",
+      signal: AbortSignal.timeout(30_000),
       headers: { apikey: apiKey },
       body,
     });

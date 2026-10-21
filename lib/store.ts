@@ -29,7 +29,7 @@ import type {
   VectorRecord,
 } from "./types";
 
-const dataDir = path.join(process.cwd(), ".data");
+const dataDir = process.env.TALENTRANK_DATA_DIR || path.join(process.cwd(), ".data");
 const dbPath = path.join(dataDir, "talentrank.json");
 
 export function createId(prefix: string) {
@@ -545,6 +545,7 @@ export async function listMatchRuns(jobId?: string, organizationId?: string) {
     hardRuleOutcomes: run.hardRuleOutcomes || [],
     job: db.jobs.find((job) => job.id === run.jobId) || null,
     candidate: db.candidates.find((candidate) => candidate.id === run.candidateId) || null,
+    resume: db.resumes.find((resume) => resume.candidateId === run.candidateId) || null,
     latestDecision: allDecisions.find((decision) => decision.jobId === run.jobId && decision.candidateId === run.candidateId) || null,
   })).filter((run) => !organizationId || (run.job?.organizationId === organizationId && run.candidate?.organizationId === organizationId));
 }

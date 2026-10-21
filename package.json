@@ -11,6 +11,7 @@
     "start:legacy": "node server.js",
     "check": "node --check app.js && node --check server.js",
     "test": "node --experimental-strip-types --loader ./scripts/typescript-loader.mjs --test tests/*.test.ts",
+    "test:product": "node --experimental-strip-types --loader ./scripts/typescript-loader.mjs scripts/verify-product.mjs",
     "deploy:check": "node scripts/check-deploy.mjs",
     "deploy:release": "node scripts/release.mjs",
     "mock:integrations": "node scripts/mock-integrations.mjs",
@@ -23,12 +24,12 @@
   "dependencies": {
     "@prisma/client": "^6.0.0",
     "lucide-react": "^1.24.0",
-    "mammoth": "^1.12.0",
-    "next": "^16.3.5",
+    "mammoth": "^1.13.0",
+    "next": "^16.3.8",
     "pdf-parse": "^2.4.5",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "sharp": "^0.35.4",
+    "sharp": "^0.35.5",
     "tailwindcss": "^4.3.2",
     "zod": "^3.24.0"
   },
@@ -42,7 +43,9 @@
   },
   "overrides": {
     "postcss": "^8.5.25",
-    "sharp": "^0.35.4"
+    "sharp": "^0.35.5",
+    "source-map-js": "^1.2.2",
+    "argparse": "^2.0.1"
   },
   "engines": {
     "node": ">=20.9.0"

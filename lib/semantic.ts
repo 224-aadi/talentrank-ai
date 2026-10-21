@@ -115,6 +115,7 @@ function sectionTexts(resume: ResumeDocument): SemanticSection[] {
 async function openAiEmbeddings(input: string[], config: EmbeddingConfig) {
   const response = await fetch("https://api.openai.com/v1/embeddings", {
     method: "POST",
+    signal: AbortSignal.timeout(30_000),
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
@@ -172,9 +173,12 @@ export async function ensureVectorIndex(pool: CandidatePoolItem[]) {
   }
 
   if (missing.length) {
-    const embeddings = await embedTexts(missing.map((item) => item.section.text), config);
     const timestamp = new Date().toISOString();
-    await upsertVectorRecords(missing.map((item, index) => ({
+    // A 550-resume pool can exceed the provider's input-array limit.
+    for (let offset = 0; offset < missing.length; offset += 64) {
+    const batch = missing.slice(offset, offset + 64);
+    const embeddings = await embedTexts(batch.map(item => item.section.text.slice(0, 12_000)), config);
+    await upsertVectorRecords(batch.map((item, index) => ({
       id: createId("vec"),
       candidateId: item.candidateId,
       resumeId: item.resumeId,
@@ -187,6 +191,7 @@ export async function ensureVectorIndex(pool: CandidatePoolItem[]) {
       createdAt: timestamp,
       updatedAt: timestamp,
     })));
+    }
   }
 
   const refreshed: VectorRecord[] = missing.length ? await listVectorRecords() : existing;

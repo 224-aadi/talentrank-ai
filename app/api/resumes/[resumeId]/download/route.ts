@@ -22,7 +22,7 @@ export async function GET(_: Request, context: { params: Promise<{ resumeId: str
     return new NextResponse(new Uint8Array(buffer), {
       headers: {
         "content-type": resume.mimeType || "application/octet-stream",
-        "content-disposition": `inline; filename="${resume.fileName.replace(/"/g, "")}"`,
+        "content-disposition": `inline; filename="${resume.fileName.replace(/[^\x20-\x7e]|["\\]/g, "_")}"; filename*=UTF-8''${encodeURIComponent(resume.fileName)}`,
         "cache-control": "private, no-store",
       },
     });

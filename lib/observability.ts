@@ -1,6 +1,7 @@
 type MetricName =
   | "auth.login.success"
   | "auth.login.failure"
+  | "auth.login.unavailable"
   | "rate_limit.blocked"
   | "resume.download"
   | "screen.request"

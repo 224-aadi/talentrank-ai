@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { inferJobTitle } from "@/lib/job-intelligence";
 import type { Job } from "@/lib/types";
+import { createUploadRun, executeUploadRun, loadUploadRun, saveUploadRun, type UploadRun } from "@/lib/upload-queue";
 
 type DecisionValue = "shortlist" | "hold" | "reject" | "interview";
 type BenchmarkValue = "good_match" | "bad_match" | "interviewed" | "offer" | "hired";
@@ -146,36 +147,14 @@ function resumeDownloadUrl(match: MatchRow) {
   return match.resume?.id ? new URL(`/api/resumes/${match.resume.id}/download`, window.location.origin).toString() : "";
 }
 
-const maxUploadChunkFiles = 8;
-const maxUploadChunkBytes = 3_200_000;
-
-function chunkResumeFiles(files: File[], extraBytes = 0) {
-  const chunks: File[][] = [];
-  let current: File[] = [];
-  let currentBytes = extraBytes;
-  for (const file of files) {
-    if (file.size + extraBytes > maxUploadChunkBytes) {
-      throw new Error(`${file.name} is too large for browser upload. Try compressing it or upload that resume by itself.`);
-    }
-    const wouldOverflow = current.length >= maxUploadChunkFiles || currentBytes + file.size > maxUploadChunkBytes;
-    if (current.length && wouldOverflow) {
-      chunks.push(current);
-      current = [];
-      currentBytes = extraBytes;
-    }
-    current.push(file);
-    currentBytes += file.size;
-  }
-  if (current.length) chunks.push(current);
-  return chunks.length ? chunks : [[]];
-}
-
 export default function ScreeningWorkbench({
   initialJobs,
   initialMatches,
+  queueOwner,
 }: {
   initialJobs: Job[];
   initialMatches: MatchRow[];
+  queueOwner: string;
 }) {
   const [title, setTitle] = useState("");
   const [titleTouched, setTitleTouched] = useState(false);
@@ -200,7 +179,40 @@ export default function ScreeningWorkbench({
   const [error, setError] = useState("");
   const [exportStatus, setExportStatus] = useState<"idle" | "exporting" | "exported">("idle");
   const [activeBucket, setActiveBucket] = useState<ReviewBucket>("recommended");
+  const [resultPage, setResultPage] = useState(0);
   const [compareIds, setCompareIds] = useState<string[]>([]);
+  const uploadRun = useRef<UploadRun | null>(null);
+  const initialBucketSelected = useRef(false);
+  const pauseRequested = useRef(false);
+  const [queueLoaded, setQueueLoaded] = useState(false);
+  const [hasPendingUpload, setHasPendingUpload] = useState(false);
+  const [uploadErrors, setUploadErrors] = useState<Array<{ fileName: string; error: string }>>([]);
+
+  function showRun(run: UploadRun, message?: string) {
+    const rows = run.batches.flatMap(batch => batch.response ? rowsFromPayload(batch.response) : []);
+    setMatches(rows.sort((a, b) => b.score - a.score));
+    if (rows.length && !initialBucketSelected.current) {
+      initialBucketSelected.current = true;
+      setActiveBucket(rows.some(row => bucketFor(row) === "recommended") ? "recommended" : rows.some(row => bucketFor(row) === "review") ? "review" : "rejected");
+    }
+    setUploadErrors([...run.errors]);
+    setHasPendingUpload(run.batches.some(batch => !batch.done));
+    if (message) setRunProgress(message);
+  }
+
+  useEffect(() => {
+    let active = true;
+    loadUploadRun(queueOwner).then(run => {
+      if (!active || !run) return;
+      uploadRun.current = run;
+      setDescription(String(run.job.description || ""));
+      setTitle(String(run.job.title || ""));
+      setJobFile(run.jobFile || null);
+      showRun(run, run.batches.some(batch => !batch.done) ? "Saved upload found. Resume to continue from the last completed batch." : "Previous screening results restored.");
+    }).catch(error => { if (active) setError(error instanceof Error ? error.message : "Could not restore saved upload."); })
+      .finally(() => { if (active) setQueueLoaded(true); });
+    return () => { active = false; pauseRequested.current = true; };
+  }, [queueOwner]);
 
   const metrics = useMemo(() => {
     const strong = matches.filter((match) => match.score >= 80).length;
@@ -236,7 +248,9 @@ export default function ScreeningWorkbench({
     return grouped;
   }, [matches]);
 
-  const visibleMatches = buckets[activeBucket];
+  const bucketMatches = buckets[activeBucket];
+  const visibleMatches = bucketMatches.slice(resultPage * 25, (resultPage + 1) * 25);
+  useEffect(() => { setResultPage(0); }, [activeBucket]);
   const comparedMatches = useMemo(
     () => compareIds.map((id) => matches.find((match) => match.id === id)).filter((match): match is MatchRow => Boolean(match)),
     [compareIds, matches],
@@ -329,6 +343,10 @@ export default function ScreeningWorkbench({
 
   function handleFiles(files: FileList | null) {
     if (!files) return;
+    uploadRun.current = null;
+    initialBucketSelected.current = false;
+    setHasPendingUpload(false);
+    setUploadErrors([]);
     setResumeFiles([...files]);
   }
 
@@ -365,32 +383,6 @@ export default function ScreeningWorkbench({
     }
   }
 
-  async function screenBatch(files: File[], savedResumeIds: string[], jobId?: string) {
-    const formData = new FormData();
-    const inferredTitle = title.trim() || inferJobTitle(description, "");
-    if (jobId) formData.append("jobId", jobId);
-    formData.append(
-      "job",
-      JSON.stringify({
-        title: inferredTitle,
-        description,
-        roleTemplate,
-        hardRules: hardRules
-          .split(",")
-          .map((rule) => rule.trim())
-          .filter(Boolean),
-      }),
-    );
-    if (jobFile && !jobId) formData.append("jobDescriptionFile", jobFile);
-    for (const file of files) formData.append("resumes", file);
-    formData.append("savedResumeIds", JSON.stringify(savedResumeIds));
-    const response = await fetch("/api/screen", {
-      method: "POST",
-      body: formData,
-    });
-    return await readApiJson<ScreenResponse>(response, "Screening failed");
-  }
-
   function rowsFromPayload(payload: ScreenResponse) {
     return payload.results.map((item) => ({
         ...item.matchRun,
@@ -404,43 +396,25 @@ export default function ScreeningWorkbench({
     setIsRunning(true);
     setRunProgress("");
     setError("");
+    pauseRequested.current = false;
     try {
-      const jobFileBytes = jobFile?.size || 0;
-      if (jobFileBytes > maxUploadChunkBytes) {
-        throw new Error(`${jobFile?.name || "The JD file"} is too large for browser upload. Paste the JD text or upload a smaller JD file.`);
-      }
-      const chunks = chunkResumeFiles(resumeFiles, jobFileBytes);
-      const totalCandidates = resumeFiles.length + selectedResumeIds.length;
-      const accumulated: MatchRow[] = [];
-      let activeJob: Job | null = null;
-      let completed = 0;
-
-      for (let index = 0; index < chunks.length; index += 1) {
-        const files = chunks[index];
-        const savedIds = index === 0 ? selectedResumeIds : [];
-        const chunkTotal = files.length + savedIds.length;
-        setRunProgress(
-          chunks.length > 1
-            ? `Screening batch ${index + 1} of ${chunks.length} (${completed + 1}-${Math.min(totalCandidates, completed + chunkTotal)} of ${totalCandidates})`
-            : "",
-        );
-        const payload = await screenBatch(files, savedIds, activeJob?.id);
-        activeJob ||= payload.job;
-        accumulated.push(...rowsFromPayload(payload));
-        completed += chunkTotal;
-        setMatches([...accumulated].sort((a, b) => b.score - a.score));
-      }
-
-      if (activeJob) {
-        setJobs((current) => current.some((job) => job.id === activeJob?.id) ? current : [activeJob, ...current]);
-      }
-      setMatches([...accumulated].sort((a, b) => b.score - a.score));
+      const run = uploadRun.current?.batches.some(batch => !batch.done) ? uploadRun.current : createUploadRun(resumeFiles, selectedResumeIds, {
+        title: title.trim() || inferJobTitle(description, ""), description, roleTemplate,
+        hardRules: hardRules.split(",").map(rule => rule.trim()).filter(Boolean),
+      }, jobFile || undefined);
+      uploadRun.current = run;
+      await saveUploadRun(queueOwner, run);
+      setRunProgress(`Screening ${run.total} resumes. You can pause and resume this upload.`);
+      await executeUploadRun(run, { save: (state, batch) => saveUploadRun(queueOwner, state, batch), progress: showRun, paused: () => pauseRequested.current });
+      showRun(run, pauseRequested.current ? "Upload paused. Resume when ready." : `Screening complete: ${run.batches.reduce((count, batch) => count + (batch.response?.results.length || 0), 0)} ranked; ${run.errors.length} files need attention.`);
+      const activeJob = run.batches.find(batch => batch.response)?.response.job as Job | undefined;
+      if (activeJob) setJobs(current => current.some(job => job.id === activeJob.id) ? current : [activeJob, ...current]);
       setCompareIds([]);
     } catch (screenError) {
       setError(screenError instanceof Error ? screenError.message : "Screening failed");
     } finally {
       setIsRunning(false);
-      setRunProgress("");
+      if (uploadRun.current) showRun(uploadRun.current);
     }
   }
 
@@ -511,6 +485,7 @@ export default function ScreeningWorkbench({
 
       <section className="workbench-grid">
         <form className="screen-form" onSubmit={(event) => event.preventDefault()}>
+          <fieldset disabled={isRunning || hasPendingUpload} style={{ display: "contents" }}>
           <label>
             <span>Job description</span>
             <textarea
@@ -602,13 +577,18 @@ export default function ScreeningWorkbench({
               ))}
             </div>
           ) : null}
-          <button disabled={isRunning || (!description.trim() && !jobFile) || (!resumeFiles.length && !selectedResumeIds.length)} onClick={runScreen}>
+          </fieldset>
+          <button disabled={!queueLoaded || isRunning || (!hasPendingUpload && ((!description.trim() && !jobFile) || (!resumeFiles.length && !selectedResumeIds.length)))} onClick={runScreen}>
             {isRunning ? (
               <span className="loading-label">
                 {runProgress || "Screening"}<span className="loading-dots" aria-hidden="true"><i /><i /><i /></span>
               </span>
-            ) : "Rank candidates"}
+            ) : hasPendingUpload ? "Resume upload" : "Rank candidates"}
           </button>
+          {isRunning ? <button type="button" onClick={() => { pauseRequested.current = true; setRunProgress("Pausing after the current batch is saved…"); }}>Pause upload</button> : null}
+          {hasPendingUpload && !isRunning ? <button type="button" onClick={() => { uploadRun.current = null; setHasPendingUpload(false); setResumeFiles([]); setRunProgress(""); }}>Start a new run</button> : null}
+          {runProgress ? <p role="status" aria-live="polite">{runProgress}</p> : null}
+          {uploadErrors.length ? <details><summary>{uploadErrors.length} files need attention</summary><ul>{uploadErrors.map((item, index) => <li key={index}>{item.fileName}: {item.error}</li>)}</ul></details> : null}
           {error ? <p className="form-error">{error}</p> : null}
         </form>
 
@@ -712,6 +692,7 @@ export default function ScreeningWorkbench({
                 <span>Try another review tab.</span>
               </article>
             ) : null}
+            {bucketMatches.length > 25 ? <nav aria-label="Candidate result pages"><button disabled={resultPage === 0} onClick={() => setResultPage(page => page - 1)}>Previous</button><span>Page {resultPage + 1} of {Math.ceil(bucketMatches.length / 25)}</span><button disabled={(resultPage + 1) * 25 >= bucketMatches.length} onClick={() => setResultPage(page => page + 1)}>Next</button></nav> : null}
             {visibleMatches.map((match, index) => (
               <article key={match.id} className={`match-card candidate-card ${bucketFor(match)}`}>
                 <div>

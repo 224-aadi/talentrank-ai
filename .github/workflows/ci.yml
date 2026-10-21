@@ -8,6 +8,17 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: user
+          POSTGRES_PASSWORD: pass
+          POSTGRES_DB: talentrank
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U user -d talentrank"
+          --health-interval 5s --health-timeout 5s --health-retries 10
     env:
       DATABASE_URL: postgresql://user:pass@localhost:5432/talentrank
       TALENTRANK_APP_URL: https://talentrank.example.test
@@ -30,4 +41,8 @@ jobs:
       - run: npx prisma validate
       - run: npm test
       - run: npm run build
+      - run: npx prisma db push
+      - run: npm run test:product
+        env:
+          QA_USE_PRISMA: "true"
       - run: npm audit --omit=dev --omit=optional --audit-level=moderate
